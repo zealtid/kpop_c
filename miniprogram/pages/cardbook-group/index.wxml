@@ -2,9 +2,11 @@
   <view class="h1">{{group.nameZh}}</view>
   <view class="sub">{{progress.ownedDistinct}} / {{progress.publishedCount}} · {{pct}}%</view>
   <view class="sub">{{copy}}</view>
+  <view wx:if="{{custom.length}}" class="tag custom-tag">{{customLabel}}（不计入官方进度）</view>
   <view wx:if="{{group.scopeNote}}" class="footnote">{{group.scopeNote}}</view>
 
   <view class="btn" bindtap="share">生成卡册长图并保存</view>
+  <view class="btn ghost" bindtap="addCustom">拍照加卡</view>
 
   <view class="tabs">
     <view class="item {{tab===0?'on':''}}" bindtap="setTab" data-i="0">拥有</view>
@@ -12,7 +14,22 @@
     <view class="item {{tab===2?'on':''}}" bindtap="setTab" data-i="2">重复</view>
   </view>
 
-  <view wx:if="{{list.length===0}}" class="empty">暂无卡片</view>
+  <block wx:if="{{tab===0 && custom.length}}">
+    <view class="muted" style="margin-bottom:8rpx">自定义卡（审核中可预览原图）</view>
+    <view class="grid3">
+      <view class="tile" wx:for="{{custom}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
+        <view class="ph" style="background: {{item.memberColor || '#2a2233'}}">
+          <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
+          <view class="badge">{{item.badge}}</view>
+          <view wx:if="{{item.moderationLabel}}" class="badge warn">{{item.moderationLabel}}</view>
+        </view>
+        <view class="muted">{{item.title || item.memberNameEn || '自定义卡'}}</view>
+        <view class="tag">×{{item.quantity}}</view>
+      </view>
+    </view>
+  </block>
+
+  <view wx:if="{{list.length===0 && !(tab===0 && custom.length)}}" class="empty">暂无卡片</view>
   <view class="grid3">
     <view class="tile" wx:for="{{list}}" wx:key="id" bindtap="openCard" data-id="{{item.id}}">
       <view class="ph" style="background: {{item.memberColor}}">

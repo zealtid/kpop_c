@@ -8,6 +8,8 @@ import { query } from "./db.js";
 import { getGroup } from "./catalog.js";
 import { track } from "./analytics.js";
 import { PROGRESS_COPY, progressForGroups } from "./collection.js";
+import { listShareableCustomCards } from "./customCards.js";
+import { readCustomImage } from "./storage.js";
 
 const COLS = 3;
 const CARD_W = 210;
@@ -17,7 +19,7 @@ const PAD = 32;
 const HEADER_H = 168;
 const FOOTER_H = 220;
 
-type OwnedCard = {
+type ShareCard = {
   id: string;
   code: string;
   name: string;
@@ -25,11 +27,13 @@ type OwnedCard = {
   member_name_en: string | null;
   member_color: string | null;
   main_image_url: string | null;
+  kind: "official" | "custom";
+  moderation_status?: string;
 };
 
 export async function createShareImage(userId: string, groupKey: string) {
   const group = await getGroup(groupKey);
-  const owned = await query<OwnedCard>(
+  const owned = await query<ShareCard>(
     `SELECT t.id, t.code, t.name, t.version, m.name_en AS member_name_en,
             m.color AS member_color, t.main_image_url
      FROM user_cards uc
@@ -40,8 +44,22 @@ export async function createShareImage(userId: string, groupKey: string) {
      ORDER BY m.sort_order NULLS LAST, t.version`,
     [userId, group.id],
   );
-  // P8: full concat ALL owned cards — never slice to first N
-  const cards = owned.rows;
+  const custom = await listShareableCustomCards(userId, group.id as string);
+  // P8 + PC06: 官方已拥有 + 自定义（approved/pending），全量拼接，禁止截断；rejected 不入图
+  const cards: ShareCard[] = [
+    ...owned.rows.map((c) => ({ ...c, kind: "official" as const })),
+    ...custom.map((c) => ({
+      id: String(c.id),
+      code: "CUSTOM",
+      name: c.title || "自定义",
+      version: c.moderationStatus === "pending" ? "审核中" : "自定义",
+      member_name_en: c.memberNameEn || c.title || "自定义",
+      member_color: c.memberColor || "#8a8494",
+      main_image_url: String(c.imageFront),
+      kind: "custom" as const,
+      moderation_status: c.moderationStatus,
+    })),
+  ];
   const [prog] = await progressForGroups(userId, [group.id as string]);
   const ownedDistinct = prog?.owned_distinct ?? 0;
   const published = prog?.published_count ?? 0;
@@ -82,6 +100,22 @@ export async function createShareImage(userId: string, groupKey: string) {
     { input: qrPng, top: height - FOOTER_H + 30, left: PAD + 8 },
   ];
 
+  for (let i = 0; i < cards.length; i++) {
+    const card = cards[i];
+    if (card.kind !== "custom" || !card.main_image_url) continue;
+    const col = i % COLS;
+    const row = Math.floor(i / COLS);
+    const x = PAD + col * (CARD_W + GAP);
+    const y = HEADER_H + row * (CARD_H + GAP);
+    const img = await loadShareCardImage(card.main_image_url);
+    if (!img) continue;
+    const fitted = await sharp(img)
+      .resize(CARD_W, CARD_H - 48, { fit: "cover" })
+      .png()
+      .toBuffer();
+    composites.push({ input: fitted, top: y, left: x });
+  }
+
   await sharp({
     create: {
       width,
@@ -96,14 +130,16 @@ export async function createShareImage(userId: string, groupKey: string) {
 
   const publicPath = `/media/shares/${fileName}`;
   const publicUrl = `${config.publicBaseUrl}${publicPath}`;
+  const templateIds = owned.rows.map((c) => c.id);
+  const customCardIds = custom.map((c) => String(c.id));
   await query(
-    `INSERT INTO share_images (id, user_id, group_id, file_path, public_url, template_ids, has_qr, has_watermark)
-     VALUES ($1, $2, $3, $4, $5, $6::uuid[], true, true)`,
-    [id, userId, group.id, filePath, publicUrl, cards.map((c) => c.id)],
+    `INSERT INTO share_images (id, user_id, group_id, file_path, public_url, template_ids, custom_card_ids, has_qr, has_watermark)
+     VALUES ($1, $2, $3, $4, $5, $6::uuid[], $7::uuid[], true, true)`,
+    [id, userId, group.id, filePath, publicUrl, templateIds, customCardIds],
   );
   await track(
     "share_cardbook_save",
-    { groupId: group.id, cardCount: cards.length, truncated: false },
+    { groupId: group.id, cardCount: cards.length, customCount: customCardIds.length, truncated: false },
     userId,
   );
 
@@ -112,7 +148,8 @@ export async function createShareImage(userId: string, groupKey: string) {
     url: publicPath,
     absoluteUrl: publicUrl,
     cardCount: cards.length,
-    templateIds: cards.map((c) => c.id),
+    templateIds,
+    customCardIds,
     truncated: false,
     hasQr: true,
     hasWatermark: true,
@@ -120,6 +157,16 @@ export async function createShareImage(userId: string, groupKey: string) {
     height,
     progressCopy: PROGRESS_COPY,
   };
+}
+
+async function loadShareCardImage(publicPath: string): Promise<Buffer | null> {
+  const custom = await readCustomImage(publicPath);
+  if (custom) return custom.body;
+  if (publicPath.startsWith("/media/cards/")) {
+    const dest = path.join(config.dataDir, "cards", path.basename(publicPath));
+    if (fs.existsSync(dest)) return fs.readFileSync(dest);
+  }
+  return null;
 }
 
 function shareSvg(opts: {
@@ -133,7 +180,7 @@ function shareSvg(opts: {
   ownedDistinct: number;
   published: number;
   pct: number;
-  cards: OwnedCard[];
+  cards: ShareCard[];
   cardW: number;
   cardH: number;
   gap: number;
@@ -149,11 +196,16 @@ function shareSvg(opts: {
       const member = escapeXml(c.member_name_en || "Member");
       const ver = escapeXml(c.version);
       const code = escapeXml(c.code);
-      return `<g data-card-code="${code}">
+      const customMark =
+        c.kind === "custom"
+          ? `<text x="${x + 12}" y="${y + opts.cardH - 14}" fill="#ffe8f0" font-size="13" font-family="sans-serif">自定义${c.moderation_status === "pending" ? " · 审核中" : ""}</text>`
+          : "";
+      return `<g data-card-code="${code}" data-kind="${c.kind}">
         <rect x="${x}" y="${y}" width="${opts.cardW}" height="${opts.cardH}" rx="14" fill="${fill}"/>
         <text x="${x + opts.cardW / 2}" y="${y + 150}" fill="#fff" font-size="22" font-family="sans-serif" text-anchor="middle">${member}</text>
         <text x="${x + opts.cardW / 2}" y="${y + 184}" fill="#fff" font-size="16" font-family="sans-serif" text-anchor="middle">${ver}</text>
         <text x="${x + opts.cardW / 2}" y="${y + 214}" fill="#ffe8f0" font-size="11" font-family="sans-serif" text-anchor="middle">${code}</text>
+        ${customMark}
       </g>`;
     })
     .join("\n");

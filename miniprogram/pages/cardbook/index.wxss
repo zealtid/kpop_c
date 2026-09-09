@@ -69,3 +69,35 @@
   font-size: 18rpx;
   color: #a9a3b3;
 }
+
+.add-custom {
+  margin-top: 24rpx;
+}
+
+.custom-block {
+  margin-top: 28rpx;
+}
+
+.custom-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+
+.badge {
+  position: absolute;
+  left: 8rpx;
+  bottom: 8rpx;
+  font-size: 18rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 8rpx;
+  background: rgba(18, 16, 22, 0.82);
+  color: #ff8fb8;
+}
+
+.badge.warn {
+  left: auto;
+  right: 8rpx;
+  color: #f5c36b;
+}

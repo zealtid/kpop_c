@@ -13,6 +13,8 @@ export const ANALYTICS_EVENTS = [
   "share_cardbook_save",
   "missing_feedback_submit",
   "tab_view",
+  "custom_card_add",
+  "custom_card_remove",
 ] as const;
 
 export type AnalyticsName = (typeof ANALYTICS_EVENTS)[number];

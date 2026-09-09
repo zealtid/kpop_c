@@ -484,3 +484,161 @@ test("no friends API surface", async () => {
   const res = await api("/friends");
   assert.equal(res.status, 404);
 });
+
+const TINY_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+test("PC07 custom card write without auth is 401", async () => {
+  const prev = token;
+  token = "";
+  const res = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({ imageFrontBase64: TINY_PNG, title: "nope" }),
+  });
+  token = prev;
+  assert.equal(res.status, 401);
+});
+
+test("PC01-PC06 private photo custom cards", async () => {
+  const templatesBefore = await query("SELECT COUNT(*)::int AS n FROM templates");
+  const progBefore = await api("/collection/groups/bts/progress");
+  const ownedBefore = (progBefore.body as { ownedDistinct: number }).ownedDistinct;
+
+  const created = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({
+      imageFrontBase64: TINY_PNG,
+      mimeType: "image/png",
+      title: "PC_CUSTOM_UNIQUE_TOKEN",
+      note: "私人拍照",
+      quantity: 1,
+      condition: "near_mint",
+      groupId: GROUP_BTS,
+    }),
+  });
+  assert.equal(created.status, 200);
+  const card = created.body as {
+    id: string;
+    kind: string;
+    custom: boolean;
+    badge: string;
+    imageFront: string;
+    moderationStatus: string;
+    moderationLabel: string;
+    groupId: string;
+    condition: string;
+    moderation: { hookReady: boolean; submitted: boolean };
+  };
+  assert.equal(card.kind, "custom");
+  assert.equal(card.custom, true);
+  assert.equal(card.badge, "自定义");
+  assert.equal(card.moderationStatus, "pending");
+  assert.equal(card.moderationLabel, "审核中");
+  assert.equal(card.condition, "near_mint");
+  assert.equal(card.moderation.hookReady, true);
+  assert.ok(card.imageFront.startsWith("/media/custom/"));
+
+  const templatesAfter = await query("SELECT COUNT(*)::int AS n FROM templates");
+  assert.equal(templatesAfter.rows[0].n, templatesBefore.rows[0].n);
+  const row = await query("SELECT 1 FROM user_custom_cards WHERE id = $1 AND user_id = $2", [
+    card.id,
+    userId,
+  ]);
+  assert.equal(row.rowCount, 1);
+
+  const search = await api("/catalog/search?q=PC_CUSTOM_UNIQUE_TOKEN");
+  assert.equal(search.status, 200);
+  const found = (search.body as { templates: { name?: string; title?: string }[] }).templates;
+  assert.equal(found.length, 0);
+
+  const catalog = await api("/catalog/templates");
+  const catalogIds = (catalog.body as { templates: { id: string }[] }).templates.map((t) => t.id);
+  assert.ok(!catalogIds.includes(card.id));
+
+  const progAfter = await api("/collection/groups/bts/progress");
+  assert.equal((progAfter.body as { ownedDistinct: number }).ownedDistinct, ownedBefore);
+
+  const overview = await api("/collection/overview");
+  const ov = overview.body as {
+    customCount: number;
+    customBadge: string;
+    customLabel: string;
+    customCards: { id: string; badge: string; moderationStatus: string }[];
+    groups: { slug: string; progress: { ownedDistinct: number }; customCount: number; customBadge: string | null }[];
+  };
+  assert.equal(ov.customBadge, "自定义");
+  assert.ok(ov.customCount >= 1);
+  assert.match(ov.customLabel, /自定义/);
+  assert.ok(ov.customCards.some((c) => c.id === card.id && c.badge === "自定义"));
+  const bts = ov.groups.find((g) => g.slug === "bts");
+  assert.equal(bts?.progress.ownedDistinct, ownedBefore);
+  assert.ok((bts?.customCount || 0) >= 1);
+  assert.equal(bts?.customBadge, "自定义");
+
+  const group = await api("/collection/groups/bts");
+  const gbody = group.body as {
+    custom: { id: string; badge: string }[];
+    customCount: number;
+    owned: { id: string }[];
+    wanted: { id: string }[];
+  };
+  assert.ok(gbody.custom.some((c) => c.id === card.id));
+  assert.ok(!gbody.owned.some((c) => c.id === card.id));
+  assert.ok(!gbody.wanted.some((c) => c.id === card.id));
+
+  const want = await api("/collection/wants", {
+    method: "POST",
+    body: JSON.stringify({ templateId: card.id }),
+  });
+  assert.equal(want.status, 404);
+
+  const img = await fetch(base + card.imageFront);
+  assert.equal(img.status, 200);
+
+  const sharePending = await api("/share/image", {
+    method: "POST",
+    body: JSON.stringify({ groupId: "bts" }),
+  });
+  assert.equal(sharePending.status, 200);
+  const shareP = sharePending.body as {
+    cardCount: number;
+    templateIds: string[];
+    customCardIds: string[];
+    truncated: boolean;
+  };
+  assert.equal(shareP.truncated, false);
+  assert.ok(shareP.customCardIds.includes(card.id));
+  assert.equal(shareP.cardCount, shareP.templateIds.length + shareP.customCardIds.length);
+
+  await query("UPDATE user_custom_cards SET moderation_status = 'rejected' WHERE id = $1", [card.id]);
+  const overviewRejected = await api("/collection/overview");
+  const ovR = overviewRejected.body as { customCards: { id: string }[] };
+  assert.ok(!ovR.customCards.some((c) => c.id === card.id));
+  const groupRejected = await api("/collection/groups/bts");
+  assert.ok(!(groupRejected.body as { custom: { id: string }[] }).custom.some((c) => c.id === card.id));
+
+  const shareRejected = await api("/share/image", {
+    method: "POST",
+    body: JSON.stringify({ groupId: "bts" }),
+  });
+  const shareR = shareRejected.body as { customCardIds: string[]; truncated: boolean; cardCount: number };
+  assert.equal(shareR.truncated, false);
+  assert.ok(!shareR.customCardIds.includes(card.id));
+
+  await query(
+    "UPDATE user_custom_cards SET moderation_status = 'pending', moderation_trace_id = $2 WHERE id = $1",
+    [card.id, "trace-pc05"],
+  );
+  const hook = await api("/webhooks/wx-media-check", {
+    method: "POST",
+    body: JSON.stringify({ trace_id: "trace-pc05", result: { suggest: "pass" } }),
+  });
+  assert.equal(hook.status, 200);
+  const approved = await api(`/collection/custom-cards/${card.id}`);
+  assert.equal((approved.body as { moderationStatus: string }).moderationStatus, "approved");
+
+  const del = await api(`/collection/custom-cards/${card.id}`, { method: "DELETE" });
+  assert.equal(del.status, 200);
+  const gone = await query("SELECT 1 FROM user_custom_cards WHERE id = $1", [card.id]);
+  assert.equal(gone.rowCount, 0);
+});

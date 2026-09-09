@@ -2,10 +2,14 @@ const api = require("../../utils/api");
 const analytics = require("../../utils/analytics");
 const onboarding = require("../../utils/followOnboarding");
 const session = require("../../utils/session");
+const customCard = require("../../utils/customCard");
 
 Page({
   data: {
     groups: [],
+    customCards: [],
+    customCount: 0,
+    customLabel: customCard.CUSTOM_BADGE,
     emptyFollows: false,
     needsLogin: false,
     loginFailed: false,
@@ -38,13 +42,21 @@ Page({
                 pct: g.progress && g.progress.publishedCount
                   ? Math.round((g.progress.ownedDistinct / g.progress.publishedCount) * 100)
                   : 0,
+                customBadge: g.customCount ? customCard.CUSTOM_BADGE : "",
+                customLabel: g.customCount ? customCard.customCountLabel(g.customCount) : "",
               }));
+        const customCards = (data.customCards || []).map((c) =>
+          customCard.decorateCustomCard(c, api.mediaUrl),
+        );
         this.setData({
           needsLogin: false,
           loginFailed: false,
           loginBtnLabel: session.loginButtonLabel(false),
           groups,
           emptyFollows,
+          customCards,
+          customCount: data.customCount || customCards.length,
+          customLabel: data.customLabel || customCard.customCountLabel(data.customCount || customCards.length),
           copy: data.copy || this.data.copy,
         });
       })
@@ -58,6 +70,8 @@ Page({
           loginBtnLabel: session.loginButtonLabel(loginFailed),
           groups: [],
           emptyFollows: false,
+          customCards: [],
+          customCount: 0,
         });
         // 冷启动登录进行中：成功后 refreshCardbook 会再 load，避免 401 重试死循环
         if (app && (app._loginPromise || (app.globalData && app.globalData.loginState === "pending"))) {
@@ -68,6 +82,18 @@ Page({
   openGroup(e) {
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({ url: `/pages/cardbook-group/index?id=${id}` });
+  },
+  openCustom(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/custom-card/index?id=${id}` });
+  },
+  addCustomCard() {
+    if (this.data.needsLogin) {
+      this.doLogin();
+      return;
+    }
+    wx.navigateTo({ url: "/pages/custom-card-add/index" });
   },
   goFollowPicker() {
     onboarding.openOnboarding({ force: true });

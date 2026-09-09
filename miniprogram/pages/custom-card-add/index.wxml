@@ -1,0 +1,58 @@
+<view class="page">
+  <view class="h1">拍照加卡</view>
+  <view class="sub">仅自己可见，不进入公开图鉴，不计入官方进度。</view>
+
+  <view class="card" bindtap="pickImage">
+    <view class="label">正面照片</view>
+    <image wx:if="{{preview}}" class="preview" src="{{preview}}" mode="aspectFill"/>
+    <view wx:else class="ph pick">点击相册或相机</view>
+  </view>
+
+  <view class="card">
+    <view class="label">标题（选填）</view>
+    <input class="box input" value="{{title}}" bindinput="onTitle" placeholder="例如：现场拍的小卡" maxlength="80"/>
+  </view>
+
+  <view class="card">
+    <view class="label">关联组合（选填）</view>
+    <view class="chips">
+      <view class="chip {{groupId===''?'on':''}}" bindtap="pickGroup" data-id="">不关联</view>
+      <view
+        class="chip {{groupId===item.id?'on':''}}"
+        wx:for="{{groups}}"
+        wx:key="id"
+        bindtap="pickGroup"
+        data-id="{{item.id}}"
+      >{{item.nameZh}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="label">数量</view>
+    <view class="stepper">
+      <view class="step" bindtap="decQty">−</view>
+      <view class="qty">{{quantity}}</view>
+      <view class="step" bindtap="incQty">+</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="label">品相（选填）</view>
+    <view class="chips">
+      <view
+        class="chip {{condition===item.value?'on':''}}"
+        wx:for="{{conditions}}"
+        wx:key="value"
+        bindtap="pickCondition"
+        data-value="{{item.value}}"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="label">备注（选填）</view>
+    <textarea class="box" maxlength="500" value="{{note}}" bindinput="onNote" placeholder="仅自己可见"/>
+  </view>
+
+  <view class="btn {{saving?'off':''}}" bindtap="save">保存到卡册</view>
+</view>

@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
 const cardCondition = require("../../utils/cardCondition");
+const customCard = require("../../utils/customCard");
 
 Page({
   data: {
@@ -12,6 +13,8 @@ Page({
     owned: [],
     wanted: [],
     duplicates: [],
+    custom: [],
+    customLabel: "",
     list: [],
   },
   onLoad(q) {
@@ -30,6 +33,7 @@ Page({
       const owned = (data.owned || []).map(mapUrl);
       const wanted = (data.wanted || []).map(mapUrl);
       const duplicates = (data.duplicates || []).map(mapUrl);
+      const custom = (data.custom || []).map((c) => customCard.decorateCustomCard(c, api.mediaUrl));
       const pct = data.progress.publishedCount
         ? Math.round((data.progress.ownedDistinct / data.progress.publishedCount) * 100)
         : 0;
@@ -41,6 +45,8 @@ Page({
         owned,
         wanted,
         duplicates,
+        custom,
+        customLabel: data.customLabel || customCard.customCountLabel(custom.length),
       });
       this.applyTab();
     });
@@ -58,6 +64,17 @@ Page({
     const id = e.currentTarget.dataset.id;
     if (!id) return;
     wx.navigateTo({ url: `/pages/card-detail/index?id=${id}` });
+  },
+  openCustom(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/custom-card/index?id=${id}` });
+  },
+  addCustom() {
+    const gid = (this.data.group && this.data.group.id) || "";
+    wx.navigateTo({
+      url: gid ? `/pages/custom-card-add/index?groupId=${gid}` : "/pages/custom-card-add/index",
+    });
   },
   unown(e) {
     const id = e.currentTarget.dataset.id;
