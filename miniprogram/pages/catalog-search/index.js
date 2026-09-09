@@ -10,6 +10,9 @@ Page({
     this.setData({ q: e.detail.value || "" });
     this.search();
   },
+  goFeedback() {
+    wx.navigateTo({ url: "/pages/feedback/index" });
+  },
   search() {
     const q = this.data.q;
     api.request({ url: `/catalog/search?q=${encodeURIComponent(q)}`, auth: false }).then((d) => {
