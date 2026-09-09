@@ -10,7 +10,7 @@
 }
 
 .tag.trust {
-  color: #9ad0ff;
+  color: #ff8fb8;
 }
 
 .label {
@@ -24,7 +24,7 @@
 }
 
 .countdown-lg {
-  color: #ff4d6d;
+  color: #ff6b9d;
   font-size: 48rpx;
   font-weight: 700;
 }

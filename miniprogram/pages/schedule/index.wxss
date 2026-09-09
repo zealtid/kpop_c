@@ -53,7 +53,7 @@
 
 .countdown {
   margin-top: 12rpx;
-  color: #ff4d6d;
+  color: #ff6b9d;
   font-size: 24rpx;
   font-weight: 700;
 }

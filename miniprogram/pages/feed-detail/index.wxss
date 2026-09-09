@@ -9,10 +9,6 @@
   margin-top: 0;
 }
 
-.tag.trust {
-  color: #9ad0ff;
-}
-
 .tag.warn {
   color: #f5c36b;
 }

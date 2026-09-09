@@ -85,6 +85,7 @@ test("wxml has countdown, Shanghai time, copy/open, no 缺卡/web-view", () => {
   assert.match(wxml, /北京时间/);
   assert.match(wxml, /复制链接/);
   assert.match(wxml, /系统打开/);
+  assert.ok(wxml.indexOf("复制链接") < wxml.indexOf("系统打开"));
   assert.doesNotMatch(wxml, /缺卡|web-view|releaseId/);
   assert.doesNotMatch(js, /web-view|requestSubscribeMessage|crawler/);
 });

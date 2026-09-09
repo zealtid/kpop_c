@@ -153,10 +153,11 @@ test("T01 pages[0] stays 卡册; 情报 remains tab; detail pages registered", (
   const tabsList = (appJson.tabBar.list || []).map((t) => t.text);
   assert.deepEqual(tabsList, ["情报", "卡册", "图鉴", "我的"]);
   assert.equal(appJson.tabBar.list[0].pagePath, "pages/feed/index");
+  assert.equal(appJson.tabBar.list.length, 4);
 });
 
 test("X01 no 缺卡 entry, crawler, subscribe template, or web-view", () => {
-  const files = ["index.js", "index.wxml", "index.json"].map((f) =>
+  const files = ["index.js", "index.wxml", "index.json", "index.wxss"].map((f) =>
     fs.readFileSync(path.join(__dirname, f), "utf8"),
   );
   const blob = files.join("\n");
@@ -164,6 +165,7 @@ test("X01 no 缺卡 entry, crawler, subscribe template, or web-view", () => {
   assert.doesNotMatch(blob, /crawler|爬虫/);
   assert.doesNotMatch(blob, /requestSubscribeMessage|subscribeMessage|tmplId|订阅消息/);
   assert.doesNotMatch(blob, /web-view|webview/i);
+  assert.doesNotMatch(blob, /#9ad0ff|#ff4d6d/);
 });
 
 test("guest uses L1 featured /feed with auth:false and drops L3", async () => {

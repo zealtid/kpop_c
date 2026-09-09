@@ -91,6 +91,9 @@ test("wxml shows summary/body/source/trust and copy/open without web-view", () =
   assert.match(wxml, /trustLabel/);
   assert.match(wxml, /复制链接/);
   assert.match(wxml, /系统打开/);
+  const copyAt = wxml.indexOf("复制链接");
+  const openAt = wxml.indexOf("系统打开");
+  assert.ok(copyAt >= 0 && copyAt < openAt, "复制链接 must come before 系统打开");
   assert.doesNotMatch(wxml, /web-view|缺卡|订阅/);
   assert.doesNotMatch(js, /web-view|requestSubscribeMessage|crawler/);
 });

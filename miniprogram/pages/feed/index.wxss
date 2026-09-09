@@ -65,7 +65,7 @@
 
 .countdown {
   margin-top: 12rpx;
-  color: #ff4d6d;
+  color: #ff6b9d;
   font-size: 24rpx;
   font-weight: 700;
 }
@@ -88,10 +88,6 @@
 
 .badge-row .tag {
   margin-top: 0;
-}
-
-.tag.trust {
-  color: #9ad0ff;
 }
 
 .tag.warn {

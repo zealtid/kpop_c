@@ -217,12 +217,15 @@ function copyOutbound(url) {
   wx.setClipboardData({
     data: u,
     success() {
-      wx.showToast({ title: "链接已复制", icon: "none" });
+      wx.showToast({ title: "链接已复制，可在浏览器打开", icon: "none" });
     },
   });
 }
 
-/** 优先系统打开；无 openUrl 时复制链接（不使用 web-view）。 */
+/**
+ * 「系统打开」：有 wx.openUrl 则走系统浏览器；否则回退复制。
+ * 不内嵌网页，也不依赖业务域名。
+ */
 function openOutbound(url) {
   const u = String(url || "").trim();
   if (!u) {

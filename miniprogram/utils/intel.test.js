@@ -4,6 +4,8 @@
  */
 const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const toasts = [];
 const clips = [];
@@ -122,6 +124,8 @@ test("decorateSchedule ticket_sale gets red countdown fields", () => {
 });
 
 test("copyOutbound and openOutbound do not use web-view", () => {
+  const src = fs.readFileSync(path.join(__dirname, "intel.js"), "utf8");
+  assert.doesNotMatch(src, /<web-view|createWebView|wx\.navigateToMiniProgram/);
   intel.copyOutbound("https://ibighit.com/bts");
   assert.deepEqual(clips, ["https://ibighit.com/bts"]);
   intel.openOutbound("https://weverse.io/h2h");
