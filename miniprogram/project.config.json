@@ -1,7 +1,7 @@
 {
   "miniprogramRoot": "./",
-  "projectname": "kpop_c",
-  "description": "K-pop photocards WeChat mini-program M1",
+  "projectname": "星卡",
+  "description": "星卡 — 微信小程序小卡图鉴（M1）",
   "appid": "touristappid",
   "compileType": "miniprogram",
   "libVersion": "3.5.5",
