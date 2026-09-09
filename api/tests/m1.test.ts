@@ -696,6 +696,63 @@ test("PC01-PC06 private photo custom cards", async () => {
   assert.equal(gone.rowCount, 0);
 });
 
+test("custom card DELETE requires auth and is owner-only", async () => {
+  const created = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({
+      imageFrontBase64: TINY_PNG,
+      mimeType: "image/png",
+      title: "DELETE_OWNER_ONLY",
+    }),
+  });
+  assert.equal(created.status, 200);
+  const card = created.body as { id: string };
+  assert.ok(card.id);
+
+  const ownerToken = token;
+  token = "";
+  const unauth = await api(`/collection/custom-cards/${card.id}`, { method: "DELETE" });
+  token = ownerToken;
+  assert.equal(unauth.status, 401);
+  const stillThere = await query("SELECT 1 FROM user_custom_cards WHERE id = $1 AND user_id = $2", [
+    card.id,
+    userId,
+  ]);
+  assert.equal(stillThere.rowCount, 1);
+
+  const otherLogin = await api("/auth/wx-login", {
+    method: "POST",
+    body: JSON.stringify({ code: "mock:other-custom-card-owner" }),
+  });
+  assert.equal(otherLogin.status, 200);
+  const otherToken = (otherLogin.body as { token: string }).token;
+  token = otherToken;
+  const otherGet = await api(`/collection/custom-cards/${card.id}`);
+  const otherDel = await api(`/collection/custom-cards/${card.id}`, { method: "DELETE" });
+  token = ownerToken;
+  assert.equal(otherGet.status, 404);
+  assert.equal(otherDel.status, 404);
+  const notStolen = await query("SELECT 1 FROM user_custom_cards WHERE id = $1 AND user_id = $2", [
+    card.id,
+    userId,
+  ]);
+  assert.equal(notStolen.rowCount, 1);
+
+  const missing = await api("/collection/custom-cards/00000000-0000-4000-8000-000000000000", {
+    method: "DELETE",
+  });
+  assert.equal(missing.status, 404);
+
+  const ownerDel = await api(`/collection/custom-cards/${card.id}`, { method: "DELETE" });
+  assert.equal(ownerDel.status, 200);
+  assert.equal((ownerDel.body as { deleted: boolean }).deleted, true);
+  const gone = await query("SELECT 1 FROM user_custom_cards WHERE id = $1", [card.id]);
+  assert.equal(gone.rowCount, 0);
+
+  const again = await api(`/collection/custom-cards/${card.id}`, { method: "DELETE" });
+  assert.equal(again.status, 404);
+});
+
 test("UX03-UX05 custom card optional member_id and group membership", async () => {
   const memberRm = sid("member:bts:RM");
   const memberCarmen = sid("member:h2h:Carmen");

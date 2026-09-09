@@ -90,20 +90,13 @@ Page({
       });
   },
   remove() {
-    const id = this.data.id;
-    wx.showModal({
-      title: "删除自定义卡",
-      content: "删除后不可恢复",
-      success: (res) => {
-        if (!res.confirm) return;
-        api
-          .request({ url: `/collection/custom-cards/${id}`, method: "DELETE" })
-          .then(() => {
-            wx.showToast({ title: "已删除" });
-            setTimeout(() => wx.navigateBack(), 400);
-          })
-          .catch(api.handleWriteError);
-      },
-    });
+    if (this.data.missing || !this.data.id) return;
+    customCard
+      .confirmDeleteCustomCard(this.data.id, api.request)
+      .then((result) => {
+        if (result.cancelled) return;
+        setTimeout(() => wx.navigateBack(), 400);
+      })
+      .catch(api.handleWriteError);
   },
 });

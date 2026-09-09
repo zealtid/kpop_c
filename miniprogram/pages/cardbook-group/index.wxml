@@ -25,6 +25,7 @@
         </view>
         <view class="muted">{{item.title || item.memberNameEn || '自定义卡'}}</view>
         <view class="tag">×{{item.quantity}}</view>
+        <view class="mini" catchtap="removeCustom" data-id="{{item.id}}">删除</view>
       </view>
     </view>
   </block>

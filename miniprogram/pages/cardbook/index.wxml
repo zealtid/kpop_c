@@ -27,6 +27,7 @@
             <view wx:if="{{item.moderationLabel}}" class="badge warn">{{item.moderationLabel}}</view>
           </view>
           <view class="muted">{{item.title || item.memberNameEn || '自定义卡'}}</view>
+          <view class="mini" catchtap="removeCustom" data-id="{{item.id}}">删除</view>
         </view>
       </view>
     </view>
