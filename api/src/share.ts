@@ -1,3 +1,4 @@
+import { shareFontAttr } from "./shareFont.js";
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -186,6 +187,8 @@ function shareSvg(opts: {
   gap: number;
   cols: number;
 }) {
+  const font = shareFontAttr();
+  // 文案走 Noto Sans SC（shareFont 在 sharp 前写入 FONTCONFIG_FILE），避免 Railway 上 CJK 变成方框
   const cardsXml = opts.cards
     .map((c, i) => {
       const col = i % opts.cols;
@@ -198,13 +201,13 @@ function shareSvg(opts: {
       const code = escapeXml(c.code);
       const customMark =
         c.kind === "custom"
-          ? `<text x="${x + 12}" y="${y + opts.cardH - 14}" fill="#ffe8f0" font-size="13" font-family="sans-serif">自定义${c.moderation_status === "pending" ? " · 审核中" : ""}</text>`
+          ? `<text x="${x + 12}" y="${y + opts.cardH - 14}" fill="#ffe8f0" font-size="13" ${font}>自定义${c.moderation_status === "pending" ? " · 审核中" : ""}</text>`
           : "";
       return `<g data-card-code="${code}" data-kind="${c.kind}">
         <rect x="${x}" y="${y}" width="${opts.cardW}" height="${opts.cardH}" rx="14" fill="${fill}"/>
-        <text x="${x + opts.cardW / 2}" y="${y + 150}" fill="#fff" font-size="22" font-family="sans-serif" text-anchor="middle">${member}</text>
-        <text x="${x + opts.cardW / 2}" y="${y + 184}" fill="#fff" font-size="16" font-family="sans-serif" text-anchor="middle">${ver}</text>
-        <text x="${x + opts.cardW / 2}" y="${y + 214}" fill="#ffe8f0" font-size="11" font-family="sans-serif" text-anchor="middle">${code}</text>
+        <text x="${x + opts.cardW / 2}" y="${y + 150}" fill="#fff" font-size="22" ${font} text-anchor="middle">${member}</text>
+        <text x="${x + opts.cardW / 2}" y="${y + 184}" fill="#fff" font-size="16" ${font} text-anchor="middle">${ver}</text>
+        <text x="${x + opts.cardW / 2}" y="${y + 214}" fill="#ffe8f0" font-size="11" ${font} text-anchor="middle">${code}</text>
         ${customMark}
       </g>`;
     })
@@ -212,25 +215,25 @@ function shareSvg(opts: {
 
   const empty =
     opts.cards.length === 0
-      ? `<text x="${opts.width / 2}" y="${opts.headerH + 40}" fill="#aaa" font-size="18" text-anchor="middle" font-family="sans-serif">暂无已拥有卡片</text>`
+      ? `<text x="${opts.width / 2}" y="${opts.headerH + 40}" fill="#aaa" font-size="18" text-anchor="middle" ${font}>暂无已拥有卡片</text>`
       : "";
 
   const note = opts.scopeNote
-    ? `<text x="${opts.pad}" y="148" fill="#f5c36b" font-size="14" font-family="sans-serif">${escapeXml(opts.scopeNote)}</text>`
+    ? `<text x="${opts.pad}" y="148" fill="#f5c36b" font-size="14" ${font}>${escapeXml(opts.scopeNote)}</text>`
     : "";
 
   return `<svg width="${opts.width}" height="${opts.height}" xmlns="http://www.w3.org/2000/svg">
     <rect width="${opts.width}" height="${opts.height}" fill="#121016"/>
-    <text x="${opts.pad}" y="48" fill="#ff8fb8" font-size="18" font-family="sans-serif" font-weight="700">星卡 · 卡册长图</text>
-    <text x="${opts.pad}" y="92" fill="#ffffff" font-size="36" font-family="sans-serif" font-weight="700">${escapeXml(opts.groupName)}</text>
-    <text x="${opts.pad}" y="126" fill="#d7d4de" font-size="18" font-family="sans-serif">${opts.ownedDistinct}/${opts.published} · ${opts.pct}%</text>
+    <text x="${opts.pad}" y="48" fill="#ff8fb8" font-size="18" ${font} font-weight="700">星卡 · 卡册长图</text>
+    <text x="${opts.pad}" y="92" fill="#ffffff" font-size="36" ${font} font-weight="700">我的${escapeXml(opts.groupName)}卡册</text>
+    <text x="${opts.pad}" y="126" fill="#d7d4de" font-size="18" ${font}>${opts.ownedDistinct}/${opts.published} · ${opts.pct}%</text>
     ${note}
     ${empty}
     ${cardsXml}
     <rect x="0" y="${opts.height - opts.footerH}" width="${opts.width}" height="${opts.footerH}" fill="#1c1822"/>
-    <text x="${opts.pad + 188}" y="${opts.height - opts.footerH + 88}" fill="#ffffff" font-size="20" font-family="sans-serif">微信扫码打开小程序</text>
-    <text x="${opts.pad + 188}" y="${opts.height - opts.footerH + 122}" fill="#ff8fb8" font-size="16" font-family="sans-serif">星卡 · 小卡图鉴</text>
-    <text data-watermark="1" x="${opts.pad + 188}" y="${opts.height - opts.footerH + 156}" fill="#8a8494" font-size="13" font-family="sans-serif">分享图含水印与小程序码 · 含全部已拥有卡片</text>
+    <text x="${opts.pad + 188}" y="${opts.height - opts.footerH + 88}" fill="#ffffff" font-size="20" ${font}>微信扫码打开小程序</text>
+    <text x="${opts.pad + 188}" y="${opts.height - opts.footerH + 122}" fill="#ff8fb8" font-size="16" ${font}>星卡 · 小卡图鉴</text>
+    <text data-watermark="1" x="${opts.pad + 188}" y="${opts.height - opts.footerH + 156}" fill="#8a8494" font-size="13" ${font}>分享图含水印与小程序码 · 含全部已拥有卡片</text>
   </svg>`;
 }
 

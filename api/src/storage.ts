@@ -1,3 +1,4 @@
+import "./shareFont.js";
 import fs from "node:fs";
 import path from "node:path";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
