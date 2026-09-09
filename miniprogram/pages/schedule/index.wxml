@@ -1,0 +1,61 @@
+<view class="page">
+  <view class="h1">日程</view>
+  <view class="sub">展示时间为北京时间（Asia/Shanghai）。门票开售显示倒计时。</view>
+  <view wx:if="{{dateShanghai}}" class="muted">今日 {{dateShanghai}}</view>
+
+  <scroll-view wx:if="{{chips.length}}" scroll-x class="chip-row">
+    <view
+      wx:for="{{chips}}"
+      wx:key="id"
+      class="chip {{item.on ? 'on' : ''}}"
+      bindtap="selectGroup"
+      data-id="{{item.id}}"
+    >{{item.name}}</view>
+  </scroll-view>
+
+  <view wx:if="{{emptyFollows}}" class="empty-state">
+    <view class="empty-title">还没有关注组合</view>
+    <view class="empty-sub">去「我的」加关注后，可看到关注组合的日程。</view>
+    <view class="btn" bindtap="goMine">去我的加关注</view>
+  </view>
+
+  <block wx:else>
+    <view class="section-title">今日</view>
+    <scroll-view wx:if="{{visibleToday.length}}" scroll-x class="today-strip">
+      <view
+        wx:for="{{visibleToday}}"
+        wx:key="id"
+        class="today-card"
+        bindtap="openSchedule"
+        data-id="{{item.id}}"
+      >
+        <view class="today-kind">{{item.kindLabel}}</view>
+        <view class="today-title">{{item.title}}</view>
+        <view class="muted">{{item.groupLabel}} · {{item.timeRange}}</view>
+        <view wx:if="{{item.isTicketSale}}" class="countdown {{item.countdownOverdue ? 'done' : ''}}">{{item.countdownText}}</view>
+      </view>
+    </scroll-view>
+    <view wx:else class="muted strip-empty">今天暂无日程</view>
+
+    <view class="section-title">列表</view>
+    <view wx:if="{{!sections.length}}" class="empty">暂无日程</view>
+    <view wx:for="{{sections}}" wx:key="date" class="day-block">
+      <view class="day-label">{{item.label}}</view>
+      <view
+        wx:for="{{item.items}}"
+        wx:for-item="ev"
+        wx:key="id"
+        class="card"
+        bindtap="openSchedule"
+        data-id="{{ev.id}}"
+      >
+        <view class="row">
+          <view class="ev-title">{{ev.title}}</view>
+          <view class="tag">{{ev.kindLabel}}</view>
+        </view>
+        <view class="muted">{{ev.groupLabel}} · {{ev.timeRange}}</view>
+        <view wx:if="{{ev.isTicketSale}}" class="countdown {{ev.countdownOverdue ? 'done' : ''}}">{{ev.countdownText}}</view>
+      </view>
+    </view>
+  </block>
+</view>

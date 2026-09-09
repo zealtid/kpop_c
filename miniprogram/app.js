@@ -63,6 +63,7 @@ App({
         session.persistUser(user);
         this.refreshCardbook();
         this.refreshMine();
+        this.refreshIntel();
         onboarding.maybePromptAfterLogin();
         return true;
       })
@@ -97,6 +98,7 @@ App({
             analytics.track("login_success", { mock: !!data.mock });
             this.refreshCardbook();
             this.refreshMine();
+            this.refreshIntel();
             onboarding.maybePromptAfterLogin();
             resolve(true);
           })
@@ -107,6 +109,7 @@ App({
               wx.showToast({ title: session.loginFailToastTitle(err), icon: "none" });
               this.refreshCardbook();
               this.refreshMine();
+              this.refreshIntel();
             }
             resolve(false);
           });
@@ -149,6 +152,21 @@ App({
     const pages = getCurrentPages();
     pages.forEach((page) => {
       if (page.route === "pages/mine/index" && typeof page.load === "function") {
+        page.load();
+      }
+    });
+  },
+
+  refreshIntel() {
+    const pages = getCurrentPages();
+    const intelRoutes = {
+      "pages/feed/index": true,
+      "pages/schedule/index": true,
+      "pages/feed-detail/index": true,
+      "pages/schedule-detail/index": true,
+    };
+    pages.forEach((page) => {
+      if (intelRoutes[page.route] && typeof page.load === "function") {
         page.load();
       }
     });

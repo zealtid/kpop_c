@@ -1,0 +1,36 @@
+<view class="page">
+  <view wx:if="{{missing}}" class="empty">情报不存在或不可见</view>
+
+  <block wx:else>
+    <view class="badge-row">
+      <view class="tag">{{item.sourceBadge}}</view>
+      <view class="tag trust">{{item.trustLabel}} {{item.trustHint}}</view>
+      <view wx:if="{{item.translatedMark}}" class="tag warn">{{item.translatedMark}}</view>
+      <view wx:if="{{item.categoryLabel}}" class="tag">{{item.categoryLabel}}</view>
+    </view>
+
+    <view class="h1">{{item.title}}</view>
+    <view class="muted">{{item.groupLabel}}{{item.publishedLabel ? ' · ' + item.publishedLabel : ''}}</view>
+
+    <view wx:if="{{item.summary}}" class="card">
+      <view class="label">摘要</view>
+      <view>{{item.summary}}</view>
+    </view>
+
+    <view wx:if="{{item.body}}" class="card">
+      <view class="label">正文</view>
+      <view class="body">{{item.body}}</view>
+    </view>
+
+    <view class="card">
+      <view class="label">来源</view>
+      <view>{{item.source || item.sourceBadge || '未标注'}}</view>
+      <view class="muted" style="margin-top:8rpx">信任级 {{item.trustLabel}} {{item.trustHint}}</view>
+      <view wx:if="{{item.outboundUrl}}" class="muted url">{{item.outboundUrl}}</view>
+    </view>
+
+    <view wx:if="{{item.outboundUrl}}" class="btn" bindtap="copyLink">复制链接</view>
+    <view wx:if="{{item.outboundUrl}}" class="btn ghost" bindtap="openLink">系统打开</view>
+    <view wx:if="{{item.outboundUrl}}" class="muted hint">不内嵌网页。可复制后在浏览器打开原文。</view>
+  </block>
+</view>

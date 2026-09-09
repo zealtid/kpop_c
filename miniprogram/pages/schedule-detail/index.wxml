@@ -1,0 +1,36 @@
+<view class="page">
+  <view wx:if="{{missing}}" class="empty">日程不存在或不可见</view>
+
+  <block wx:else>
+    <view class="badge-row">
+      <view class="tag">{{event.kindLabel}}</view>
+      <view class="tag trust">{{event.trustLabel}}</view>
+    </view>
+    <view class="h1">{{event.title}}</view>
+    <view class="muted">{{event.groupLabel}}</view>
+
+    <view wx:if="{{event.isTicketSale}}" class="card countdown-card">
+      <view class="label">开售倒计时</view>
+      <view class="countdown-lg {{event.countdownOverdue ? 'done' : ''}}">{{event.countdownText}}</view>
+    </view>
+
+    <view class="card">
+      <view class="label">时间（北京时间）</view>
+      <view>{{event.timeRange}}</view>
+      <view class="muted" style="margin-top:8rpx">{{event.timezone || 'Asia/Shanghai'}}{{event.timezoneNote ? ' · 原时区 ' + event.timezoneNote : ''}}</view>
+    </view>
+
+    <view wx:if="{{event.location}}" class="card">
+      <view class="label">地点</view>
+      <view>{{event.location}}</view>
+    </view>
+
+    <view wx:if="{{event.outboundUrl}}" class="card">
+      <view class="label">来源</view>
+      <view class="muted url">{{event.outboundUrl}}</view>
+    </view>
+
+    <view wx:if="{{event.outboundUrl}}" class="btn" bindtap="copyLink">复制链接</view>
+    <view wx:if="{{event.outboundUrl}}" class="btn ghost" bindtap="openLink">系统打开</view>
+  </block>
+</view>
