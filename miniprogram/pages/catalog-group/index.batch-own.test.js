@@ -71,13 +71,15 @@ test("wxml shows 特典 badge, multi-select toggle, and 批量拥有", () => {
   assert.match(wxml, /catchtap="wantOne"/);
 });
 
-test("wxss has dark-UI benefit corner badge and selected outline", () => {
+test("wxss has Scheme A benefit corner badge and selected outline", () => {
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
   assert.match(wxss, /\.benefit-badge/);
   assert.match(wxss, /position:\s*absolute/);
-  assert.match(wxss, /#f5c36b/);
-  assert.match(wxss, /#121016|#ff6b9d/);
+  assert.match(wxss, /--color-warning/);
+  assert.match(wxss, /--color-brand/);
   assert.match(wxss, /\.sel/);
+  assert.doesNotMatch(wxss, /#121016|#ff6b9d|#f5c36b/i);
+  assert.doesNotMatch(wxss, /rgba\(\s*18\s*,\s*16\s*,\s*22/);
 });
 
 test("toggle updates selected across album sections", () => {

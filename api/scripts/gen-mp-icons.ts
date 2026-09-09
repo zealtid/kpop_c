@@ -18,7 +18,7 @@ const icons = [
 ];
 
 for (const icon of icons) {
-  const color = icon.on ? "#ff6b9d" : "#8a8494";
+  const color = icon.on ? "#6B5CFF" : "#667085";
   const svg = `<svg width="81" height="81" xmlns="http://www.w3.org/2000/svg">
     <circle cx="40.5" cy="40.5" r="28" fill="none" stroke="${color}" stroke-width="6"/>
     <text x="40.5" y="48" text-anchor="middle" font-size="26" font-family="sans-serif" fill="${color}">${icon.glyph}</text>

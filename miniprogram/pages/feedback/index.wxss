@@ -1,10 +1,11 @@
 .box {
   width: 100%;
   min-height: 240rpx;
-  background: #1c1824;
+  background: var(--color-bg-elevated);
+  border: 1rpx solid var(--color-border-subtle);
   border-radius: 16rpx;
   padding: 20rpx;
   margin: 24rpx 0;
-  color: #f4f1f6;
+  color: var(--color-text-primary);
   box-sizing: border-box;
 }

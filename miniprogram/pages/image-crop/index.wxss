@@ -1,6 +1,6 @@
 .crop-page {
   min-height: 100vh;
-  background: #121016;
+  background: var(--color-bg-page);
 }
 
 .stage {
@@ -13,7 +13,7 @@
   position: relative;
   overflow: hidden;
   background: #000;
-  border: 2rpx solid #ff6b9d;
+  border: 2rpx solid var(--color-brand);
   border-radius: 8rpx;
 }
 

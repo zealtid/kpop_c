@@ -1,5 +1,5 @@
 <view class="page">
-  <input class="search" value="{{q}}" confirm-type="search" bindconfirm="onSearch"/>
+  <input class="search" value="{{q}}" placeholder-style="color:#98A2B3" confirm-type="search" bindconfirm="onSearch"/>
   <view class="row" style="margin:20rpx 0">
     <view class="muted">已选 {{selected.length}}</view>
     <view class="btn slim" bindtap="batchOwn">批量拥有</view>
@@ -17,8 +17,8 @@
       <view class="muted">{{item.memberNameEn}}</view>
       <view class="tag">{{item.releaseTitle}} · {{item.version}}</view>
       <view class="row mini-actions">
-        <text catchtap="ownOne" data-id="{{item.id}}">拥有</text>
-        <text catchtap="wantOne" data-id="{{item.id}}">想要</text>
+        <text class="own" catchtap="ownOne" data-id="{{item.id}}">拥有</text>
+        <text class="want" catchtap="wantOne" data-id="{{item.id}}">想要</text>
       </view>
     </view>
   </view>

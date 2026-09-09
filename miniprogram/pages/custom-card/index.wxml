@@ -3,7 +3,7 @@
 
   <block wx:else>
     <view class="hero">
-      <view class="ph hero-ph" style="background: {{card.memberColor || '#2a2233'}}" bindtap="openPreview">
+      <view class="ph hero-ph" style="background: {{card.memberColor || '#EBEDF3'}}" bindtap="openPreview">
         <image wx:if="{{card.mainImageUrl}}" src="{{card.mainImageUrl}}" mode="aspectFill"/>
       </view>
       <view class="meta">

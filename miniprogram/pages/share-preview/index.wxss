@@ -2,5 +2,5 @@
   width: 100%;
   margin: 24rpx 0;
   border-radius: 16rpx;
-  background: #1c1824;
+  background: var(--color-bg-muted);
 }

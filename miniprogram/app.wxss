@@ -1,6 +1,8 @@
+@import "styles/theme.wxss";
+
 page {
-  background: #121016;
-  color: #f4f1f6;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
   min-height: 100%;
 }
@@ -13,10 +15,11 @@ page {
 .h1 {
   font-size: 40rpx;
   font-weight: 700;
+  color: var(--color-text-primary);
 }
 
 .sub {
-  color: #a9a3b3;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   line-height: 1.6;
   margin-top: 12rpx;
@@ -24,30 +27,39 @@ page {
 
 .footnote {
   margin-top: 16rpx;
-  color: #f5c36b;
+  color: var(--color-warning);
   font-size: 22rpx;
 }
 
 .card {
-  background: #1c1824;
+  background: var(--color-bg-elevated);
+  border: 1rpx solid var(--color-border-subtle);
   border-radius: 24rpx;
   padding: 28rpx;
   margin-bottom: 20rpx;
 }
 
 .btn {
-  background: #ff6b9d;
-  color: #fff;
+  background: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
   border-radius: 999rpx;
   text-align: center;
   padding: 20rpx 0;
   font-size: 28rpx;
 }
 
+.btn:active {
+  background: var(--color-brand-pressed);
+}
+
 .btn.ghost {
-  background: transparent;
-  border: 2rpx solid #3a3344;
-  color: #f4f1f6;
+  background: var(--color-button-secondary-bg);
+  border: 2rpx solid var(--color-button-secondary-border);
+  color: var(--color-button-secondary-text);
+}
+
+.btn.ghost:active {
+  background: var(--color-bg-muted);
 }
 
 .btn + .btn {
@@ -61,7 +73,7 @@ page {
 }
 
 .muted {
-  color: #8a8494;
+  color: var(--color-text-secondary);
   font-size: 22rpx;
 }
 
@@ -83,6 +95,7 @@ page {
   border-radius: 12rpx;
   position: relative;
   overflow: hidden;
+  background: var(--color-bg-muted);
 }
 
 .ph image {
@@ -97,14 +110,23 @@ page {
   font-size: 20rpx;
   padding: 4rpx 12rpx;
   border-radius: 8rpx;
-  background: #2a2233;
-  color: #ff8fb8;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
   margin-top: 8rpx;
+}
+
+.tag.warn {
+  background: var(--color-bg-muted);
+  color: var(--color-warning);
+}
+
+.tag.trust {
+  color: var(--color-brand);
 }
 
 .tabs {
   display: flex;
-  background: #1c1824;
+  background: var(--color-bg-muted);
   border-radius: 16rpx;
   padding: 6rpx;
   margin: 24rpx 0;
@@ -116,25 +138,97 @@ page {
   padding: 16rpx 0;
   border-radius: 12rpx;
   font-size: 26rpx;
-  color: #8a8494;
+  color: var(--color-text-secondary);
 }
 
 .tabs .item.on {
-  background: #ff6b9d;
-  color: #fff;
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
 }
 
 .search {
-  background: #1c1824;
+  background: var(--color-bg-elevated);
+  border: 1rpx solid var(--color-border-subtle);
   border-radius: 16rpx;
   padding: 18rpx 24rpx;
   font-size: 28rpx;
-  color: #f4f1f6;
+  color: var(--color-text-primary);
 }
 
 .empty {
   text-align: center;
-  color: #8a8494;
+  color: var(--color-text-secondary);
   padding: 80rpx 0;
   font-size: 26rpx;
+}
+
+.empty-state {
+  margin-top: 64rpx;
+  background: var(--color-bg-elevated);
+  border: 1rpx solid var(--color-border-subtle);
+  border-radius: 32rpx;
+  padding: 64rpx 40rpx;
+  text-align: center;
+}
+
+.empty-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.empty-sub {
+  color: var(--color-text-secondary);
+  font-size: 24rpx;
+  line-height: 1.6;
+  margin-top: 12rpx;
+}
+
+.empty-state .btn {
+  margin-top: 48rpx;
+}
+
+.chip {
+  display: inline-block;
+  padding: 12rpx 24rpx;
+  margin-right: 12rpx;
+  border-radius: 999rpx;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  font-size: 24rpx;
+}
+
+.chip.on {
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
+}
+
+.badge {
+  position: absolute;
+  left: 8rpx;
+  bottom: 8rpx;
+  font-size: 18rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 8rpx;
+  background: var(--color-badge-want);
+  color: var(--color-text-inverse);
+}
+
+.badge.warn {
+  left: auto;
+  right: 8rpx;
+  background: var(--color-warning);
+  color: var(--color-text-inverse);
+}
+
+.badge.own {
+  background: var(--color-badge-own);
+}
+
+.mini-actions .own {
+  color: var(--color-badge-own);
+}
+
+.mini-actions .want {
+  color: var(--color-badge-want);
 }

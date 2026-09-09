@@ -3,21 +3,6 @@
   margin: 20rpx 0 8rpx;
 }
 
-.chip {
-  display: inline-block;
-  padding: 12rpx 24rpx;
-  margin-right: 12rpx;
-  border-radius: 999rpx;
-  background: #2a2233;
-  color: #a9a3b3;
-  font-size: 24rpx;
-}
-
-.chip.on {
-  background: #ff6b9d;
-  color: #fff;
-}
-
 .section-head {
   display: flex;
   align-items: baseline;
@@ -31,7 +16,7 @@
 }
 
 .section-link {
-  color: #ff8fb8;
+  color: var(--color-brand);
   font-size: 24rpx;
 }
 
@@ -46,7 +31,8 @@
   margin-right: 16rpx;
   vertical-align: top;
   white-space: normal;
-  background: #1c1824;
+  background: var(--color-bg-elevated);
+  border: 1rpx solid var(--color-border-subtle);
   border-radius: 20rpx;
   padding: 20rpx;
   box-sizing: border-box;
@@ -54,7 +40,7 @@
 
 .today-kind {
   font-size: 20rpx;
-  color: #ff8fb8;
+  color: var(--color-brand);
 }
 
 .today-title {
@@ -65,13 +51,13 @@
 
 .countdown {
   margin-top: 12rpx;
-  color: #ff6b9d;
+  color: var(--color-danger);
   font-size: 24rpx;
   font-weight: 700;
 }
 
 .countdown.done {
-  color: #8a8494;
+  color: var(--color-text-secondary);
   font-weight: 400;
 }
 
@@ -90,10 +76,6 @@
   margin-top: 0;
 }
 
-.tag.warn {
-  color: #f5c36b;
-}
-
 .feed-title {
   font-size: 30rpx;
   font-weight: 700;
@@ -108,30 +90,6 @@
 }
 
 .link {
-  color: #ff8fb8;
+  color: var(--color-brand);
   font-size: 22rpx;
-}
-
-.empty-state {
-  margin-top: 64rpx;
-  background: #1c1824;
-  border-radius: 32rpx;
-  padding: 64rpx 40rpx;
-  text-align: center;
-}
-
-.empty-title {
-  font-size: 32rpx;
-  font-weight: 700;
-}
-
-.empty-sub {
-  color: #8a8494;
-  font-size: 24rpx;
-  line-height: 1.6;
-  margin-top: 12rpx;
-}
-
-.empty-state .btn {
-  margin-top: 48rpx;
 }

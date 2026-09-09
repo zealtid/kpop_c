@@ -9,13 +9,9 @@
   margin-top: 0;
 }
 
-.tag.warn {
-  color: #f5c36b;
-}
-
 .label {
   font-size: 24rpx;
-  color: #a9a3b3;
+  color: var(--color-text-secondary);
   margin-bottom: 12rpx;
 }
 
