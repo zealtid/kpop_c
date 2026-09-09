@@ -13,6 +13,8 @@ import {
   setCatalogStatus,
   templatesView,
 } from "./catalogPage";
+import { completenessView, type CompletenessGroup } from "./completenessPage";
+import { buildImportBody, importView, type ImportReport } from "./importPage";
 
 type Menu = { id: string; label: string };
 type OpsUser = { id: string | null; username: string; role: string; menus: Menu[] };
@@ -46,6 +48,10 @@ let page: "login" | "catalog" | "intel" = "catalog";
 let catalogTab: CatalogTab = "groups";
 let editingId: string | null = null;
 let catalogNotice = "";
+let importText = "";
+let importFormat = "csv";
+let importReport: ImportReport | null = null;
+let importCommitted = false;
 let user: OpsUser | null = null;
 let notice = "";
 
@@ -55,7 +61,14 @@ function parseHash(): { page: "login" | "catalog" | "intel"; tab: CatalogTab } {
   if (h.startsWith("login")) return { page: "login", tab: catalogTab };
   const part = h.split("/")[1];
   const tab: CatalogTab =
-    part === "members" || part === "releases" || part === "templates" || part === "groups" ? part : "groups";
+    part === "members" ||
+    part === "releases" ||
+    part === "templates" ||
+    part === "groups" ||
+    part === "completeness" ||
+    part === "import"
+      ? part
+      : "groups";
   return { page: "catalog", tab };
 }
 
@@ -217,6 +230,59 @@ function bindCatalog(rows: { id: string }[]) {
   void rows;
 }
 
+function bindImport() {
+  const form = document.getElementById("import-form") as HTMLFormElement | null;
+  const formatEl = document.getElementById("import-format") as HTMLSelectElement | null;
+  const textEl = document.getElementById("import-text") as HTMLTextAreaElement | null;
+  formatEl?.addEventListener("change", () => {
+    importFormat = formatEl.value;
+  });
+  textEl?.addEventListener("input", () => {
+    importText = textEl.value;
+  });
+  form?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    importFormat = formatEl?.value || "csv";
+    importText = textEl?.value || "";
+    const res = await api<{ committed: boolean; report: ImportReport }>("/admin/import/validate", {
+      method: "POST",
+      body: JSON.stringify(buildImportBody(importFormat, importText, true)),
+    });
+    importCommitted = false;
+    if (res.status !== 200) {
+      const details = (res.body as { error?: { details?: ImportReport } })?.error?.details;
+      importReport = details || null;
+      catalogNotice = errorMessage(res.body);
+      render();
+      return;
+    }
+    importReport = res.body.report;
+    catalogNotice = importReport.ok ? "校验通过，可以写入" : "校验未通过，请先修错误";
+    render();
+  });
+  document.getElementById("import-commit")?.addEventListener("click", async () => {
+    if (!importReport?.ok) return;
+    importFormat = formatEl?.value || importFormat;
+    importText = textEl?.value || importText;
+    const res = await api<{ committed: boolean; report: ImportReport; count?: number }>("/admin/import", {
+      method: "POST",
+      body: JSON.stringify(buildImportBody(importFormat, importText, false)),
+    });
+    if (res.status !== 200) {
+      const details = (res.body as { error?: { details?: ImportReport } })?.error?.details;
+      importReport = details || importReport;
+      importCommitted = false;
+      catalogNotice = errorMessage(res.body);
+      render();
+      return;
+    }
+    importReport = res.body.report;
+    importCommitted = !!res.body.committed;
+    catalogNotice = importCommitted ? `已写入 ${res.body.count ?? 0} 条模板` : "未写入";
+    render();
+  });
+}
+
 async function render() {
   if (page === "login" || !user) {
     app.innerHTML = loginView();
@@ -276,6 +342,48 @@ async function render() {
     return;
   }
 
+  const innerNav = `<nav class="subnav">${catalogSubnav(catalogTab)}</nav>`;
+
+  if (catalogTab === "completeness") {
+    const res = await api<{ groups: CompletenessGroup[] }>("/admin/completeness");
+    if (res.status === 403) {
+      app.innerHTML = layout(`<section class="card"><p class="err">没有权限访问运营接口</p></section>`);
+      bindShell();
+      return;
+    }
+    if (res.status !== 200) {
+      app.innerHTML = layout(
+        innerNav + `<section class="card"><p class="err">${escapeHtml(errorMessage(res.body))}</p></section>`,
+      );
+      bindShell();
+      return;
+    }
+    app.innerHTML = layout(
+      innerNav + completenessView(res.body.groups || []) + `<section class="card" id="audit-card"><h2>最近审计</h2></section>`,
+    );
+    bindShell();
+    await fillAudit();
+    return;
+  }
+
+  if (catalogTab === "import") {
+    app.innerHTML = layout(
+      innerNav +
+        importView({
+          format: importFormat,
+          text: importText,
+          notice: catalogNotice,
+          report: importReport,
+          committed: importCommitted,
+        }) +
+        `<section class="card" id="audit-card"><h2>最近审计</h2></section>`,
+    );
+    bindShell();
+    bindImport();
+    await fillAudit();
+    return;
+  }
+
   const data = await loadCatalog(catalogTab);
   if ("error" in data) {
     const denied = data.status === 403;
@@ -286,7 +394,6 @@ async function render() {
     return;
   }
 
-  const innerNav = `<nav class="subnav">${catalogSubnav(catalogTab)}</nav>`;
   let body = "";
   if (catalogTab === "groups") {
     body = groupsView(data.groups, findById(data.groups, editingId || ""), catalogNotice);

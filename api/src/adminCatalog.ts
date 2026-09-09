@@ -8,10 +8,11 @@ import {
   mapRelease,
 } from "./catalog.js";
 import { isPgUniqueViolation } from "./admin.js";
+import { RELEASE_KINDS, type ReleaseKind, isReleaseKind } from "./catalogConstants.js";
+import { assertReleasePublishAllowed } from "./catalogConstraints.js";
 
 export const CATALOG_STATUSES: CatalogStatus[] = ["draft", "published", "deprecated"];
-export const RELEASE_KINDS = ["album", "single", "mini", "concert_md"] as const;
-export type ReleaseKind = (typeof RELEASE_KINDS)[number];
+export { RELEASE_KINDS, type ReleaseKind };
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], field: string): T {
   const v = String(value || "");
@@ -250,6 +251,9 @@ export async function createRelease(body: Record<string, unknown>) {
   await loadGroupRow(groupId);
   const title = text(body.title, "title", true);
   const releasedOn = text(body.releasedOn, "releasedOn", true);
+  if (body.kind && !isReleaseKind(body.kind)) {
+    throw badRequest("kind 必须是 album | single | mini | concert_md");
+  }
   const kind = body.kind ? String(body.kind) : "album";
   const id = randomUUID();
   await query(
@@ -272,6 +276,9 @@ export async function updateRelease(id: string, body: Record<string, unknown>) {
   const row = await loadReleaseRow(id);
   const groupId = body.groupId != null ? text(body.groupId, "groupId", true) : String(row.group_id);
   if (body.groupId) await loadGroupRow(groupId);
+  if (body.kind != null && body.kind !== "" && !isReleaseKind(body.kind)) {
+    throw badRequest("kind 必须是 album | single | mini | concert_md");
+  }
   await query(
     `UPDATE releases SET
        group_id = $2, title = $3, title_zh = $4, aliases = $5, released_on = $6, kind = $7
@@ -291,7 +298,10 @@ export async function updateRelease(id: string, body: Record<string, unknown>) {
 
 export async function setReleaseStatus(id: string, statusRaw: unknown) {
   const status = oneOf(statusRaw, CATALOG_STATUSES, "status");
-  await loadReleaseRow(id);
+  const row = await loadReleaseRow(id);
+  if (status === "published") {
+    assertReleasePublishAllowed(String(row.group_slug), id);
+  }
   await query("UPDATE releases SET status = $2 WHERE id = $1", [id, status]);
   return getAdminRelease(id);
 }

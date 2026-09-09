@@ -31,7 +31,7 @@ npm run migrate
 npm run seed          # H2H 样品 + BTS ARIRANG 切片 + 占位卡图
 npm run dev           # API :3000，启动时默认会再跑一遍幂等 seed
 npm run dev:admin     # 运营后台 Vite :5173（代理 /admin 到 API）
-npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 行为测试
+npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 行为测试
 ```
 
 也可用 `docker compose up --build` 拉起 postgres + API。
@@ -100,7 +100,7 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 行为测�
 | 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
 | 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }` |
 | 反馈 | `POST /feedback/missing` `{ text }` |
-| 管理 | `POST /admin/import` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
+| 管理 | `POST /admin/import` `POST /admin/import/validate` `GET /admin/completeness` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
 | OPS 登录 | `POST /admin/auth/login` `GET /admin/auth/me` `POST /admin/auth/logout` `GET /admin/audit` |
 | 情报 | `GET /feed` `GET /feed/featured` `GET /feed/:id` |
 | 日程 | `GET /schedule/today` `GET /schedule` `GET /schedule/:id`（`startAtShanghai` / Asia/Shanghai） |
@@ -145,8 +145,8 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 行为测�
 api/                 Express + pg + sharp 分享长图
   migrations/        PostgreSQL
   src/               路由与领域逻辑
-  tests/             M1 / M2-a / OPS-0 / OPS-1
-admin/               独立 Web 运营后台（Vite，图鉴 CRUD + 情报只读）
+  tests/             M1 / M2-a / OPS-0 / OPS-1 / OPS-2
+admin/               独立 Web 运营后台（Vite，图鉴 CRUD + 完整度 + 导入校验 + 情报只读）
 miniprogram/         微信小程序
 project.config.json  微信开发者工具打开仓库根目录用
 docker-compose.yml
@@ -179,6 +179,33 @@ docker-compose.yml
 
 `dedupe_key` = `{groupSlug}:{releaseTitle}:{memberEn\|group}:{version}`。
 
+## M2.5 OPS-2 导入校验 + 完整度
+
+在 OPS-1 CRUD 上补运营闭环：导入先校验再写库，完整度看板可读，BTS 切片约束可配置。
+
+**In**
+
+- CSV / Markdown / JSON 批量导入；`POST /admin/import/validate` 与 `POST /admin/import`（可 `dryRun`）返回校验报告，错误在 Admin「导入」页可见
+- 完整度看板：按组合 / 发行统计草稿 vs 已发布、缺主图、缺成员
+- **A07** 可配置约束：`CATALOG_RELEASE_ALLOWLIST=bts:<release_id>` 时，BTS 不能发布 / 导入切片外专辑（草稿下一张专辑仍可建，看板显示发布闸门）
+- 扩展专辑发布闸门在看板可读；签署人流程**不**接入
+- 发行 `kind` 白名单：`album | single | mini | concert_md`
+- C 端 `listReleases` 隐藏 `deprecated`（与 `draft` 相同）
+- 特权写入仍记 `admin_audit_logs`；鉴权仍是 ops JWT + `x-admin-token`
+
+**Out**
+
+- OPS-3 缺卡工单、审核队列、爬虫、C 端大改
+- 扩专辑调研文档 / 特典研究表（分析/创意侧）
+- 未改 `WX_SECRET` / `API_BASE`；无视觉大改
+
+| ID | 行为 |
+| --- | --- |
+| **A06** | 完整度：草稿/已发布计数、缺主图、缺成员 |
+| **A07** | 配置后 BTS 只能落在允许的 `release_id` 切片 |
+
+Admin：图鉴 → **完整度** / **导入**。
+
 ### 本地打开 Admin
 
 ```bash
@@ -190,7 +217,7 @@ npm run dev:admin
 # 默认账号（非生产 seed）：ops / ops-dev
 ```
 
-环境变量见 `.env.example`：`OPS_ADMIN_USER`、`OPS_ADMIN_PASSWORD` 或 `OPS_ADMIN_PASSWORD_HASH`、`OPS_ALLOWLIST`。生产请只放哈希，不要提交明文密码。生成哈希：
+环境变量见 `.env.example`：`OPS_ADMIN_USER`、`OPS_ADMIN_PASSWORD` 或 `OPS_ADMIN_PASSWORD_HASH`、`OPS_ALLOWLIST`、`CATALOG_RELEASE_ALLOWLIST`（A07，可选）。生产请只放哈希，不要提交明文密码。生成哈希：
 
 ```bash
 npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
@@ -206,8 +233,10 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 | `GET /admin/audit` | 最近审计（ops） |
 | `GET\|POST /admin/catalog/groups` `PATCH .../:id` `POST .../:id/status` | 组合 CRUD + 状态 |
 | `GET\|POST /admin/catalog/members` `PATCH .../:id` `POST .../:id/status` | 成员 |
-| `GET\|POST /admin/catalog/releases` `PATCH .../:id` `POST .../:id/status` | 发行（含 `concert_md`） |
+| `GET\|POST /admin/catalog/releases` `PATCH .../:id` `POST .../:id/status` | 发行（kind 仅 `album\|single\|mini\|concert_md`） |
 | `GET\|POST /admin/catalog/templates` `PATCH .../:id` `POST .../:id/status` | 小卡模板；无主图不可 `published` |
+| `GET /admin/completeness` | 完整度看板（A06）+ 发布闸门（只读，无签署人） |
+| `POST /admin/import/validate` `POST /admin/import` | CSV / Markdown / JSON；先报告后写入 |
 
 ### 生产部署（Railway 静态服务 `admin`）
 
@@ -228,4 +257,4 @@ npm run build:admin   # 本地确认 dist/；需设置 VITE_API_BASE
 
 ## 明确不做（M1 之外）
 
-订阅消息 Worker、微博爬虫、缺卡清单页、交易、投稿审核、好友关系、AI。OPS-2 完整度看板与导入产品化、OPS-3 缺卡工单不在本切片。
+订阅消息 Worker、微博爬虫、缺卡清单页、交易、投稿审核、好友关系、AI。OPS-3 缺卡工单不在本切片。
