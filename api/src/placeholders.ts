@@ -1,3 +1,4 @@
+import { shareFontAttr } from "./shareFont.js";
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
@@ -15,12 +16,13 @@ export async function writePlaceholderCard(opts: {
   const file = `${opts.code.replace(/[^A-Za-z0-9_-]/g, "_")}.png`;
   const dest = path.join(dir, file);
   if (fs.existsSync(dest)) return `/media/cards/${file}`;
+  const font = shareFontAttr();
   const svg = `<svg width="330" height="510" xmlns="http://www.w3.org/2000/svg">
     <rect width="330" height="510" rx="18" fill="${opts.color}"/>
-    <text x="165" y="70" fill="#ffffffaa" font-size="16" text-anchor="middle" font-family="sans-serif">${escapeXml(opts.group)}</text>
-    <text x="165" y="250" fill="#fff" font-size="32" text-anchor="middle" font-family="sans-serif">${escapeXml(opts.member)}</text>
-    <text x="165" y="292" fill="#fff" font-size="20" text-anchor="middle" font-family="sans-serif">${escapeXml(opts.version)}</text>
-    <text x="165" y="460" fill="#ffffffcc" font-size="12" text-anchor="middle" font-family="sans-serif">${escapeXml(opts.code)}</text>
+    <text x="165" y="70" fill="#ffffffaa" font-size="16" text-anchor="middle" ${font}>${escapeXml(opts.group)}</text>
+    <text x="165" y="250" fill="#fff" font-size="32" text-anchor="middle" ${font}>${escapeXml(opts.member)}</text>
+    <text x="165" y="292" fill="#fff" font-size="20" text-anchor="middle" ${font}>${escapeXml(opts.version)}</text>
+    <text x="165" y="460" fill="#ffffffcc" font-size="12" text-anchor="middle" ${font}>${escapeXml(opts.code)}</text>
   </svg>`;
   await sharp(Buffer.from(svg)).png().toFile(dest);
   return `/media/cards/${file}`;
