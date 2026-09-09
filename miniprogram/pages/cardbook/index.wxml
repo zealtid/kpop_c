@@ -3,7 +3,14 @@
   <view class="sub">{{copy}}</view>
   <view class="muted" style="margin-top:12rpx">总览不提供搜索，请到「图鉴」检索专辑与模板。</view>
 
-  <view wx:if="{{emptyFollows}}" class="empty-state">
+  <view wx:if="{{needsLogin}}" class="empty-state">
+    <view class="empty-title">浏览图鉴无需登录</view>
+    <view class="empty-sub">卡册进度需要登录。可先打开「图鉴」查看组合与卡片；标记拥有 / 想要时会提示登录。</view>
+    <view class="btn" bindtap="goCatalog">去图鉴</view>
+    <view class="btn ghost" bindtap="doLogin">登录</view>
+  </view>
+
+  <view wx:elif="{{emptyFollows}}" class="empty-state">
     <view class="empty-title">还没有关注组合</view>
     <view class="empty-sub">选择 1–3 个组合后，这里会显示收集进度。</view>
     <view class="btn" bindtap="goFollowPicker">去选择关注</view>

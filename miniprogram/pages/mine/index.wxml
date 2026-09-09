@@ -1,20 +1,28 @@
 <view class="page">
-  <view class="card">
-    <view class="h1">{{user.nickname || '收藏家'}}</view>
-    <view class="muted">可见性：{{user.privacy === 'public' ? '公开' : '仅自己'}}（无私友选项）</view>
-    <view class="row" style="margin-top:20rpx">
-      <view class="btn slim" bindtap="setPrivacy" data-v="private">private</view>
-      <view class="btn slim ghost" bindtap="setPrivacy" data-v="public">public</view>
-    </view>
+  <view wx:if="{{needsLogin}}" class="card">
+    <view class="h1">未登录</view>
+    <view class="muted">浏览「图鉴」无需登录。关注、可见性与缺卡反馈需要先登录。</view>
+    <view class="btn" style="margin-top:24rpx" bindtap="doLogin">登录</view>
   </view>
 
-  <view class="h1" style="margin:24rpx 0 12rpx;font-size:32rpx">关注组合</view>
-  <view wx:for="{{groups}}" wx:key="id" class="card" bindtap="toggleFollow" data-id="{{item.id}}">
-    <view class="row">
-      <view>{{item.nameZh}}</view>
-      <view class="tag">{{item.followed ? '已关注' : '未关注'}}</view>
+  <block wx:else>
+    <view class="card">
+      <view class="h1">{{user.nickname || '收藏家'}}</view>
+      <view class="muted">可见性：{{user.privacy === 'public' ? '公开' : '仅自己'}}（无私友选项）</view>
+      <view class="row" style="margin-top:20rpx">
+        <view class="btn slim" bindtap="setPrivacy" data-v="private">private</view>
+        <view class="btn slim ghost" bindtap="setPrivacy" data-v="public">public</view>
+      </view>
     </view>
-  </view>
+
+    <view class="h1" style="margin:24rpx 0 12rpx;font-size:32rpx">关注组合</view>
+    <view wx:for="{{groups}}" wx:key="id" class="card" bindtap="toggleFollow" data-id="{{item.id}}">
+      <view class="row">
+        <view>{{item.nameZh}}</view>
+        <view class="tag">{{item.followed ? '已关注' : '未关注'}}</view>
+      </view>
+    </view>
+  </block>
 
   <view class="btn" bindtap="goFeedback">文字反馈缺卡</view>
   <view class="btn ghost" bindtap="goAbout">关于星卡</view>

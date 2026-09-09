@@ -1,5 +1,7 @@
 const { API_BASE } = require("./config");
 
+const LOGIN_TOAST = "请先登录";
+
 function request({ url, method = "GET", data, auth = true }) {
   const app = getApp();
   const header = { "Content-Type": "application/json" };
@@ -28,6 +30,26 @@ function request({ url, method = "GET", data, auth = true }) {
   });
 }
 
+function isUnauthorized(err) {
+  return !!(err && err.status === 401);
+}
+
+/** 写操作 401：Toast「请先登录」并触发登录，不打断图鉴浏览。 */
+function promptLoginIfUnauthorized(err) {
+  if (!isUnauthorized(err)) return false;
+  wx.showToast({ title: LOGIN_TOAST, icon: "none" });
+  const app = getApp();
+  if (app && typeof app.login === "function") {
+    app.login();
+  }
+  return true;
+}
+
+function handleWriteError(err) {
+  if (promptLoginIfUnauthorized(err)) return;
+  wx.showToast({ title: (err && err.message) || "失败", icon: "none" });
+}
+
 function mediaUrl(path) {
   if (!path) return "";
   if (/^https?:\/\//.test(path)) return path;
@@ -44,4 +66,14 @@ function isOwnWantMutex(data) {
   return businessCode(data) === "OWN_WANT_MUTEX";
 }
 
-module.exports = { request, mediaUrl, API_BASE, businessCode, isOwnWantMutex };
+module.exports = {
+  request,
+  mediaUrl,
+  API_BASE,
+  businessCode,
+  isOwnWantMutex,
+  isUnauthorized,
+  promptLoginIfUnauthorized,
+  handleWriteError,
+  LOGIN_TOAST,
+};
