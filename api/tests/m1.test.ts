@@ -275,7 +275,10 @@ test("D01-D03 admin draft/publish/dedupe/image required", async () => {
   assert.equal(noTok.status, 401);
 
   const headers = { "Content-Type": "application/json", "x-admin-token": "dev-admin" };
-  const draftId = sid("tpl:h2h:The Chase:Carmen:Draft-NoImg");
+  const draft = await query("SELECT id FROM templates WHERE dedupe_key = $1", [
+    "h2h:The Chase:Carmen:Draft-NoImg",
+  ]);
+  const draftId = draft.rows[0].id as string;
   const pub = await fetch(base + `/admin/templates/${draftId}/publish`, { method: "POST", headers });
   assert.equal(pub.status, 400);
   const pubBody = (await pub.json()) as { error: { code: string } };

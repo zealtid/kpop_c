@@ -94,7 +94,8 @@ export async function createShareImage(userId: string, groupKey: string) {
     .png()
     .toFile(filePath);
 
-  const publicUrl = `${config.publicBaseUrl}/media/shares/${fileName}`;
+  const publicPath = `/media/shares/${fileName}`;
+  const publicUrl = `${config.publicBaseUrl}${publicPath}`;
   await query(
     `INSERT INTO share_images (id, user_id, group_id, file_path, public_url, template_ids, has_qr, has_watermark)
      VALUES ($1, $2, $3, $4, $5, $6::uuid[], true, true)`,
@@ -108,7 +109,8 @@ export async function createShareImage(userId: string, groupKey: string) {
 
   return {
     id,
-    url: publicUrl,
+    url: publicPath,
+    absoluteUrl: publicUrl,
     cardCount: cards.length,
     templateIds: cards.map((c) => c.id),
     truncated: false,
