@@ -4,6 +4,7 @@ import cors from "cors";
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.js";
+import { isAllowedCorsOrigin } from "./cors.js";
 import { AppError } from "./errors.js";
 import { optionalAuth, requireAuth, wxLogin, getUser, publicUser, updateUser } from "./auth.js";
 import { requireAdmin, requireOpsSession, loginOps, getOpsMe, clearOpsCookie, setOpsCookie } from "./opsAuth.js";
@@ -23,7 +24,14 @@ import { parseUtc } from "./time.js";
 
 export function createApp() {
   const app = express();
-  app.use(cors({ origin: true, credentials: true }));
+  app.use(
+    cors({
+      origin(origin, cb) {
+        cb(null, isAllowedCorsOrigin(origin, config.corsOrigins));
+      },
+      credentials: true,
+    }),
+  );
   app.use(express.json({ limit: "8mb" }));
   app.use(optionalAuth);
 

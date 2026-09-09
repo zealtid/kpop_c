@@ -185,7 +185,7 @@ npm run dev:admin
 npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 ```
 
-会话：`POST /admin/auth/login` 签发 ops JWT（`typ=ops`）并写 HttpOnly cookie `ops_session`。受保护的 `/admin/*`：未登录 **401**，非 ops（如 reviewer）**403**（A01）。脚本仍可用 `x-admin-token`（`ADMIN_TOKEN`）作为回退，现有测试无需改密钥。
+会话：`POST /admin/auth/login` 签发 ops JWT（`typ=ops`）并写 HttpOnly cookie `ops_session`。受保护的 `/admin/*`：未登录 **401**，非 ops（如 reviewer）**403**（A01）。脚本仍可用 `x-admin-token`（`ADMIN_TOKEN`）作为回退，现有测试无需改密钥。Admin SPA 用 Bearer + `sessionStorage`；跨域时 cookie 不是主路径。
 
 | 路径 | 说明 |
 | --- | --- |
@@ -193,6 +193,23 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 | `GET /admin/auth/me` | 当前 ops 用户 + 菜单 图鉴/情报 |
 | `POST /admin/auth/logout` | 清 cookie |
 | `GET /admin/audit` | 最近审计（ops） |
+
+### 生产部署（Railway 静态服务 `admin`）
+
+独立服务托管 `admin/` 的 Vite `dist/`（Approach A），不要挂在 API 的 `/admin/` 路径下。nginx 对客户端路由做 SPA fallback（`try_files` → `index.html`）。
+
+1. Railway 项目 `xingka` 新增服务，建议名称 **`admin`**，Root Directory：`/admin`，Builder：Dockerfile（`admin/Dockerfile`）。
+2. 服务变量（构建期注入，无密钥）：
+   ```
+   VITE_API_BASE=https://api-production-0818.up.railway.app
+   ```
+3. Generate Domain，得到 `https://<admin-service>.up.railway.app`。登录页即该 URL（hash：`#/login`）。
+4. API CORS：默认允许 `http://localhost:*` / `127.0.0.1` 以及 `https://*.up.railway.app`。自定义域名再在 API 上设 `CORS_ORIGINS=https://your-admin-host`。
+5. 生产 ops 登录仍只用 `OPS_ADMIN_PASSWORD_HASH`（可加 `OPS_ADMIN_USER` / `OPS_ALLOWLIST`）。不要提交明文密码。
+
+```bash
+npm run build:admin   # 本地确认 dist/；需设置 VITE_API_BASE
+```
 
 ## 明确不做（M1 之外）
 
