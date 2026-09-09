@@ -1,0 +1,62 @@
+.count {
+  margin-top: 20rpx;
+}
+
+.group-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1c1824;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-top: 20rpx;
+  border: 2rpx solid transparent;
+}
+
+.group-card.on {
+  border-color: #ff6b9d;
+  background: #241c28;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  flex: 1;
+}
+
+.dot {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  flex-shrink: 0;
+}
+
+.name {
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.en {
+  color: #8a8494;
+  font-size: 22rpx;
+  margin-top: 4rpx;
+}
+
+.tag {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.tag.on {
+  background: #ff6b9d;
+  color: #fff;
+}
+
+.actions {
+  margin-top: 48rpx;
+}
+
+.btn.disabled {
+  opacity: 0.4;
+}
