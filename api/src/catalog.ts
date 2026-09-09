@@ -73,10 +73,11 @@ export async function listMembers(groupId: string, includeUnpublished = false) {
 }
 
 export async function listReleases(groupId: string, includeDraft = false) {
+  // C-side hides draft and deprecated the same way (only published).
   const r = await query(
     `SELECT id, group_id, title, title_zh, released_on, kind, status
      FROM releases
-     WHERE group_id = $1 ${includeDraft ? "" : "AND status = 'published'"}
+     WHERE group_id = $1 ${includeDraft ? "" : "AND status NOT IN ('draft', 'deprecated')"}
      ORDER BY released_on DESC`,
     [groupId],
   );

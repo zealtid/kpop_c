@@ -3,6 +3,8 @@ import { query } from "./db.js";
 import { AppError, badRequest, notFound } from "./errors.js";
 import { sid } from "./ids.js";
 import { mapTemplate } from "./catalog.js";
+import { isReleaseKind, normalizeReleaseKind } from "./catalogConstants.js";
+import { assertImportReleaseAllowed } from "./catalogConstraints.js";
 
 type ImportTemplate = {
   code?: string;
@@ -15,7 +17,7 @@ type ImportTemplate = {
   name?: string;
 };
 
-type ImportBody = {
+export type ImportBody = {
   groupSlug: string;
   releaseTitle: string;
   releaseTitleZh?: string;
@@ -50,6 +52,10 @@ export async function importCatalog(body: ImportBody) {
   const group = await query("SELECT id FROM idol_groups WHERE slug = $1", [body.groupSlug]);
   if (!group.rows[0]) throw notFound("组合不存在，无法导入");
   const groupId = group.rows[0].id as string;
+  const kind = normalizeReleaseKind(body.kind, "album");
+  if (body.kind && !isReleaseKind(body.kind)) {
+    throw badRequest("kind 必须是 album | single | mini | concert_md");
+  }
 
   let release = await query(
     "SELECT id FROM releases WHERE group_id = $1 AND title = $2",
@@ -58,7 +64,9 @@ export async function importCatalog(body: ImportBody) {
   let releaseId: string;
   if (release.rows[0]) {
     releaseId = release.rows[0].id as string;
+    assertImportReleaseAllowed({ groupSlug: body.groupSlug, releaseId, creating: false });
   } else {
+    assertImportReleaseAllowed({ groupSlug: body.groupSlug, creating: true });
     releaseId = sid(`release:${body.groupSlug}:${body.releaseTitle}`);
     await query(
       `INSERT INTO releases (id, group_id, title, title_zh, released_on, kind, status)
@@ -69,7 +77,7 @@ export async function importCatalog(body: ImportBody) {
         body.releaseTitle,
         body.releaseTitleZh || body.releaseTitle,
         body.releasedOn,
-        body.kind || "album",
+        kind || "album",
       ],
     );
   }

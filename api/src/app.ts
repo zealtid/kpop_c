@@ -14,6 +14,8 @@ import * as collection from "./collection.js";
 import { createShareImage } from "./share.js";
 import * as admin from "./admin.js";
 import * as adminCatalog from "./adminCatalog.js";
+import { previewOrCommitImport } from "./importValidate.js";
+import { getCompletenessDashboard } from "./completeness.js";
 import { ANALYTICS_EVENTS, track } from "./analytics.js";
 import { query } from "./db.js";
 import * as customCards from "./customCards.js";
@@ -37,7 +39,7 @@ export function createApp() {
   app.use(optionalAuth);
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, service: "kpop_c-api", phase: "M2.5-OPS-1" });
+    res.json({ ok: true, service: "kpop_c-api", phase: "M2.5-OPS-2" });
   });
 
   app.get("/", (_req, res) => {
@@ -45,7 +47,7 @@ export function createApp() {
       name: "星卡 API",
       client: "WeChat mini-program + ops admin",
       docs: "see repository README",
-      phase: "M2.5-OPS-1",
+      phase: "M2.5-OPS-2",
     });
   });
 
@@ -494,17 +496,41 @@ export function createApp() {
   });
 
   // ---- admin ----
+  app.post("/admin/import/validate", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await previewOrCommitImport({ ...(req.body || {}), dryRun: true });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
   app.post("/admin/import", requireAdmin, async (req, res, next) => {
     try {
-      const result = await admin.importCatalog(req.body);
-      await writeAuditLog({
-        actor: req.ops,
-        action: "catalog.import",
-        entityType: "release",
-        entityId: result.releaseId,
-        payload: { groupSlug: req.body?.groupSlug, count: result.count },
-      });
+      const result = await previewOrCommitImport(req.body);
+      if (result.committed) {
+        await writeAuditLog({
+          actor: req.ops,
+          action: "catalog.import",
+          entityType: "release",
+          entityId: result.releaseId,
+          payload: {
+            groupSlug: req.body?.groupSlug,
+            format: result.report.format,
+            count: result.count,
+            batches: result.report.batches.map((b) => b.releaseTitle),
+          },
+        });
+      }
       res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/completeness", requireAdmin, async (_req, res, next) => {
+    try {
+      res.json(await getCompletenessDashboard());
     } catch (e) {
       next(e);
     }

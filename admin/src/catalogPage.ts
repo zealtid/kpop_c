@@ -1,7 +1,7 @@
 import { api, errorMessage } from "./api";
 import { escapeHtml, option, statusBadge } from "./html";
 
-export type CatalogTab = "groups" | "members" | "releases" | "templates";
+export type CatalogTab = "groups" | "members" | "releases" | "templates" | "completeness" | "import";
 
 type Group = {
   id: string;
@@ -64,6 +64,8 @@ const TABS: { id: CatalogTab; label: string }[] = [
   { id: "members", label: "成员" },
   { id: "releases", label: "发行" },
   { id: "templates", label: "小卡模板" },
+  { id: "completeness", label: "完整度" },
+  { id: "import", label: "导入" },
 ];
 
 export function catalogSubnav(tab: CatalogTab) {
@@ -350,7 +352,7 @@ function formPayload(tab: CatalogTab, fd: FormData): Record<string, unknown> {
   };
 }
 
-const PATH: Record<CatalogTab, string> = {
+const PATH: Record<"groups" | "members" | "releases" | "templates", string> = {
   groups: "/admin/catalog/groups",
   members: "/admin/catalog/members",
   releases: "/admin/catalog/releases",
@@ -358,12 +360,18 @@ const PATH: Record<CatalogTab, string> = {
 };
 
 export async function saveCatalog(tab: CatalogTab, editingId: string | null, fd: FormData) {
+  if (tab === "completeness" || tab === "import") {
+    throw new Error("该页不支持表单保存");
+  }
   const body = formPayload(tab, fd);
   const path = editingId ? `${PATH[tab]}/${editingId}` : PATH[tab];
   return api(path, { method: editingId ? "PATCH" : "POST", body: JSON.stringify(body) });
 }
 
 export async function setCatalogStatus(tab: CatalogTab, id: string, status: string) {
+  if (tab === "completeness" || tab === "import") {
+    throw new Error("该页不支持状态变更");
+  }
   return api(`${PATH[tab]}/${id}/status`, { method: "POST", body: JSON.stringify({ status }) });
 }
 

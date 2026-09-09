@@ -26,6 +26,11 @@ export const config = {
     .filter(Boolean),
   /** Extra CORS origins (comma-separated). localhost and *.up.railway.app are always allowed. */
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
+  /**
+   * Optional A07 constraint: `bts:<uuid>[,<uuid>]`. Read live from env in catalogConstraints
+   * so tests can toggle it. Documented here for operators.
+   */
+  catalogReleaseAllowlist: process.env.CATALOG_RELEASE_ALLOWLIST || "",
   dataDir: path.resolve(process.env.DATA_DIR || path.join(here, "../data")),
   wxAppId: process.env.WX_APPID || "",
   wxSecret: process.env.WX_SECRET || "",
