@@ -1,8 +1,8 @@
 # 星卡
 
-星卡是微信小程序小卡图鉴（M1）。仓库路径：[`github.com/zealtid/kpop_c`](https://github.com/zealtid/kpop_c)。
+星卡是微信小程序小卡图鉴。仓库路径：[`github.com/zealtid/kpop_c`](https://github.com/zealtid/kpop_c)。
 
-本阶段 **只有小程序客户端**，没有 Web App。后端是 Node.js + PostgreSQL。
+C 端只有微信小程序；M2.5 OPS-0 起另有独立 **Web 运营后台**（`admin/`），与小程序分离。后端是 Node.js + PostgreSQL。
 
 首个落地切片：**schema + mock 微信登录 + H2H / BTS《ARIRANG》种子图鉴 + 拥有/想要/进度 + 卡册长图**。Path B（搜专辑 → 多选拥有 → 进度更新）可在 API 测试中一次性跑通。
 
@@ -30,7 +30,8 @@ npm install
 npm run migrate
 npm run seed          # H2H 样品 + BTS ARIRANG 切片 + 占位卡图
 npm run dev           # API :3000，启动时默认会再跑一遍幂等 seed
-npm test              # 对 kpop_c_test 跑 M1 行为测试（含 Path B）
+npm run dev:admin     # 运营后台 Vite :5173（代理 /admin 到 API）
+npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 行为测试
 ```
 
 也可用 `docker compose up --build` 拉起 postgres + API。
@@ -99,12 +100,13 @@ npm test              # 对 kpop_c_test 跑 M1 行为测试（含 Path B）
 | 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
 | 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }` |
 | 反馈 | `POST /feedback/missing` `{ text }` |
-| 管理 | `POST /admin/import` `POST /admin/templates` `POST /admin/templates/:id/publish\|unpublish` Header `x-admin-token` |
+| 管理 | `POST /admin/import` `POST /admin/templates` `POST /admin/templates/:id/publish\|unpublish`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
+| OPS 登录 | `POST /admin/auth/login` `GET /admin/auth/me` `POST /admin/auth/logout` `GET /admin/audit` |
 | 情报 | `GET /feed` `GET /feed/featured` `GET /feed/:id` |
 | 日程 | `GET /schedule/today` `GET /schedule` `GET /schedule/:id`（`startAtShanghai` / Asia/Shanghai） |
 | 埋点 | `POST /analytics/events`；服务端也会在业务路径自动打点 |
 
-管理默认令牌：`ADMIN_TOKEN=dev-admin`。
+管理默认令牌：`ADMIN_TOKEN=dev-admin`（脚本 / 测试回退）。运营后台请用用户名密码会话，见下方 OPS-0。
 
 ## M2-b 情报 Tab（小程序）
 
@@ -143,12 +145,55 @@ npm test              # 对 kpop_c_test 跑 M1 行为测试（含 Path B）
 api/                 Express + pg + sharp 分享长图
   migrations/        PostgreSQL
   src/               路由与领域逻辑
-  tests/m1.test.ts   Path B 与 M1 约束
+  tests/             M1 / M2-a / OPS-0
+admin/               独立 Web 运营后台（Vite，OPS-0 菜单壳）
 miniprogram/         微信小程序
 project.config.json  微信开发者工具打开仓库根目录用
 docker-compose.yml
 ```
 
+## M2.5 OPS-0 运营后台（本切片）
+
+独立 Web Admin：登录 + RBAC 骨架 + 图鉴/情报菜单壳 + 写操作审计。
+
+**In**
+
+- `admin/`：用户名/密码登录、图鉴 | 情报导航、退出。
+- 图鉴页仅为壳（「OPS-1 CRUD 即将上线」），不做草稿→发布。
+- 情报页只读调用已有 `GET /admin/feed`、`GET /admin/schedule`。
+- `ops` 可写后续主数据；`reviewer` 仅预留在 schema/类型中，无审核队列。
+- `admin_audit_logs` + 特权写路径记 actor / time / entity；`GET /admin/audit`。
+
+**Out**
+
+- OPS-1 图鉴 CRUD、OPS-2 导入完整度、OPS-3 缺卡工单、投稿审核、爬虫、C 端改动。
+
+### 本地打开 Admin
+
+```bash
+# 终端 1
+npm run dev
+# 终端 2
+npm run dev:admin
+# 浏览器 http://localhost:5173
+# 默认账号（非生产 seed）：ops / ops-dev
+```
+
+环境变量见 `.env.example`：`OPS_ADMIN_USER`、`OPS_ADMIN_PASSWORD` 或 `OPS_ADMIN_PASSWORD_HASH`、`OPS_ALLOWLIST`。生产请只放哈希，不要提交明文密码。生成哈希：
+
+```bash
+npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
+```
+
+会话：`POST /admin/auth/login` 签发 ops JWT（`typ=ops`）并写 HttpOnly cookie `ops_session`。受保护的 `/admin/*`：未登录 **401**，非 ops（如 reviewer）**403**（A01）。脚本仍可用 `x-admin-token`（`ADMIN_TOKEN`）作为回退，现有测试无需改密钥。
+
+| 路径 | 说明 |
+| --- | --- |
+| `POST /admin/auth/login` | `{ username, password }` → `{ token, user }` |
+| `GET /admin/auth/me` | 当前 ops 用户 + 菜单 图鉴/情报 |
+| `POST /admin/auth/logout` | 清 cookie |
+| `GET /admin/audit` | 最近审计（ops） |
+
 ## 明确不做（M1 之外）
 
-订阅消息 Worker、微博爬虫、缺卡清单页、交易、投稿审核、好友关系、AI、Web 客户端。
+订阅消息 Worker、微博爬虫、缺卡清单页、交易、投稿审核、好友关系、AI。Web 运营后台仅 OPS-0 菜单壳（无 OPS-1 图鉴 CRUD）。

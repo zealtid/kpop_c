@@ -4,7 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.js";
 import { AppError } from "./errors.js";
-import { optionalAuth, requireAuth, requireAdmin, wxLogin, getUser, publicUser, updateUser } from "./auth.js";
+import { optionalAuth, requireAuth, wxLogin, getUser, publicUser, updateUser } from "./auth.js";
+import { requireAdmin, requireOpsSession, loginOps, getOpsMe, clearOpsCookie, setOpsCookie } from "./opsAuth.js";
+import { listAuditLogs, writeAuditLog } from "./audit.js";
 import * as catalog from "./catalog.js";
 import * as collection from "./collection.js";
 import { createShareImage } from "./share.js";
@@ -20,20 +22,20 @@ import { parseUtc } from "./time.js";
 
 export function createApp() {
   const app = express();
-  app.use(cors());
+  app.use(cors({ origin: true, credentials: true }));
   app.use(express.json({ limit: "8mb" }));
   app.use(optionalAuth);
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, service: "kpop_c-api", phase: "M2-a" });
+    res.json({ ok: true, service: "kpop_c-api", phase: "M2.5-OPS-0" });
   });
 
   app.get("/", (_req, res) => {
     res.json({
       name: "星卡 API",
-      client: "WeChat mini-program only",
+      client: "WeChat mini-program + ops admin",
       docs: "see repository README",
-      phase: "M2-a",
+      phase: "M2.5-OPS-0",
     });
   });
 
@@ -436,10 +438,63 @@ export function createApp() {
     }
   });
 
+  // ---- admin auth (OPS-0: username/password + allowlist; no WeChat QR / SSO) ----
+  app.post("/admin/auth/login", async (req, res, next) => {
+    try {
+      const result = await loginOps(String(req.body?.username || ""), String(req.body?.password || ""));
+      setOpsCookie(res, result.token);
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/auth/me", requireOpsSession, async (req, res, next) => {
+    try {
+      res.json(await getOpsMe(req));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/auth/logout", requireOpsSession, async (req, res, next) => {
+    try {
+      clearOpsCookie(res);
+      if (req.ops?.via === "jwt") {
+        await writeAuditLog({
+          actor: req.ops,
+          action: "ops.logout",
+          entityType: "ops_user",
+          entityId: req.ops.id,
+        });
+      }
+      res.json({ ok: true });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/audit", requireAdmin, async (req, res, next) => {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      res.json({ logs: await listAuditLogs(limit) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   // ---- admin ----
   app.post("/admin/import", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await admin.importCatalog(req.body));
+      const result = await admin.importCatalog(req.body);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "catalog.import",
+        entityType: "release",
+        entityId: result.releaseId,
+        payload: { groupSlug: req.body?.groupSlug, count: result.count },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -447,7 +502,15 @@ export function createApp() {
 
   app.post("/admin/templates/:id/publish", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await admin.setTemplateStatus(req.params.id, "published"));
+      const result = await admin.setTemplateStatus(req.params.id, "published");
+      await writeAuditLog({
+        actor: req.ops,
+        action: "template.publish",
+        entityType: "template",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -455,7 +518,15 @@ export function createApp() {
 
   app.post("/admin/templates/:id/unpublish", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await admin.setTemplateStatus(req.params.id, "draft"));
+      const result = await admin.setTemplateStatus(req.params.id, "draft");
+      await writeAuditLog({
+        actor: req.ops,
+        action: "template.unpublish",
+        entityType: "template",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -463,7 +534,15 @@ export function createApp() {
 
   app.post("/admin/templates", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await admin.createDraftTemplate(req.body));
+      const result = await admin.createDraftTemplate(req.body);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "template.create",
+        entityType: "template",
+        entityId: result.id,
+        payload: { releaseId: req.body?.releaseId, version: req.body?.version },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -495,7 +574,15 @@ export function createApp() {
 
   app.post("/admin/feed", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await feed.createFeed(req.body || {}));
+      const result = await feed.createFeed(req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "feed.create",
+        entityType: "feed_item",
+        entityId: result.id,
+        payload: { title: req.body?.title, status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -503,7 +590,15 @@ export function createApp() {
 
   app.patch("/admin/feed/:id", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await feed.updateFeed(req.params.id, req.body || {}));
+      const result = await feed.updateFeed(req.params.id, req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "feed.update",
+        entityType: "feed_item",
+        entityId: result.id,
+        payload: { title: req.body?.title, status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -511,7 +606,15 @@ export function createApp() {
 
   app.post("/admin/feed/:id/publish", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await feed.setFeedStatus(req.params.id, "published"));
+      const result = await feed.setFeedStatus(req.params.id, "published");
+      await writeAuditLog({
+        actor: req.ops,
+        action: "feed.publish",
+        entityType: "feed_item",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -519,7 +622,15 @@ export function createApp() {
 
   app.post("/admin/feed/:id/hide", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await feed.setFeedStatus(req.params.id, "hidden"));
+      const result = await feed.setFeedStatus(req.params.id, "hidden");
+      await writeAuditLog({
+        actor: req.ops,
+        action: "feed.hide",
+        entityType: "feed_item",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -535,7 +646,15 @@ export function createApp() {
 
   app.post("/admin/feed/l2-whitelist", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await feed.addL2Whitelist(String(req.body?.userId || "")));
+      const result = await feed.addL2Whitelist(String(req.body?.userId || ""));
+      await writeAuditLog({
+        actor: req.ops,
+        action: "feed.l2_whitelist.add",
+        entityType: "feed_l2_whitelist",
+        entityId: req.body?.userId,
+        payload: { userId: req.body?.userId },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -543,7 +662,14 @@ export function createApp() {
 
   app.delete("/admin/feed/l2-whitelist/:userId", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await feed.removeL2Whitelist(req.params.userId));
+      const result = await feed.removeL2Whitelist(req.params.userId);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "feed.l2_whitelist.remove",
+        entityType: "feed_l2_whitelist",
+        entityId: req.params.userId,
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -563,7 +689,15 @@ export function createApp() {
 
   app.post("/admin/schedule", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await schedule.createSchedule(req.body || {}));
+      const result = await schedule.createSchedule(req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "schedule.create",
+        entityType: "schedule_event",
+        entityId: result.id,
+        payload: { title: req.body?.title, status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -571,7 +705,15 @@ export function createApp() {
 
   app.patch("/admin/schedule/:id", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await schedule.updateSchedule(req.params.id, req.body || {}));
+      const result = await schedule.updateSchedule(req.params.id, req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "schedule.update",
+        entityType: "schedule_event",
+        entityId: result.id,
+        payload: { title: req.body?.title, status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -579,7 +721,15 @@ export function createApp() {
 
   app.post("/admin/schedule/:id/publish", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await schedule.setScheduleStatus(req.params.id, "published"));
+      const result = await schedule.setScheduleStatus(req.params.id, "published");
+      await writeAuditLog({
+        actor: req.ops,
+        action: "schedule.publish",
+        entityType: "schedule_event",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }
@@ -587,7 +737,15 @@ export function createApp() {
 
   app.post("/admin/schedule/:id/hide", requireAdmin, async (req, res, next) => {
     try {
-      res.json(await schedule.setScheduleStatus(req.params.id, "hidden"));
+      const result = await schedule.setScheduleStatus(req.params.id, "hidden");
+      await writeAuditLog({
+        actor: req.ops,
+        action: "schedule.hide",
+        entityType: "schedule_event",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }

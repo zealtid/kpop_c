@@ -13,7 +13,7 @@ declare global {
   }
 }
 
-type JwtPayload = { sub: string; openid: string };
+type JwtPayload = { sub: string; openid: string; typ?: string };
 
 export function signToken(user: { id: string; wx_openid: string }) {
   return jwt.sign({ sub: user.id, openid: user.wx_openid } satisfies JwtPayload, config.jwtSecret, {
@@ -26,6 +26,7 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
   if (!header?.startsWith("Bearer ")) return next();
   try {
     const payload = jwt.verify(header.slice(7), config.jwtSecret) as JwtPayload;
+    if (payload.typ === "ops") return next();
     req.user = { id: payload.sub, wxOpenid: payload.openid };
   } catch {
     // ignore invalid token for guest-readable routes
@@ -38,19 +39,12 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   if (!header?.startsWith("Bearer ")) return next(unauthorized());
   try {
     const payload = jwt.verify(header.slice(7), config.jwtSecret) as JwtPayload;
+    if (payload.typ === "ops") return next(unauthorized());
     req.user = { id: payload.sub, wxOpenid: payload.openid };
     next();
   } catch {
     next(unauthorized("登录已过期"));
   }
-}
-
-export function requireAdmin(req: Request, _res: Response, next: NextFunction) {
-  const token = String(req.headers["x-admin-token"] || "");
-  if (!token || token !== config.adminToken) {
-    return next(new AppError(401, "ADMIN_UNAUTHORIZED", "管理员令牌无效"));
-  }
-  next();
 }
 
 async function upsertUser(openid: string, nickname?: string) {

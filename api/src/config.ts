@@ -14,6 +14,15 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || "development",
   publicBaseUrl: process.env.PUBLIC_BASE_URL || "http://localhost:3000",
   adminToken: process.env.ADMIN_TOKEN || "dev-admin",
+  /** Username/password admin (OPS-0). Empty in prod unless explicitly set. */
+  opsAdminUser: (process.env.OPS_ADMIN_USER || "").trim().toLowerCase(),
+  opsAdminPassword: process.env.OPS_ADMIN_PASSWORD || "",
+  opsAdminPasswordHash: (process.env.OPS_ADMIN_PASSWORD_HASH || "").trim(),
+  /** Comma-separated usernames. Empty → rely on ops_users.allowlisted. */
+  opsAllowlist: (process.env.OPS_ALLOWLIST || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
   dataDir: path.resolve(process.env.DATA_DIR || path.join(here, "../data")),
   wxAppId: process.env.WX_APPID || "",
   wxSecret: process.env.WX_SECRET || "",
