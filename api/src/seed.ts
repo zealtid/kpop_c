@@ -6,6 +6,7 @@ import { sid, GROUP_H2H, GROUP_BTS } from "./ids.js";
 import { writePlaceholderCard } from "./placeholders.js";
 import { config } from "./config.js";
 import { shanghaiDayUtcRange } from "./time.js";
+import { seedDefaultOpsUser } from "./opsAuth.js";
 
 type MemberDef = { en: string; zh: string; ko: string; aliases: string; color: string };
 
@@ -216,8 +217,9 @@ export async function seed() {
   );
 
   await seedFeedAndSchedule();
+  await seedDefaultOpsUser();
 
-  console.log(`seeded M1 catalog + M2-a feed/schedule; published templates≈${published}; public=${config.publicBaseUrl}`);
+  console.log(`seeded M1 catalog + M2-a feed/schedule + OPS-0 ops user; published templates≈${published}; public=${config.publicBaseUrl}`);
 }
 
 async function upsertTemplate(opts: {

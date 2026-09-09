@@ -26,6 +26,8 @@ services:
       NODE_ENV: development
       PUBLIC_BASE_URL: http://localhost:3000
       ADMIN_TOKEN: dev-admin
+      OPS_ADMIN_USER: ops
+      OPS_ADMIN_PASSWORD: ops-dev
       DATA_DIR: /app/data
     depends_on:
       postgres:

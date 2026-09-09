@@ -1,0 +1,64 @@
+:root {
+  --bg: #f6f3ef;
+  --card: #ffffff;
+  --ink: #1f1a17;
+  --muted: #6b625c;
+  --line: #e6ddd4;
+  --accent: #c45c7a;
+  --accent-ink: #fff;
+  --danger: #b42318;
+  --ok: #1f7a4d;
+  font-family: "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+button, input { font: inherit; }
+a { color: var(--accent); }
+
+.shell { min-height: 100vh; display: flex; flex-direction: column; }
+.top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; background: var(--card); border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 700; letter-spacing: 0.04em; }
+.nav { display: flex; gap: 8px; }
+.nav a, .nav button.link {
+  text-decoration: none; color: var(--ink); padding: 8px 12px; border-radius: 8px;
+  background: transparent; border: 0; cursor: pointer;
+}
+.nav a.active, .nav a:hover, .nav button.link:hover { background: #f3e6ea; }
+.who { color: var(--muted); font-size: 13px; display: flex; gap: 12px; align-items: center; }
+.main { padding: 20px; max-width: 1100px; width: 100%; margin: 0 auto; flex: 1; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px; margin-bottom: 16px;
+}
+h1 { font-size: 22px; margin: 0 0 8px; }
+h2 { font-size: 16px; margin: 0 0 12px; }
+.muted { color: var(--muted); }
+.banner {
+  background: #fff4e5; border: 1px solid #f0d9b5; color: #7a4b00;
+  padding: 10px 12px; border-radius: 8px; margin: 12px 0;
+}
+.login {
+  max-width: 360px; margin: 12vh auto; background: var(--card);
+  border: 1px solid var(--line); border-radius: 12px; padding: 28px;
+}
+label { display: block; font-size: 13px; margin: 12px 0 6px; color: var(--muted); }
+input {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: #fff;
+}
+.btn {
+  margin-top: 16px; width: 100%; padding: 10px 14px; border: 0; border-radius: 8px;
+  background: var(--accent); color: var(--accent-ink); cursor: pointer; font-weight: 600;
+}
+.btn.ghost { width: auto; background: transparent; color: var(--ink); border: 1px solid var(--line); margin-top: 0; }
+.err { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eee; font-size: 12px; }
+.empty { color: var(--muted); padding: 24px 0; }
+.audit { font-size: 12px; color: var(--muted); }
+.audit li { margin: 6px 0; }
