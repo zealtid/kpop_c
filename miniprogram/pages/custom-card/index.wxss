@@ -1,8 +1,8 @@
 @import "../card-detail/index.wxss";
 
 .warn {
-  background: #3a2a20;
-  color: #f5c36b;
+  background: var(--color-bg-muted);
+  color: var(--color-warning);
   margin-left: 8rpx;
 }
 

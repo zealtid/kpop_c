@@ -6,16 +6,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #1c1824;
+  background: var(--color-bg-elevated);
   border-radius: 24rpx;
   padding: 28rpx;
   margin-top: 20rpx;
-  border: 2rpx solid transparent;
+  border: 2rpx solid var(--color-border-subtle);
 }
 
 .group-card.on {
-  border-color: #ff6b9d;
-  background: #241c28;
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
 }
 
 .left {
@@ -38,7 +38,7 @@
 }
 
 .en {
-  color: #8a8494;
+  color: var(--color-text-secondary);
   font-size: 22rpx;
   margin-top: 4rpx;
 }
@@ -49,8 +49,8 @@
 }
 
 .tag.on {
-  background: #ff6b9d;
-  color: #fff;
+  background: var(--color-brand);
+  color: var(--color-text-inverse);
 }
 
 .actions {

@@ -9,13 +9,9 @@
   margin-top: 0;
 }
 
-.tag.trust {
-  color: #ff8fb8;
-}
-
 .label {
   font-size: 24rpx;
-  color: #a9a3b3;
+  color: var(--color-text-secondary);
   margin-bottom: 12rpx;
 }
 
@@ -24,13 +20,13 @@
 }
 
 .countdown-lg {
-  color: #ff6b9d;
+  color: var(--color-danger);
   font-size: 48rpx;
   font-weight: 700;
 }
 
 .countdown-lg.done {
-  color: #8a8494;
+  color: var(--color-text-secondary);
   font-size: 32rpx;
 }
 

@@ -21,16 +21,16 @@
     "pages/image-preview/index"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#121016",
+    "navigationBarBackgroundColor": "#FFFFFF",
     "navigationBarTitleText": "星卡",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#121016",
-    "backgroundTextStyle": "light"
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F4F5F9",
+    "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "color": "#8a8494",
-    "selectedColor": "#ff6b9d",
-    "backgroundColor": "#1a1620",
+    "color": "#667085",
+    "selectedColor": "#6B5CFF",
+    "backgroundColor": "#FFFFFF",
     "borderStyle": "black",
     "list": [
       {

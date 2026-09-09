@@ -1,32 +1,13 @@
 .empty-state {
   margin-top: 80rpx;
-  background: #1c1824;
-  border-radius: 32rpx;
-  padding: 64rpx 40rpx;
-  text-align: center;
-}
-
-.empty-title {
-  font-size: 32rpx;
-  font-weight: 700;
-}
-
-.empty-sub {
-  color: #8a8494;
-  font-size: 24rpx;
-  line-height: 1.6;
-  margin-top: 12rpx;
-}
-
-.empty-state .btn {
-  margin-top: 48rpx;
 }
 
 .group-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #1c1824;
+  background: var(--color-bg-elevated);
+  border: 1rpx solid var(--color-border-subtle);
   border-radius: 24rpx;
   padding: 28rpx;
   margin-top: 20rpx;
@@ -47,7 +28,7 @@
   font-weight: 700;
 }
 .en {
-  color: #8a8494;
+  color: var(--color-text-secondary);
   font-size: 22rpx;
   margin-top: 4rpx;
 }
@@ -55,7 +36,8 @@
   width: 140rpx;
   height: 140rpx;
   border-radius: 50%;
-  border: 8rpx solid #ff6b9d;
+  border: 8rpx solid var(--color-progress-fill);
+  background: var(--color-progress-track);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -64,10 +46,11 @@
 .pct {
   font-size: 28rpx;
   font-weight: 700;
+  color: var(--color-brand);
 }
 .frac {
   font-size: 18rpx;
-  color: #a9a3b3;
+  color: var(--color-text-tertiary);
 }
 
 .add-custom {
@@ -83,21 +66,4 @@
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: 8rpx;
-}
-
-.badge {
-  position: absolute;
-  left: 8rpx;
-  bottom: 8rpx;
-  font-size: 18rpx;
-  padding: 4rpx 10rpx;
-  border-radius: 8rpx;
-  background: rgba(18, 16, 22, 0.82);
-  color: #ff8fb8;
-}
-
-.badge.warn {
-  left: auto;
-  right: 8rpx;
-  color: #f5c36b;
 }

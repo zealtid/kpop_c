@@ -1,7 +1,7 @@
 <view class="page">
   <view class="h1">图鉴</view>
   <view class="sub">搜索专辑或成员，可多选后批量标记拥有。</view>
-  <input class="search" placeholder="搜索专辑 / 成员 / 版本" confirm-type="search" bindconfirm="onSearch" value="{{q}}"/>
+  <input class="search" placeholder="搜索专辑 / 成员 / 版本" placeholder-style="color:#98A2B3" confirm-type="search" bindconfirm="onSearch" value="{{q}}"/>
   <view class="muted" style="margin-top:12rpx">搜索仅在图鉴，卡册总览不提供搜索。</view>
 
   <view wx:for="{{groups}}" wx:key="id" class="card" bindtap="openGroup" data-id="{{item.slug}}">

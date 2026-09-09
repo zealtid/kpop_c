@@ -18,7 +18,7 @@
     <view class="muted" style="margin-bottom:8rpx">自定义卡（审核中可预览原图）</view>
     <view class="grid3">
       <view class="tile" wx:for="{{custom}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
-        <view class="ph" style="background: {{item.memberColor || '#2a2233'}}" catchtap="openPreview" data-id="{{item.id}}">
+        <view class="ph" style="background: {{item.memberColor || '#EBEDF3'}}" catchtap="openPreview" data-id="{{item.id}}">
           <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
           <view class="badge">{{item.badge}}</view>
           <view wx:if="{{item.moderationLabel}}" class="badge warn">{{item.moderationLabel}}</view>

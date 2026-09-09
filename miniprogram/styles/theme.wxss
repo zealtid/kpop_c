@@ -1,0 +1,30 @@
+/* Scheme A — forced light tokens (no dual theme). */
+page {
+  --color-bg-page: #F4F5F9;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-muted: #EBEDF3;
+  --color-text-primary: #1A1B1F;
+  --color-text-secondary: #667085;
+  --color-text-tertiary: #98A2B3;
+  --color-text-inverse: #FFFFFF;
+  --color-border-subtle: #E4E7EC;
+  --color-brand: #6B5CFF;
+  --color-brand-soft: #EDE9FF;
+  --color-brand-pressed: #5A4BE0;
+  --color-success: #12B76A;
+  --color-warning: #F79009;
+  --color-danger: #F04438;
+  --color-tab-bar-bg: #FFFFFF;
+  --color-tab-bar-border: #E4E7EC;
+  --color-tab-icon-active: #6B5CFF;
+  --color-tab-icon-inactive: #667085;
+  --color-button-primary-bg: #6B5CFF;
+  --color-button-primary-text: #FFFFFF;
+  --color-button-secondary-bg: #FFFFFF;
+  --color-button-secondary-border: #D0D5DD;
+  --color-button-secondary-text: #1A1B1F;
+  --color-badge-own: #12B76A;
+  --color-badge-want: #6B5CFF;
+  --color-progress-track: #EDE9FF;
+  --color-progress-fill: #6B5CFF;
+}
