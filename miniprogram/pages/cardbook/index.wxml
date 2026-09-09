@@ -21,12 +21,12 @@
       </view>
       <view class="grid3">
         <view class="tile" wx:for="{{customCards}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
-          <view class="ph" style="background: {{item.memberColor || '#2a2233'}}">
+          <view class="ph" style="background: {{item.memberColor || '#2a2233'}}" catchtap="openPreview" data-id="{{item.id}}">
             <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
             <view class="badge">{{item.badge}}</view>
             <view wx:if="{{item.moderationLabel}}" class="badge warn">{{item.moderationLabel}}</view>
           </view>
-          <view class="muted">{{item.title || '自定义卡'}}</view>
+          <view class="muted">{{item.title || item.memberNameEn || '自定义卡'}}</view>
         </view>
       </view>
     </view>

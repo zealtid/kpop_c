@@ -16,3 +16,28 @@ test("pending is collection+share; rejected is neither", () => {
   assert.equal(customCard.inShareImage("rejected"), false);
   assert.equal(customCard.inNormalCollection("rejected"), false);
 });
+
+test("UX06/UX07 fullscreen entry: pending ok, rejected not 收藏大图", () => {
+  assert.equal(customCard.canOpenFullscreen("pending"), true);
+  assert.equal(customCard.canOpenFullscreen("approved"), true);
+  assert.equal(customCard.canOpenFullscreen("rejected"), false);
+});
+
+test("UX05 switch group clears member not in the new list", () => {
+  const a = "member-a";
+  assert.equal(customCard.nextMemberIdOnGroupChange(a, [{ id: "member-a" }]), a);
+  assert.equal(customCard.nextMemberIdOnGroupChange(a, [{ id: "member-b" }]), "");
+  assert.equal(customCard.nextMemberIdOnGroupChange(a, []), "");
+});
+
+test("mapCatalogMember accepts camelCase or snake_case", () => {
+  const m = customCard.mapCatalogMember({
+    id: "x",
+    group_id: "g",
+    name_en: "RM",
+    name_zh: "RM",
+    color: "#7c6cf0",
+  });
+  assert.equal(m.nameEn, "RM");
+  assert.equal(m.groupId, "g");
+});

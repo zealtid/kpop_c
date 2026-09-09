@@ -1,0 +1,32 @@
+<view class="page crop-page">
+  <view class="h1">裁剪卡面</view>
+  <view class="sub">固定 {{aspectLabel}} 竖图，不可跳过。可拖动、双指缩放。</view>
+
+  <view class="stage">
+    <view class="frame" style="width: {{frameW}}px; height: {{frameH}}px;">
+      <image
+        wx:if="{{src}}"
+        class="img"
+        src="{{src}}"
+        mode="scaleToFill"
+        style="width: {{imgDrawW}}px; height: {{imgDrawH}}px; transform: translate({{tx}}px, {{ty}}px);"
+      />
+      <view
+        class="touch"
+        bindtouchstart="onTouchStart"
+        bindtouchmove="onTouchMove"
+        bindtouchend="onTouchEnd"
+        catchtouchmove="onTouchMove"
+      />
+    </view>
+  </view>
+
+  <canvas
+    canvas-id="cropCanvas"
+    class="offscreen"
+    style="width: {{outW}}px; height: {{outH}}px;"
+    disable-scroll="true"
+  />
+
+  <view class="btn {{busy ? 'off' : ''}}" bindtap="confirm">确认裁剪</view>
+</view>

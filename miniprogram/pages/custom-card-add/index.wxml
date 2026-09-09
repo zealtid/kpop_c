@@ -1,11 +1,15 @@
 <view class="page">
   <view class="h1">拍照加卡</view>
-  <view class="sub">仅自己可见，不进入公开图鉴，不计入官方进度。</view>
+  <view class="sub">仅自己可见，不进入公开图鉴，不计入官方进度。正面须裁成 {{aspectLabel}} 竖图。</view>
 
-  <view class="card" bindtap="pickImage">
-    <view class="label">正面照片</view>
+  <view class="card">
+    <view class="label">正面照片（{{aspectLabel}}）</view>
     <image wx:if="{{preview}}" class="preview" src="{{preview}}" mode="aspectFill"/>
-    <view wx:else class="ph pick">点击相册或相机</view>
+    <view wx:else class="ph pick">选图后必须裁剪，不可跳过</view>
+    <view class="row pick-row">
+      <view class="btn ghost slim" bindtap="pickAlbum">相册</view>
+      <view class="btn ghost slim" bindtap="pickCamera">相机</view>
+    </view>
   </view>
 
   <view class="card">
@@ -24,6 +28,21 @@
         bindtap="pickGroup"
         data-id="{{item.id}}"
       >{{item.nameZh}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{showMembers}}" class="card">
+    <view class="label">成员（选填，可跳过）</view>
+    <view wx:if="{{membersEmpty}}" class="muted">该组合暂无成员，可跳过</view>
+    <view class="chips">
+      <view class="chip {{memberId===''?'on':''}}" bindtap="pickMember" data-id="">不指定</view>
+      <view
+        class="chip {{memberId===item.id?'on':''}}"
+        wx:for="{{members}}"
+        wx:key="id"
+        bindtap="pickMember"
+        data-id="{{item.id}}"
+      >{{item.nameEn}}</view>
     </view>
   </view>
 

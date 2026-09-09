@@ -13,6 +13,7 @@ Page({
     conditions: cardCondition.CONDITIONS,
     saving: false,
     missing: false,
+    canPreview: false,
   },
   onLoad(q) {
     this.setData({ id: q.id || "" });
@@ -33,6 +34,7 @@ Page({
           condition: card.condition || "",
           title: card.title || "",
           note: card.note || card.notes || "",
+          canPreview: customCard.canOpenFullscreen(decorated.moderationStatus),
         });
       })
       .catch((err) => {
@@ -58,6 +60,10 @@ Page({
   },
   pickCondition(e) {
     this.setData({ condition: e.currentTarget.dataset.value || "" });
+  },
+  openPreview() {
+    if (!this.data.canPreview) return;
+    customCard.openFullscreen(this.data.card.mainImageUrl);
   },
   save() {
     if (this.data.saving || this.data.missing || !this.data.id) return;

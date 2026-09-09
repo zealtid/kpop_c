@@ -70,6 +70,12 @@ Page({
     if (!id) return;
     wx.navigateTo({ url: `/pages/custom-card/index?id=${id}` });
   },
+  openPreview(e) {
+    const id = e.currentTarget.dataset.id;
+    const card = (this.data.custom || []).find((c) => c.id === id);
+    if (!card || !customCard.canOpenFullscreen(card.moderationStatus)) return;
+    customCard.openFullscreen(card.mainImageUrl);
+  },
   addCustom() {
     const gid = (this.data.group && this.data.group.id) || "";
     wx.navigateTo({

@@ -37,6 +37,47 @@ function decorateCustomCard(card, mediaUrl) {
   };
 }
 
+/** 常规收藏大图：pending/approved 可开；rejected 没有该入口 */
+function canOpenFullscreen(status) {
+  return inNormalCollection(status);
+}
+
+function mapCatalogMember(row) {
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    groupId: String(row.groupId || row.group_id || ""),
+    nameZh: row.nameZh || row.name_zh || "",
+    nameEn: row.nameEn || row.name_en || "",
+    color: row.color || "#8a8494",
+  };
+}
+
+function nextMemberIdOnGroupChange(prevMemberId, nextMembers) {
+  if (!prevMemberId) return "";
+  const ok = (nextMembers || []).some((m) => String(m.id) === String(prevMemberId));
+  return ok ? String(prevMemberId) : "";
+}
+
+let previewSrc = "";
+
+function openFullscreen(src) {
+  if (!src) return false;
+  previewSrc = src;
+  if (typeof wx !== "undefined" && typeof wx.navigateTo === "function") {
+    wx.navigateTo({ url: "/pages/image-preview/index" });
+  }
+  return true;
+}
+
+function takePreviewSrc() {
+  return previewSrc || "";
+}
+
+function clearPreviewSrc() {
+  previewSrc = "";
+}
+
 module.exports = {
   CUSTOM_BADGE,
   customCountLabel,
@@ -44,4 +85,10 @@ module.exports = {
   inNormalCollection,
   inShareImage,
   decorateCustomCard,
+  canOpenFullscreen,
+  mapCatalogMember,
+  nextMemberIdOnGroupChange,
+  openFullscreen,
+  takePreviewSrc,
+  clearPreviewSrc,
 };
