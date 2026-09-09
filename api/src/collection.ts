@@ -1,5 +1,5 @@
 import { query, withTransaction } from "./db.js";
-import { AppError, badRequest, notFound } from "./errors.js";
+import { badRequest, notFound } from "./errors.js";
 import { track } from "./analytics.js";
 import { getGroup, mapGroup, mapTemplate } from "./catalog.js";
 
@@ -199,13 +199,21 @@ export async function removeOwn(userId: string, templateId: string) {
   return { deleted: true, wantRestored: false };
 }
 
+/** 已拥有再点想要：HTTP 200 + 业务码，供小程序 Toast 识别，不写库。 */
+export const OWN_WANT_MUTEX = "OWN_WANT_MUTEX";
+
 export async function addWant(userId: string, templateId: string) {
   const owned = await query(
     "SELECT 1 FROM user_cards WHERE user_id = $1 AND template_id = $2",
     [userId, templateId],
   );
   if (owned.rowCount) {
-    throw new AppError(409, "OWN_WANT_MUTEX", "已拥有，无法加入想要");
+    return {
+      code: OWN_WANT_MUTEX,
+      message: "已拥有，无法加入想要",
+      wanted: false,
+      templateId,
+    };
   }
   const exists = await query("SELECT 1 FROM templates WHERE id = $1", [templateId]);
   if (!exists.rowCount) throw notFound("模板不存在");

@@ -45,12 +45,15 @@ Page({
         method: "POST",
         data: { templateId: e.currentTarget.dataset.id },
       })
-      .then(() => wx.showToast({ title: "已加入想要" }))
+      .then((data) => {
+        if (api.isOwnWantMutex(data)) {
+          wx.showToast({ title: data.message || "已拥有，无法加入想要", icon: "none" });
+          return;
+        }
+        wx.showToast({ title: "已加入想要" });
+      })
       .catch((err) => {
-        wx.showToast({
-          title: err.code === "OWN_WANT_MUTEX" ? "已拥有，无法加入想要" : err.message || "失败",
-          icon: "none",
-        });
+        wx.showToast({ title: err.message || "失败", icon: "none" });
       });
   },
 });

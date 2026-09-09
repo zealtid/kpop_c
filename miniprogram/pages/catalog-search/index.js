@@ -53,12 +53,14 @@ Page({
     const id = e.currentTarget.dataset.id;
     api
       .request({ url: "/collection/wants", method: "POST", data: { templateId: id } })
-      .then(() => wx.showToast({ title: "已加入想要" }))
-      .catch((err) => {
-        if (err.code === "OWN_WANT_MUTEX") {
-          wx.showToast({ title: "已拥有，无法加入想要", icon: "none" });
+      .then((data) => {
+        if (api.isOwnWantMutex(data)) {
+          wx.showToast({ title: data.message || "已拥有，无法加入想要", icon: "none" });
           return;
         }
+        wx.showToast({ title: "已加入想要" });
+      })
+      .catch((err) => {
         wx.showToast({ title: err.message || "失败", icon: "none" });
       });
   },
