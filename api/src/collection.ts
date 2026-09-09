@@ -27,6 +27,32 @@ const PROGRESS_SQL = `
 export const PROGRESS_COPY =
   "进度 = 已拥有不重复模板数 / 范围内已发布模板数（含特典，不含已废弃）";
 
+/** 品相枚举：全新 / 近全新 / 优秀 / 良好 / 较差；可空 */
+export const CARD_CONDITIONS = ["mint", "near_mint", "excellent", "good", "poor"] as const;
+export type CardCondition = (typeof CARD_CONDITIONS)[number];
+export const NOTES_MAX_LENGTH = 500;
+
+const OWNED_CARD_SQL = `
+  SELECT t.*, r.title AS release_title, r.title_zh AS release_title_zh, r.released_on,
+         r.group_id, g.slug AS group_slug, g.name_zh AS group_name_zh,
+         m.name_en AS member_name_en, m.name_zh AS member_name_zh, m.color AS member_color,
+         uc.quantity, uc.condition, uc.notes
+  FROM user_cards uc
+  JOIN templates t ON t.id = uc.template_id
+  JOIN releases r ON r.id = t.release_id
+  JOIN idol_groups g ON g.id = r.group_id
+  LEFT JOIN members m ON m.id = t.member_id
+`;
+
+function mapOwnedCard(row: Record<string, unknown>) {
+  return {
+    ...mapTemplate(row),
+    quantity: row.quantity as number,
+    condition: (row.condition as string | null) || null,
+    notes: (row.notes as string | null) || null,
+  };
+}
+
 export async function progressForGroups(userId: string | null, groupIds: string[]) {
   if (!groupIds.length) return [];
   const r = await query(PROGRESS_SQL, [userId, groupIds]);
@@ -83,15 +109,7 @@ export async function groupDetail(userId: string, groupKey: string) {
   const group = await getGroup(groupKey);
   const [prog] = await progressForGroups(userId, [group.id as string]);
   const owned = await query(
-    `SELECT t.*, r.title AS release_title, r.title_zh AS release_title_zh, r.released_on,
-            r.group_id, g.slug AS group_slug, g.name_zh AS group_name_zh,
-            m.name_en AS member_name_en, m.name_zh AS member_name_zh, m.color AS member_color,
-            uc.quantity
-     FROM user_cards uc
-     JOIN templates t ON t.id = uc.template_id
-     JOIN releases r ON r.id = t.release_id
-     JOIN idol_groups g ON g.id = r.group_id
-     LEFT JOIN members m ON m.id = t.member_id
+    `${OWNED_CARD_SQL}
      WHERE uc.user_id = $1 AND r.group_id = $2
      ORDER BY m.sort_order NULLS LAST, r.released_on, t.version`,
     [userId, group.id],
@@ -109,10 +127,7 @@ export async function groupDetail(userId: string, groupKey: string) {
      ORDER BY m.sort_order NULLS LAST, t.version`,
     [userId, group.id],
   );
-  const ownedCards = owned.rows.map((row) => ({
-    ...mapTemplate(row),
-    quantity: row.quantity as number,
-  }));
+  const ownedCards = owned.rows.map(mapOwnedCard);
   return {
     group,
     progress: toProgress(
@@ -174,18 +189,91 @@ export async function ownCards(userId: string, items: OwnItem[]) {
   return result;
 }
 
-export async function updateQuantity(userId: string, templateId: string, quantity: number) {
-  if (!Number.isInteger(quantity) || quantity < 1) {
-    throw badRequest("quantity 必须 ≥ 1（撤销请删除行，禁止写 0）");
+export async function getOwnedCard(userId: string, templateId: string) {
+  const r = await query(`${OWNED_CARD_SQL} WHERE uc.user_id = $1 AND uc.template_id = $2`, [
+    userId,
+    templateId,
+  ]);
+  if (!r.rows[0]) throw notFound("尚未拥有该卡");
+  return mapOwnedCard(r.rows[0]);
+}
+
+type OwnedCardPatch = {
+  quantity?: unknown;
+  condition?: unknown;
+  notes?: unknown;
+};
+
+function hasOwn(obj: object, key: string) {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+export async function updateOwnedCard(userId: string, templateId: string, patch: OwnedCardPatch) {
+  const body = patch && typeof patch === "object" ? patch : {};
+  const hasQuantity = hasOwn(body, "quantity");
+  const hasCondition = hasOwn(body, "condition");
+  const hasNotes = hasOwn(body, "notes");
+  if (!hasQuantity && !hasCondition && !hasNotes) {
+    throw badRequest("请提供 quantity、condition 或 notes");
   }
+
+  const sets: string[] = ["updated_at = now()"];
+  const params: unknown[] = [userId, templateId];
+
+  if (hasQuantity) {
+    const quantity = Number(body.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw badRequest("quantity 必须 ≥ 1（撤销请删除行，禁止写 0）");
+    }
+    params.push(quantity);
+    sets.push(`quantity = $${params.length}`);
+  }
+
+  if (hasCondition) {
+    let condition = body.condition;
+    if (condition === "" || condition === null) {
+      condition = null;
+    } else if (
+      typeof condition !== "string" ||
+      !CARD_CONDITIONS.includes(condition as CardCondition)
+    ) {
+      throw badRequest("无效的品相（mint / near_mint / excellent / good / poor）");
+    }
+    params.push(condition);
+    sets.push(`condition = $${params.length}`);
+  }
+
+  if (hasNotes) {
+    let notes: string | null;
+    if (body.notes === null) {
+      notes = null;
+    } else if (typeof body.notes !== "string") {
+      throw badRequest("notes 必须是文本");
+    } else {
+      notes = body.notes.trim();
+      if (notes.length > NOTES_MAX_LENGTH) {
+        throw badRequest(`备注最多 ${NOTES_MAX_LENGTH} 字`);
+      }
+      if (!notes) notes = null;
+    }
+    params.push(notes);
+    sets.push(`notes = $${params.length}`);
+  }
+
   const r = await query(
-    `UPDATE user_cards SET quantity = $3, updated_at = now()
+    `UPDATE user_cards SET ${sets.join(", ")}
      WHERE user_id = $1 AND template_id = $2
-     RETURNING id`,
-    [userId, templateId, quantity],
+     RETURNING template_id, quantity, condition, notes`,
+    params,
   );
   if (!r.rowCount) throw notFound("尚未拥有该卡");
-  return { templateId, quantity };
+  const row = r.rows[0];
+  return {
+    templateId: row.template_id as string,
+    quantity: row.quantity as number,
+    condition: (row.condition as string | null) || null,
+    notes: (row.notes as string | null) || null,
+  };
 }
 
 export async function removeOwn(userId: string, templateId: string) {

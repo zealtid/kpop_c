@@ -10,7 +10,8 @@
     "pages/feedback/index",
     "pages/about/index",
     "pages/share-preview/index",
-    "pages/follow-onboarding/index"
+    "pages/follow-onboarding/index",
+    "pages/card-detail/index"
   ],
   "window": {
     "navigationBarBackgroundColor": "#121016",

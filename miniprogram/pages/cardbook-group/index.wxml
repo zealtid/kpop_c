@@ -14,12 +14,13 @@
 
   <view wx:if="{{list.length===0}}" class="empty">暂无卡片</view>
   <view class="grid3">
-    <view class="tile" wx:for="{{list}}" wx:key="id">
+    <view class="tile" wx:for="{{list}}" wx:key="id" bindtap="openCard" data-id="{{item.id}}">
       <view class="ph" style="background: {{item.memberColor}}">
         <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
       </view>
       <view class="muted">{{item.memberNameEn}}</view>
       <view class="tag">{{item.version}} <text wx:if="{{item.quantity}}">×{{item.quantity}}</text></view>
+      <view wx:if="{{item.conditionLabel}}" class="muted">{{item.conditionLabel}}</view>
       <view wx:if="{{tab===0}}" class="mini" catchtap="unown" data-id="{{item.id}}">撤销拥有</view>
       <view wx:if="{{tab===1}}" class="mini" catchtap="unwant" data-id="{{item.id}}">移除想要</view>
     </view>

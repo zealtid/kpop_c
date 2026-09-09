@@ -203,9 +203,17 @@ export function createApp() {
     }
   });
 
+  app.get("/collection/cards/:templateId", requireAuth, async (req, res, next) => {
+    try {
+      res.json(await collection.getOwnedCard(req.user!.id, req.params.templateId));
+    } catch (e) {
+      next(e);
+    }
+  });
+
   app.patch("/collection/cards/:templateId", requireAuth, async (req, res, next) => {
     try {
-      res.json(await collection.updateQuantity(req.user!.id, req.params.templateId, Number(req.body?.quantity)));
+      res.json(await collection.updateOwnedCard(req.user!.id, req.params.templateId, req.body || {}));
     } catch (e) {
       next(e);
     }
