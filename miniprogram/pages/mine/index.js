@@ -14,7 +14,10 @@ Page({
       api.request({ url: "/catalog/groups", auth: false }),
       api.request({ url: "/me/follows" }),
     ])
-      .then(([user, catalog, follows]) => {
+      .then((results) => {
+        const user = results[0];
+        const catalog = results[1];
+        const follows = results[2];
         const followed = new Set((follows.groups || []).map((g) => g.id));
         this.setData({
           needsLogin: false,
