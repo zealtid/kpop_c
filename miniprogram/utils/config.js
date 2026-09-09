@@ -1,4 +1,4 @@
-/** 本地微信开发者工具可关域名校验后直连。真机请改成已备案 HTTPS。 */
-const API_BASE = "http://127.0.0.1:3000";
+/** DevTools can disable domain check; 真机请将此域名加入微信 request 合法域名。 */
+const API_BASE = "https://api-production-0818.up.railway.app";
 
 module.exports = { API_BASE };
