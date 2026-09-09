@@ -13,6 +13,7 @@ import * as catalog from "./catalog.js";
 import * as collection from "./collection.js";
 import { createShareImage } from "./share.js";
 import * as admin from "./admin.js";
+import * as adminCatalog from "./adminCatalog.js";
 import { ANALYTICS_EVENTS, track } from "./analytics.js";
 import { query } from "./db.js";
 import * as customCards from "./customCards.js";
@@ -36,7 +37,7 @@ export function createApp() {
   app.use(optionalAuth);
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, service: "kpop_c-api", phase: "M2.5-OPS-0" });
+    res.json({ ok: true, service: "kpop_c-api", phase: "M2.5-OPS-1" });
   });
 
   app.get("/", (_req, res) => {
@@ -44,7 +45,7 @@ export function createApp() {
       name: "星卡 API",
       client: "WeChat mini-program + ops admin",
       docs: "see repository README",
-      phase: "M2.5-OPS-0",
+      phase: "M2.5-OPS-1",
     });
   });
 
@@ -105,7 +106,7 @@ export function createApp() {
 
   app.get("/catalog/groups/:id", async (req, res, next) => {
     try {
-      const group = await catalog.getGroup(req.params.id);
+      const group = await catalog.getGroup(req.params.id, { requirePublished: true });
       const members = await catalog.listMembers(group.id as string);
       const releases = await catalog.listReleases(group.id as string);
       res.json({ group, members, releases });
@@ -116,7 +117,7 @@ export function createApp() {
 
   app.get("/catalog/groups/:id/members", async (req, res, next) => {
     try {
-      const group = await catalog.getGroup(req.params.id);
+      const group = await catalog.getGroup(req.params.id, { requirePublished: true });
       res.json({ members: await catalog.listMembers(group.id as string) });
     } catch (e) {
       next(e);
@@ -125,7 +126,7 @@ export function createApp() {
 
   app.get("/catalog/groups/:id/releases", async (req, res, next) => {
     try {
-      const group = await catalog.getGroup(req.params.id);
+      const group = await catalog.getGroup(req.params.id, { requirePublished: true });
       res.json({ releases: await catalog.listReleases(group.id as string) });
     } catch (e) {
       next(e);
@@ -561,9 +562,334 @@ export function createApp() {
     try {
       const templates = await catalog.searchTemplates({
         q: req.query.q as string | undefined,
+        groupId: req.query.groupId as string | undefined,
+        releaseId: req.query.releaseId as string | undefined,
+        memberId: req.query.memberId as string | undefined,
+        status: req.query.status as string | undefined,
         includeDraft: true,
       });
       res.json({ templates });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/templates/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await admin.getTemplate(req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/admin/templates/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await admin.updateTemplate(req.params.id, req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "template.update",
+        entityType: "template",
+        entityId: result.id,
+        payload: { version: req.body?.version, releaseId: req.body?.releaseId },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/templates/:id/deprecate", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await admin.setTemplateStatus(req.params.id, "deprecated");
+      await writeAuditLog({
+        actor: req.ops,
+        action: "template.deprecate",
+        entityType: "template",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/templates/:id/status", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await admin.setTemplateStatus(req.params.id, req.body?.status);
+      await writeAuditLog({
+        actor: req.ops,
+        action: `template.${result.status}`,
+        entityType: "template",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  // ---- admin catalog CRUD (OPS-1) ----
+  app.get("/admin/catalog/groups", requireAdmin, async (_req, res, next) => {
+    try {
+      res.json({ groups: await adminCatalog.listAdminGroups() });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog/groups", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.createGroup(req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "group.create",
+        entityType: "idol_group",
+        entityId: result.id,
+        payload: { slug: result.slug, status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/catalog/groups/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await adminCatalog.getAdminGroup(req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/admin/catalog/groups/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.updateGroup(req.params.id, req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "group.update",
+        entityType: "idol_group",
+        entityId: result.id,
+        payload: { slug: result.slug },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog/groups/:id/status", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.setGroupStatus(req.params.id, req.body?.status);
+      await writeAuditLog({
+        actor: req.ops,
+        action: `group.${result.status}`,
+        entityType: "idol_group",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/catalog/members", requireAdmin, async (req, res, next) => {
+    try {
+      res.json({ members: await adminCatalog.listAdminMembers(req.query.groupId as string | undefined) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog/members", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.createMember(req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "member.create",
+        entityType: "member",
+        entityId: result.id,
+        payload: { groupId: result.groupId, nameEn: result.nameEn, status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/catalog/members/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await adminCatalog.getAdminMember(req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/admin/catalog/members/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.updateMember(req.params.id, req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "member.update",
+        entityType: "member",
+        entityId: result.id,
+        payload: { nameEn: result.nameEn },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog/members/:id/status", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.setMemberStatus(req.params.id, req.body?.status);
+      await writeAuditLog({
+        actor: req.ops,
+        action: `member.${result.status}`,
+        entityType: "member",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/catalog/releases", requireAdmin, async (req, res, next) => {
+    try {
+      res.json({ releases: await adminCatalog.listAdminReleases(req.query.groupId as string | undefined) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog/releases", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.createRelease(req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "release.create",
+        entityType: "release",
+        entityId: result.id,
+        payload: { title: result.title, kind: result.kind, status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/catalog/releases/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await adminCatalog.getAdminRelease(req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/admin/catalog/releases/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.updateRelease(req.params.id, req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "release.update",
+        entityType: "release",
+        entityId: result.id,
+        payload: { title: result.title, kind: result.kind },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog/releases/:id/status", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.setReleaseStatus(req.params.id, req.body?.status);
+      await writeAuditLog({
+        actor: req.ops,
+        action: `release.${result.status}`,
+        entityType: "release",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/catalog/templates", requireAdmin, async (req, res, next) => {
+    try {
+      const templates = await catalog.searchTemplates({
+        q: req.query.q as string | undefined,
+        groupId: req.query.groupId as string | undefined,
+        releaseId: req.query.releaseId as string | undefined,
+        memberId: req.query.memberId as string | undefined,
+        status: req.query.status as string | undefined,
+        includeDraft: true,
+      });
+      res.json({ templates });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog/templates", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await admin.createDraftTemplate(req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "template.create",
+        entityType: "template",
+        entityId: result.id,
+        payload: { releaseId: req.body?.releaseId, version: req.body?.version },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/catalog/templates/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await admin.getTemplate(req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/admin/catalog/templates/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await admin.updateTemplate(req.params.id, req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "template.update",
+        entityType: "template",
+        entityId: result.id,
+        payload: { version: req.body?.version, releaseId: req.body?.releaseId },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog/templates/:id/status", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await admin.setTemplateStatus(req.params.id, req.body?.status);
+      await writeAuditLog({
+        actor: req.ops,
+        action: `template.${result.status}`,
+        entityType: "template",
+        entityId: result.id,
+        payload: { status: result.status },
+      });
+      res.json(result);
     } catch (e) {
       next(e);
     }

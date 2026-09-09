@@ -89,7 +89,7 @@ function toProgress(row: {
 export async function overview(userId: string | null) {
   const groups = await query(
     `SELECT id, slug, name_zh, name_en, name_ko, logo_color, scope_note, is_pilot
-     FROM idol_groups WHERE is_pilot = true ORDER BY slug`,
+     FROM idol_groups WHERE is_pilot = true AND status = 'published' ORDER BY slug`,
   );
   const ids = groups.rows.map((g) => g.id as string);
   const progress = userId ? await progressForGroups(userId, ids) : [];
