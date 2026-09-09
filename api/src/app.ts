@@ -14,6 +14,9 @@ import { query } from "./db.js";
 import * as customCards from "./customCards.js";
 import { applyMediaCheckResult } from "./moderation.js";
 import { isSafeCustomMediaParams, readCustomImage } from "./storage.js";
+import * as feed from "./feed.js";
+import * as schedule from "./schedule.js";
+import { parseUtc } from "./time.js";
 
 export function createApp() {
   const app = express();
@@ -22,7 +25,7 @@ export function createApp() {
   app.use(optionalAuth);
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, service: "kpop_c-api", phase: "M1" });
+    res.json({ ok: true, service: "kpop_c-api", phase: "M2-a" });
   });
 
   app.get("/", (_req, res) => {
@@ -30,6 +33,7 @@ export function createApp() {
       name: "星卡 API",
       client: "WeChat mini-program only",
       docs: "see repository README",
+      phase: "M2-a",
     });
   });
 
@@ -344,6 +348,75 @@ export function createApp() {
     );
   });
 
+  // ---- feed (M2-a: API only, no mini-program UI) ----
+  app.get("/feed", async (req, res, next) => {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : undefined;
+      if (req.user) {
+        res.json(await feed.followedTimeline(req.user.id, limit));
+      } else {
+        res.json(await feed.guestFeatured(limit));
+      }
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/feed/featured", async (req, res, next) => {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : undefined;
+      res.json(await feed.guestFeatured(limit));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/feed/:id", async (req, res, next) => {
+    try {
+      res.json(await feed.getPublicFeed(req.params.id, req.user?.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  // ---- schedule (UTC store, Asia/Shanghai display) ----
+  app.get("/schedule/today", async (req, res, next) => {
+    try {
+      res.json(
+        await schedule.scheduleToday(req.user?.id, req.query.groupId as string | undefined),
+      );
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/schedule", async (req, res, next) => {
+    try {
+      const from = req.query.from ? parseUtc(req.query.from, "from") : undefined;
+      const to = req.query.to ? parseUtc(req.query.to, "to") : undefined;
+      res.json(
+        await schedule.listSchedule({
+          userId: req.user?.id,
+          groupId: req.query.groupId as string | undefined,
+          from,
+          to,
+          kind: req.query.kind as string | undefined,
+          limit: req.query.limit ? Number(req.query.limit) : undefined,
+        }),
+      );
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/schedule/:id", async (req, res, next) => {
+    try {
+      res.json(await schedule.getPublicSchedule(req.params.id, req.user?.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
   // ---- feedback (text only) ----
   app.post("/feedback/missing", requireAuth, async (req, res, next) => {
     try {
@@ -403,6 +476,118 @@ export function createApp() {
         includeDraft: true,
       });
       res.json({ templates });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/feed", requireAdmin, async (req, res, next) => {
+    try {
+      res.json({
+        items: await feed.listAdminFeeds({
+          status: req.query.status as string | undefined,
+        }),
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/feed", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await feed.createFeed(req.body || {}));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/admin/feed/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await feed.updateFeed(req.params.id, req.body || {}));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/feed/:id/publish", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await feed.setFeedStatus(req.params.id, "published"));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/feed/:id/hide", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await feed.setFeedStatus(req.params.id, "hidden"));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/feed/l2-whitelist", requireAdmin, async (req, res, next) => {
+    try {
+      res.json({ users: await feed.listL2Whitelist() });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/feed/l2-whitelist", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await feed.addL2Whitelist(String(req.body?.userId || "")));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.delete("/admin/feed/l2-whitelist/:userId", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await feed.removeL2Whitelist(req.params.userId));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/schedule", requireAdmin, async (req, res, next) => {
+    try {
+      res.json({
+        events: await schedule.listAdminSchedule({
+          status: req.query.status as string | undefined,
+        }),
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/schedule", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await schedule.createSchedule(req.body || {}));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/admin/schedule/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await schedule.updateSchedule(req.params.id, req.body || {}));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/schedule/:id/publish", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await schedule.setScheduleStatus(req.params.id, "published"));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/schedule/:id/hide", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await schedule.setScheduleStatus(req.params.id, "hidden"));
     } catch (e) {
       next(e);
     }
