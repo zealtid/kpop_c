@@ -12,7 +12,7 @@ K-pop 小卡图鉴 **微信小程序**（M1）。仓库路径：[`github.com/zea
 - **情报** 仅占位，没有假信息流 / 日程。
 - 试点：Hearts2Hearts（深）+ BTS 切片专辑《ARIRANG》（2026-03-20）。
 - 可见性只有 `private | public`，无私友 UI，无单卡可见性开关。分享长图包含该组 **全部已拥有** 卡片。
-- 拥有会自动去掉想要；已拥有再点想要 → Toast 互斥且 **不写入**；取消拥有 **不会** 加回想要。
+- 拥有会自动去掉想要；已拥有再点想要 → HTTP **200** + 业务码 `OWN_WANT_MUTEX` Toast 互斥且 **不写入**；取消拥有 **不会** 加回想要。
 - 进度 = `owned_distinct / count(范围内已发布模板)`，**含特典、不含已废弃**。BTS 脚注固定：「当前图鉴仅含《ARIRANG》切片」。卡册页展示口径说明。
 - `UserCard` 唯一键 `(user_id, template_id)`；`quantity ≥ 1`；撤销 = **DELETE 行**（禁止 qty=0）。
 - 缺卡反馈 **仅文字**。
@@ -72,7 +72,7 @@ npm test              # 对 kpop_c_test 跑 M1 行为测试（含 Path B）
 | **O01** | 卡册总览组合卡 + 进度环，无搜索（P7） | `GET /collection/overview` `searchEnabled=false`；卡册页 |
 | **O02** | 组详情 拥有 \| 想要 \| 重复 | `GET /collection/groups/:id`；`pages/cardbook-group` |
 | **O03** | 拥有自动移除想要 | `POST /collection/cards` |
-| **O04** | 已拥有点想要 → Toast，不写库 | `409 OWN_WANT_MUTEX` |
+| **O04** | 已拥有点想要 → Toast，不写库 | `200` + 业务码 `OWN_WANT_MUTEX`（非 HTTP 409） |
 | **O05** | 取消拥有不加回想要 | `DELETE /collection/cards/:id` `wantRestored=false` |
 | **O06** | 唯一 (user, template)；qty≥1 | `user_cards` 约束 |
 | **O07** | 撤销 DELETE 行 | 同上 |
@@ -96,7 +96,7 @@ npm test              # 对 kpop_c_test 跑 M1 行为测试（含 Path B）
 | 图鉴 | `GET /catalog/groups` `.../members` `.../releases` `GET /catalog/releases/:id/templates` `GET /catalog/search` `GET /catalog/templates` |
 | 卡册 | `GET /collection/overview` `GET /collection/groups/:id` `.../progress` |
 | 拥有 | `POST /collection/cards` `POST /collection/cards/batch` `PATCH\|DELETE /collection/cards/:templateId` |
-| 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId` |
+| 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
 | 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }` |
 | 反馈 | `POST /feedback/missing` `{ text }` |
 | 管理 | `POST /admin/import` `POST /admin/templates` `POST /admin/templates/:id/publish\|unpublish` Header `x-admin-token` |

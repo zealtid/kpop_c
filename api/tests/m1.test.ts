@@ -165,8 +165,12 @@ test("O02 owned + want → toast mutex, do not write", async () => {
     method: "POST",
     body: JSON.stringify({ templateId: t.id }),
   });
-  assert.equal(want.status, 409);
-  assert.equal((want.body as { error: { code: string } }).error.code, "OWN_WANT_MUTEX");
+  // HTTP 200 + business code so mini-program Toast can key off the body (not 409).
+  assert.equal(want.status, 200);
+  const mutex = want.body as { code: string; message: string; wanted: boolean };
+  assert.equal(mutex.code, "OWN_WANT_MUTEX");
+  assert.match(mutex.message, /已拥有/);
+  assert.equal(mutex.wanted, false);
   const wants = await api("/collection/wants");
   assert.ok(!(wants.body as { templateIds: string[] }).templateIds.includes(t.id));
 });

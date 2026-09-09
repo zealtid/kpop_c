@@ -34,4 +34,14 @@ function mediaUrl(path) {
   return API_BASE + path;
 }
 
-module.exports = { request, mediaUrl, API_BASE };
+/** Business code on HTTP 200 (or legacy error envelope). */
+function businessCode(data) {
+  if (!data) return "";
+  return data.code || (data.error && data.error.code) || "";
+}
+
+function isOwnWantMutex(data) {
+  return businessCode(data) === "OWN_WANT_MUTEX";
+}
+
+module.exports = { request, mediaUrl, API_BASE, businessCode, isOwnWantMutex };
