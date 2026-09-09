@@ -1,7 +1,8 @@
 const api = require("../../utils/api");
+const catalogSelect = require("../../utils/catalogSelect");
 
 Page({
-  data: { id: "", group: {}, releases: [] },
+  data: { id: "", group: {}, releases: [], selected: [] },
   onLoad(q) {
     this.setData({ id: q.id });
     this.load();
@@ -14,13 +15,10 @@ Page({
         releases.map((r) =>
           api.request({ url: `/catalog/releases/${r.id}/templates`, auth: false }).then((t) => ({
             ...r,
-            templates: (t.templates || []).map((x) => ({
-              ...x,
-              mainImageUrl: api.mediaUrl(x.mainImageUrl),
-            })),
+            templates: catalogSelect.mapTemplatesForGrid(t.templates, (url) => api.mediaUrl(url)),
           })),
         ),
-      ).then((full) => this.setData({ releases: full }));
+      ).then((full) => this.setData({ releases: full, selected: [] }));
     });
   },
   onSearch(e) {
@@ -28,6 +26,23 @@ Page({
     wx.navigateTo({
       url: `/pages/catalog-search/index?q=${encodeURIComponent(q + " " + (this.data.group.nameEn || ""))}`,
     });
+  },
+  toggle(e) {
+    const next = catalogSelect.toggleSelected(this.data.releases, e.currentTarget.dataset.id);
+    this.setData(next);
+  },
+  batchOwn() {
+    const items = catalogSelect.toBatchOwnItems(this.data.selected);
+    if (!items.length) {
+      wx.showToast({ title: "先点选卡片", icon: "none" });
+      return;
+    }
+    api
+      .request({ url: "/collection/cards/batch", method: "POST", data: { items } })
+      .then(() => {
+        wx.showToast({ title: `已拥有 ${items.length} 张` });
+      })
+      .catch(api.handleWriteError);
   },
   ownOne(e) {
     api
