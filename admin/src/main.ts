@@ -15,6 +15,7 @@ import {
 } from "./catalogPage";
 import { completenessView, type CompletenessGroup } from "./completenessPage";
 import { buildImportBody, importView, type ImportReport } from "./importPage";
+import { ticketDetailView, ticketsListView, type Ticket } from "./ticketsPage";
 
 type Menu = { id: string; label: string };
 type OpsUser = { id: string | null; username: string; role: string; menus: Menu[] };
@@ -43,8 +44,10 @@ type AuditLog = {
   createdAt: string;
 };
 
+type Page = "login" | "catalog" | "intel" | "tickets";
+
 const app = document.querySelector("#app") as HTMLDivElement;
-let page: "login" | "catalog" | "intel" = "catalog";
+let page: Page = "catalog";
 let catalogTab: CatalogTab = "groups";
 let editingId: string | null = null;
 let catalogNotice = "";
@@ -54,11 +57,18 @@ let importReport: ImportReport | null = null;
 let importCommitted = false;
 let user: OpsUser | null = null;
 let notice = "";
+let ticketId: string | null = null;
+let ticketStatusFilter = "open";
+let ticketNotice = "";
 
-function parseHash(): { page: "login" | "catalog" | "intel"; tab: CatalogTab } {
+function parseHash(): { page: Page; tab: CatalogTab; ticketId: string | null } {
   const h = location.hash.replace(/^#\/?/, "");
-  if (h.startsWith("intel")) return { page: "intel", tab: catalogTab };
-  if (h.startsWith("login")) return { page: "login", tab: catalogTab };
+  if (h.startsWith("intel")) return { page: "intel", tab: catalogTab, ticketId: null };
+  if (h.startsWith("login")) return { page: "login", tab: catalogTab, ticketId: null };
+  if (h.startsWith("tickets")) {
+    const id = h.split("/")[1] || null;
+    return { page: "tickets", tab: catalogTab, ticketId: id };
+  }
   const part = h.split("/")[1];
   const tab: CatalogTab =
     part === "members" ||
@@ -69,7 +79,7 @@ function parseHash(): { page: "login" | "catalog" | "intel"; tab: CatalogTab } {
     part === "import"
       ? part
       : "groups";
-  return { page: "catalog", tab };
+  return { page: "catalog", tab, ticketId: null };
 }
 
 async function hydrate() {
@@ -89,12 +99,29 @@ async function hydrate() {
   const route = parseHash();
   page = route.page === "login" ? "catalog" : route.page;
   catalogTab = route.tab;
+  ticketId = route.ticketId;
   render();
 }
 
-function navLink(id: "catalog" | "intel", label: string) {
-  const href = id === "catalog" ? `#/catalog/${catalogTab}` : `#/${id}`;
-  return `<a href="${href}" class="${page === id ? "active" : ""}">${label}</a>`;
+function menuHref(id: string) {
+  if (id === "catalog") return `#/catalog/${catalogTab}`;
+  return `#/${id}`;
+}
+
+function navHtml() {
+  const menus = user?.menus?.length
+    ? user.menus
+    : [
+        { id: "catalog", label: "图鉴" },
+        { id: "intel", label: "情报" },
+        { id: "tickets", label: "反馈/工单" },
+      ];
+  return menus
+    .map(
+      (m) =>
+        `<a href="${menuHref(m.id)}" class="${page === m.id ? "active" : ""}">${escapeHtml(m.label)}</a>`,
+    )
+    .join(" ");
 }
 
 function layout(inner: string) {
@@ -102,7 +129,7 @@ function layout(inner: string) {
     <div class="shell">
       <header class="top">
         <div class="brand">星卡运营后台</div>
-        <nav class="nav">${navLink("catalog", "图鉴")} ${navLink("intel", "情报")}</nav>
+        <nav class="nav">${navHtml()}</nav>
         <div class="who">
           <span>${user?.username || ""} · ${user?.role || ""}</span>
           <button class="btn ghost" id="logout" type="button">退出</button>
@@ -283,6 +310,69 @@ function bindImport() {
   });
 }
 
+function ticketNote() {
+  const area = document.querySelector<HTMLTextAreaElement>("#ticket-close-form textarea");
+  return area?.value || "";
+}
+
+function bindTickets() {
+  document.querySelectorAll<HTMLAnchorElement>("[data-ticket-filter]").forEach((a) => {
+    a.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ticketStatusFilter = a.dataset.ticketFilter || "";
+      ticketNotice = "";
+      render();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-ticket-status]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!ticketId) return;
+      const status = btn.dataset.ticketStatus;
+      if (!status) return;
+      const res = await api<Ticket>(`/admin/tickets/${ticketId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, internalNote: ticketNote() }),
+      });
+      ticketNotice = res.status === 200 ? `已更新为 ${status}` : errorMessage(res.body);
+      render();
+    });
+  });
+  document.getElementById("ticket-link-form")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (!ticketId) return;
+    const fd = new FormData(ev.target as HTMLFormElement);
+    const templateId = String(fd.get("templateId") || "");
+    if (!templateId) {
+      ticketNotice = "请选择要关联的模板";
+      render();
+      return;
+    }
+    const res = await api<Ticket>(`/admin/tickets/${ticketId}/templates`, {
+      method: "POST",
+      body: JSON.stringify({ templateId }),
+    });
+    ticketNotice = res.status === 200 ? "已关联模板" : errorMessage(res.body);
+    render();
+  });
+  document.getElementById("ticket-create-form")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (!ticketId) return;
+    const fd = new FormData(ev.target as HTMLFormElement);
+    const res = await api<{ ticket: Ticket }>(`/admin/tickets/${ticketId}/templates`, {
+      method: "POST",
+      body: JSON.stringify({
+        releaseId: String(fd.get("releaseId") || ""),
+        memberId: String(fd.get("memberId") || "") || undefined,
+        version: String(fd.get("version") || ""),
+        name: String(fd.get("name") || "") || undefined,
+        isBenefit: fd.get("isBenefit") === "on",
+      }),
+    });
+    ticketNotice = res.status === 200 ? "已创建草稿模板并关联" : errorMessage(res.body);
+    render();
+  });
+}
+
 async function render() {
   if (page === "login" || !user) {
     app.innerHTML = loginView();
@@ -338,6 +428,60 @@ async function render() {
     }
     app.innerHTML = intelView(feed.body.items || [], schedule.body.events || []);
     bindShell();
+    await fillAudit();
+    return;
+  }
+
+  if (page === "tickets") {
+    if (ticketId) {
+      const [ticketRes, catalog] = await Promise.all([
+        api<Ticket>(`/admin/tickets/${ticketId}`),
+        loadCatalog("templates"),
+      ]);
+      if (ticketRes.status === 403 || ("error" in catalog && catalog.status === 403)) {
+        app.innerHTML = layout(`<section class="card"><p class="err">没有权限访问运营接口</p></section>`);
+        bindShell();
+        return;
+      }
+      if (ticketRes.status !== 200) {
+        app.innerHTML = layout(
+          `<section class="card"><p class="err">${escapeHtml(errorMessage(ticketRes.body))}</p></section>`,
+        );
+        bindShell();
+        return;
+      }
+      const releases = "error" in catalog ? [] : catalog.releases;
+      const members = "error" in catalog ? [] : catalog.members;
+      const templates = "error" in catalog ? [] : catalog.templates;
+      app.innerHTML = layout(
+        ticketDetailView(ticketRes.body, releases, members, templates, ticketNotice) +
+          `<section class="card" id="audit-card"><h2>最近审计</h2></section>`,
+      );
+      bindShell();
+      bindTickets();
+      await fillAudit();
+      return;
+    }
+    const qs = ticketStatusFilter ? `?status=${encodeURIComponent(ticketStatusFilter)}` : "";
+    const res = await api<{ tickets: Ticket[]; total: number }>(`/admin/tickets${qs}`);
+    if (res.status === 403) {
+      app.innerHTML = layout(`<section class="card"><p class="err">没有权限访问运营接口</p></section>`);
+      bindShell();
+      return;
+    }
+    if (res.status !== 200) {
+      app.innerHTML = layout(
+        `<section class="card"><p class="err">${escapeHtml(errorMessage(res.body))}</p></section>`,
+      );
+      bindShell();
+      return;
+    }
+    app.innerHTML = layout(
+      ticketsListView(res.body.tickets || [], ticketStatusFilter, ticketNotice, res.body.total || 0) +
+        `<section class="card" id="audit-card"><h2>最近审计</h2></section>`,
+    );
+    bindShell();
+    bindTickets();
     await fillAudit();
     return;
   }
@@ -432,8 +576,10 @@ window.addEventListener("hashchange", () => {
     editingId = null;
     catalogNotice = "";
   }
+  if (route.ticketId !== ticketId) ticketNotice = "";
   page = route.page === "login" ? "catalog" : route.page;
   catalogTab = route.tab;
+  ticketId = route.ticketId;
   render();
 });
 

@@ -42,7 +42,14 @@ after(async () => {
 });
 
 test("A01 unauthorized cannot open admin protected APIs", async () => {
-  const paths = ["/admin/feed", "/admin/schedule", "/admin/audit", "/admin/templates", "/admin/auth/me"];
+  const paths = [
+    "/admin/feed",
+    "/admin/schedule",
+    "/admin/audit",
+    "/admin/templates",
+    "/admin/tickets",
+    "/admin/auth/me",
+  ];
   for (const p of paths) {
     const res = await api(p);
     assert.equal(res.status, 401, p);
@@ -75,7 +82,7 @@ test("legacy x-admin-token still works for scripts", async () => {
   assert.ok(Array.isArray((res.body as { items: unknown[] }).items));
 });
 
-test("ops can log in and see Catalog | Intel menu", async () => {
+test("ops can log in and see Catalog | Intel | Tickets menu", async () => {
   const login = await api("/admin/auth/login", {
     method: "POST",
     body: JSON.stringify({ username: "ops", password: "ops-dev" }),
@@ -90,11 +97,11 @@ test("ops can log in and see Catalog | Intel menu", async () => {
   assert.equal(data.user.role, "ops");
   assert.deepEqual(
     data.user.menus.map((m) => m.id),
-    ["catalog", "intel"],
+    ["catalog", "intel", "tickets"],
   );
   assert.deepEqual(
     data.user.menus.map((m) => m.label),
-    ["图鉴", "情报"],
+    ["图鉴", "情报", "反馈/工单"],
   );
 
   const me = await api("/admin/auth/me", {
