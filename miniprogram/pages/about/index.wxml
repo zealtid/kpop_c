@@ -1,6 +1,9 @@
 <view class="page">
-  <view class="h1">星卡</view>
-  <view class="sub">微信小程序小卡图鉴。本阶段不提供 Web 客户端。</view>
+  <view class="brand">
+    <image class="brand-avatar" src="/assets/brand/xingka-avatar.png" mode="aspectFit"/>
+    <view class="h1">星卡</view>
+    <view class="sub">星卡：管理你的偶像小卡，浏览图鉴，生成卡册长图。</view>
+  </view>
   <view class="card">
     <view>试点：Hearts2Hearts 深挖 + BTS《ARIRANG》(2026-03-20) 切片。</view>
     <view class="footnote">当前图鉴仅含《ARIRANG》切片</view>

@@ -1,8 +1,8 @@
 {
   "miniprogramRoot": "./",
   "projectname": "星卡",
-  "description": "星卡 — 微信小程序小卡图鉴（M1）",
-  "appid": "touristappid",
+  "description": "星卡：管理你的偶像小卡，浏览图鉴，生成卡册长图。",
+  "appid": "wxc093954b9e077509",
   "compileType": "miniprogram",
   "libVersion": "3.5.5",
   "setting": {

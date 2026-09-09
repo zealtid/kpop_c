@@ -1,7 +1,7 @@
 {
   "name": "kpop_c",
   "private": true,
-  "description": "星卡 — 微信小程序小卡图鉴（M1）",
+  "description": "星卡：管理你的偶像小卡，浏览图鉴，生成卡册长图。",
   "workspaces": [
     "api"
   ],
