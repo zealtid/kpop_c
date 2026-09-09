@@ -20,13 +20,24 @@ export async function getGroup(idOrSlug: string) {
   return mapGroup(r.rows[0]);
 }
 
+export function mapMember(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    groupId: String(row.group_id),
+    nameZh: row.name_zh == null ? null : String(row.name_zh),
+    nameEn: row.name_en == null ? null : String(row.name_en),
+    color: (row.color as string) || "#8a8494",
+    sortOrder: row.sort_order as number,
+  };
+}
+
 export async function listMembers(groupId: string) {
   const r = await query(
     `SELECT id, group_id, name_zh, name_en, color, sort_order
      FROM members WHERE group_id = $1 ORDER BY sort_order`,
     [groupId],
   );
-  return r.rows;
+  return r.rows.map(mapMember);
 }
 
 export async function listReleases(groupId: string, includeDraft = false) {

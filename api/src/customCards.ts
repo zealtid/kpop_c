@@ -48,6 +48,14 @@ export function mapCustomCard(row: CustomRow) {
     memberNameEn,
     memberNameZh,
     memberColor: (row.member_color as string | null) || "#8a8494",
+    member: row.member_id
+      ? {
+          id: String(row.member_id),
+          nameEn: memberNameEn,
+          nameZh: memberNameZh,
+          color: (row.member_color as string | null) || "#8a8494",
+        }
+      : null,
     title,
     note,
     notes: note,
@@ -94,11 +102,19 @@ async function assertGroup(groupId: string | null) {
   if (!r.rowCount) throw badRequest("组合不存在");
 }
 
+async function memberBelongsToGroup(memberId: string, groupId: string) {
+  const r = await query("SELECT 1 FROM members WHERE id = $1 AND group_id = $2", [memberId, groupId]);
+  return !!r.rowCount;
+}
+
 async function assertMember(memberId: string | null, groupId: string | null) {
   if (!memberId) return;
-  const r = await query("SELECT id, group_id FROM members WHERE id = $1", [memberId]);
+  if (!groupId) throw badRequest("指定成员时必须选择组合");
+  const r = await query("SELECT id FROM members WHERE id = $1", [memberId]);
   if (!r.rowCount) throw badRequest("成员不存在");
-  if (groupId && r.rows[0].group_id !== groupId) throw badRequest("成员不属于该组合");
+  if (!(await memberBelongsToGroup(memberId, groupId))) {
+    throw badRequest("成员不属于该组合");
+  }
 }
 
 export async function countVisibleCustom(userId: string, groupId?: string | null) {
@@ -301,20 +317,29 @@ export async function updateCustomCard(
     const title = patch.title == null ? null : String(patch.title).trim().slice(0, 80) || null;
     add("title", title);
   }
+  const nextGroupId = hasOwn(patch, "groupId")
+    ? patch.groupId
+      ? String(patch.groupId)
+      : null
+    : existing.rows[0].group_id
+      ? String(existing.rows[0].group_id)
+      : null;
+
   if (hasOwn(patch, "groupId")) {
-    const groupId = patch.groupId ? String(patch.groupId) : null;
-    await assertGroup(groupId);
-    add("group_id", groupId);
+    await assertGroup(nextGroupId);
+    add("group_id", nextGroupId);
   }
   if (hasOwn(patch, "memberId")) {
     const memberId = patch.memberId ? String(patch.memberId) : null;
-    const groupId = hasOwn(patch, "groupId")
-      ? patch.groupId
-        ? String(patch.groupId)
-        : null
-      : (existing.rows[0].group_id as string | null);
-    await assertMember(memberId, groupId);
+    await assertMember(memberId, nextGroupId);
     add("member_id", memberId);
+  } else if (hasOwn(patch, "groupId")) {
+    const existingMember = existing.rows[0].member_id
+      ? String(existing.rows[0].member_id)
+      : null;
+    if (existingMember && !(nextGroupId && (await memberBelongsToGroup(existingMember, nextGroupId)))) {
+      add("member_id", null);
+    }
   }
   if (hasOwn(patch, "imageBackBase64") && patch.imageBackBase64) {
     const path = await storeSide({
