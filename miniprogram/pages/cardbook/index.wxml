@@ -6,8 +6,9 @@
   <view wx:if="{{needsLogin}}" class="empty-state">
     <view class="empty-title">浏览图鉴无需登录</view>
     <view class="empty-sub">卡册进度需要登录。可先打开「图鉴」查看组合与卡片；标记拥有 / 想要时会提示登录。</view>
+    <view wx:if="{{loginFailed}}" class="empty-sub">登录失败，请重试</view>
     <view class="btn" bindtap="goCatalog">去图鉴</view>
-    <view class="btn ghost" bindtap="doLogin">登录</view>
+    <view class="btn ghost" bindtap="doLogin">{{loginBtnLabel}}</view>
   </view>
 
   <view wx:elif="{{emptyFollows}}" class="empty-state">

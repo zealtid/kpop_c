@@ -2,7 +2,8 @@
   <view wx:if="{{needsLogin}}" class="card">
     <view class="h1">未登录</view>
     <view class="muted">浏览「图鉴」无需登录。关注、可见性与缺卡反馈需要先登录。</view>
-    <view class="btn" style="margin-top:24rpx" bindtap="doLogin">登录</view>
+    <view wx:if="{{loginFailed}}" class="muted" style="margin-top:12rpx">登录失败，请重试</view>
+    <view class="btn" style="margin-top:24rpx" bindtap="doLogin">{{loginBtnLabel}}</view>
   </view>
 
   <block wx:else>

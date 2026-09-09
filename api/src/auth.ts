@@ -92,6 +92,12 @@ async function realWxSession(code: string) {
   }
 }
 
+/**
+ * Mock 登录身份：
+ * - `mock:<id>` → 稳定 openid `<id>`（DevTools 应发 `mock:devtools`）
+ * - 其它 code（含微信一次性 js_code）→ `dev:<code>`，每次冷启动都会变成新用户
+ * 小程序必须复用本地 JWT，或在 mock 下发送稳定 `mock:*`，不能把 ephemeral js_code 当 openid。
+ */
 function mockOpenid(code: string) {
   if (code.startsWith("mock:")) return code.slice(5) || "demo";
   return `dev:${code || "anon"}`;

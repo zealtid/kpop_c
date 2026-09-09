@@ -1,12 +1,15 @@
 const api = require("../../utils/api");
 const analytics = require("../../utils/analytics");
 const onboarding = require("../../utils/followOnboarding");
+const session = require("../../utils/session");
 
 Page({
   data: {
     groups: [],
     emptyFollows: false,
     needsLogin: false,
+    loginFailed: false,
+    loginBtnLabel: "登录",
     copy: "进度 = 已拥有不重复模板数 / 范围内已发布模板数（含特典，不含已废弃）",
   },
   onShow() {
@@ -36,12 +39,26 @@ Page({
                   ? Math.round((g.progress.ownedDistinct / g.progress.publishedCount) * 100)
                   : 0,
               }));
-        this.setData({ needsLogin: false, groups, emptyFollows, copy: data.copy || this.data.copy });
+        this.setData({
+          needsLogin: false,
+          loginFailed: false,
+          loginBtnLabel: session.loginButtonLabel(false),
+          groups,
+          emptyFollows,
+          copy: data.copy || this.data.copy,
+        });
       })
       .catch((err) => {
         if (!api.isUnauthorized(err)) return;
-        this.setData({ needsLogin: true, groups: [], emptyFollows: false });
         const app = getApp();
+        const loginFailed = !!(app && app.globalData && app.globalData.loginState === "fail");
+        this.setData({
+          needsLogin: true,
+          loginFailed,
+          loginBtnLabel: session.loginButtonLabel(loginFailed),
+          groups: [],
+          emptyFollows: false,
+        });
         // 冷启动登录进行中：成功后 refreshCardbook 会再 load，避免 401 重试死循环
         if (app && (app._loginPromise || (app.globalData && app.globalData.loginState === "pending"))) {
           return;
@@ -60,6 +77,15 @@ Page({
   },
   doLogin() {
     const app = getApp();
-    if (app && typeof app.login === "function") app.login();
+    if (!app || typeof app.login !== "function") return;
+    app.login().then((ok) => {
+      if (!ok) {
+        this.setData({
+          needsLogin: true,
+          loginFailed: true,
+          loginBtnLabel: session.loginButtonLabel(true),
+        });
+      }
+    });
   },
 });
