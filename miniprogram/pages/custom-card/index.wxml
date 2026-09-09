@@ -1,0 +1,53 @@
+<view class="page">
+  <view wx:if="{{missing}}" class="empty">自定义卡不存在</view>
+
+  <block wx:else>
+    <view class="hero">
+      <view class="ph hero-ph" style="background: {{card.memberColor || '#2a2233'}}">
+        <image wx:if="{{card.mainImageUrl}}" src="{{card.mainImageUrl}}" mode="aspectFill"/>
+      </view>
+      <view class="meta">
+        <view class="h1">{{card.title || '自定义卡'}}</view>
+        <view class="tag">{{card.badge}}</view>
+        <view wx:if="{{card.moderationLabel}}" class="tag warn">{{card.moderationLabel}}</view>
+        <view wx:if="{{card.groupNameZh}}" class="sub">{{card.groupNameZh}}</view>
+        <view class="muted">审核未通过的卡不进入常规卡册，也不会出现在分享长图。</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label">标题</view>
+      <input class="box input" value="{{title}}" bindinput="onTitle" maxlength="80"/>
+    </view>
+
+    <view class="card">
+      <view class="label">数量</view>
+      <view class="stepper">
+        <view class="step" bindtap="decQty">−</view>
+        <view class="qty">{{quantity}}</view>
+        <view class="step" bindtap="incQty">+</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label">品相</view>
+      <view class="chips">
+        <view
+          class="chip {{condition===item.value?'on':''}}"
+          wx:for="{{conditions}}"
+          wx:key="value"
+          bindtap="pickCondition"
+          data-value="{{item.value}}"
+        >{{item.label}}</view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="label">备注</view>
+      <textarea class="box" maxlength="500" value="{{note}}" bindinput="onNote"/>
+    </view>
+
+    <view class="btn {{saving?'off':''}}" bindtap="save">保存</view>
+    <view class="btn ghost" bindtap="remove">删除</view>
+  </block>
+</view>

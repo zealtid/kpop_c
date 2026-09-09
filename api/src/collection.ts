@@ -2,6 +2,12 @@ import { query, withTransaction } from "./db.js";
 import { badRequest, notFound } from "./errors.js";
 import { track } from "./analytics.js";
 import { getGroup, mapGroup, mapTemplate } from "./catalog.js";
+import {
+  CUSTOM_BADGE,
+  countVisibleCustom,
+  customCountsByGroup,
+  listCustomCards,
+} from "./customCards.js";
 
 const PROGRESS_SQL = `
   SELECT
@@ -88,18 +94,29 @@ export async function overview(userId: string | null) {
   const ids = groups.rows.map((g) => g.id as string);
   const progress = userId ? await progressForGroups(userId, ids) : [];
   const pmap = new Map(progress.map((p) => [p.group_id, p]));
+  const customByGroup = userId ? await customCountsByGroup(userId) : [];
+  const cmap = new Map(customByGroup.filter((r) => r.group_id).map((r) => [r.group_id as string, r.n]));
+  const customCards = userId ? await listCustomCards(userId) : [];
+  const customCount = userId ? await countVisibleCustom(userId) : 0;
   return {
     copy: PROGRESS_COPY,
     searchEnabled: false,
+    customBadge: CUSTOM_BADGE,
+    customCount,
+    customLabel: customCount > 0 ? `${CUSTOM_BADGE} ${customCount} 张` : CUSTOM_BADGE,
+    customCards,
     groups: groups.rows.map((g) => {
       const p = pmap.get(g.id as string) || {
         published_count: 0,
         benefit_count: 0,
         owned_distinct: 0,
       };
+      const groupCustom = cmap.get(g.id as string) || 0;
       return {
         ...mapGroup(g),
         progress: toProgress(p),
+        customCount: groupCustom,
+        customBadge: groupCustom > 0 ? CUSTOM_BADGE : null,
       };
     }),
   };
@@ -128,6 +145,8 @@ export async function groupDetail(userId: string, groupKey: string) {
     [userId, group.id],
   );
   const ownedCards = owned.rows.map(mapOwnedCard);
+  const custom = await listCustomCards(userId, { groupId: group.id as string });
+  const customDuplicates = custom.filter((c) => c.quantity > 1);
   return {
     group,
     progress: toProgress(
@@ -138,6 +157,11 @@ export async function groupDetail(userId: string, groupKey: string) {
     owned: ownedCards,
     wanted: wants.rows.map(mapTemplate),
     duplicates: ownedCards.filter((c) => c.quantity > 1),
+    custom,
+    customDuplicates,
+    customBadge: CUSTOM_BADGE,
+    customCount: custom.length,
+    customLabel: custom.length > 0 ? `${CUSTOM_BADGE} ${custom.length} 张` : CUSTOM_BADGE,
   };
 }
 

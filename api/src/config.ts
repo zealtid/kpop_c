@@ -17,6 +17,12 @@ export const config = {
   dataDir: path.resolve(process.env.DATA_DIR || path.join(here, "../data")),
   wxAppId: process.env.WX_APPID || "",
   wxSecret: process.env.WX_SECRET || "",
+  // Railway Bucket xingka-user-cards（S3 兼容 reference vars）。未配置时私人卡图落到本地 dataDir/custom
+  bucket: process.env.S3_BUCKET || "",
+  bucketRegion: process.env.S3_REGION || "",
+  bucketEndpoint: process.env.S3_ENDPOINT || "",
+  bucketAccessKeyId: process.env.S3_ACCESS_KEY_ID || "",
+  bucketSecretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
 };
 
 export const isProd = config.nodeEnv === "production";

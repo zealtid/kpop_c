@@ -11,7 +11,9 @@
     "pages/about/index",
     "pages/share-preview/index",
     "pages/follow-onboarding/index",
-    "pages/card-detail/index"
+    "pages/card-detail/index",
+    "pages/custom-card-add/index",
+    "pages/custom-card/index"
   ],
   "window": {
     "navigationBarBackgroundColor": "#121016",

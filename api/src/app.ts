@@ -11,11 +11,14 @@ import { createShareImage } from "./share.js";
 import * as admin from "./admin.js";
 import { ANALYTICS_EVENTS, track } from "./analytics.js";
 import { query } from "./db.js";
+import * as customCards from "./customCards.js";
+import { applyMediaCheckResult } from "./moderation.js";
+import { isSafeCustomMediaParams, readCustomImage } from "./storage.js";
 
 export function createApp() {
   const app = express();
   app.use(cors());
-  app.use(express.json({ limit: "2mb" }));
+  app.use(express.json({ limit: "8mb" }));
   app.use(optionalAuth);
 
   app.get("/health", (_req, res) => {
@@ -255,6 +258,76 @@ export function createApp() {
     }
   });
 
+  // ---- custom cards (M1.5 私人拍照加卡) ----
+  app.get("/collection/custom-cards", requireAuth, async (req, res, next) => {
+    try {
+      const groupId = (req.query.groupId as string) || undefined;
+      const includeRejected = String(req.query.includeRejected || "") === "1";
+      const cards = await customCards.listCustomCards(req.user!.id, { groupId, includeRejected });
+      res.json({
+        cards,
+        customBadge: customCards.CUSTOM_BADGE,
+        customCount: cards.filter((c) => c.moderationStatus !== "rejected").length,
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/collection/custom-cards", requireAuth, async (req, res, next) => {
+    try {
+      res.json(
+        await customCards.createCustomCard(req.user!.id, req.body || {}, req.user!.wxOpenid),
+      );
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/collection/custom-cards/:id", requireAuth, async (req, res, next) => {
+    try {
+      res.json(await customCards.getCustomCard(req.user!.id, req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/collection/custom-cards/:id", requireAuth, async (req, res, next) => {
+    try {
+      res.json(await customCards.updateCustomCard(req.user!.id, req.params.id, req.body || {}));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.delete("/collection/custom-cards/:id", requireAuth, async (req, res, next) => {
+    try {
+      res.json(await customCards.deleteCustomCard(req.user!.id, req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/webhooks/wx-media-check", (req, res) => {
+    res.type("text").send(String(req.query.echostr || "ok"));
+  });
+
+  app.post("/webhooks/wx-media-check", async (req, res, next) => {
+    try {
+      const body = req.body || {};
+      const traceId = String(body.trace_id || body.traceId || "");
+      const suggest = body.result?.suggest || body.suggest;
+      const updated = await applyMediaCheckResult({
+        traceId: traceId || undefined,
+        suggest,
+        customCardId: body.customCardId,
+      });
+      res.json({ ok: true, updated: updated || null });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   // ---- share ----
   app.post("/share/image", requireAuth, async (req, res, next) => {
     try {
@@ -359,6 +432,25 @@ export function createApp() {
     const dest = path.join(config.dataDir, "cards", path.basename(req.params.file));
     if (!fs.existsSync(dest)) return res.status(404).end();
     res.type("png").sendFile(dest);
+  });
+  app.get("/media/custom/:userId/:file", async (req, res, next) => {
+    try {
+      const { userId, file } = req.params;
+      if (!isSafeCustomMediaParams(userId, file)) {
+        res.status(404).end();
+        return;
+      }
+      const publicPath = `/media/custom/${userId}/${file}`;
+      const img = await readCustomImage(publicPath);
+      if (!img) {
+        res.status(404).end();
+        return;
+      }
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      res.type(img.contentType).send(img.body);
+    } catch (e) {
+      next(e);
+    }
   });
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

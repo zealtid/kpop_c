@@ -1,0 +1,12 @@
+@import "../card-detail/index.wxss";
+
+.warn {
+  background: #3a2a20;
+  color: #f5c36b;
+  margin-left: 8rpx;
+}
+
+.input {
+  min-height: 72rpx;
+  height: 72rpx;
+}
