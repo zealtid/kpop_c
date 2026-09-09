@@ -83,6 +83,45 @@ test("A03/A04 mock wx-login + GET /me", async () => {
   assert.equal((me.body as { id: string }).id, userId);
 });
 
+test("mock wx-login keeps the same collector for mock:devtools", async () => {
+  const prev = token;
+  token = "";
+  const first = await api("/auth/wx-login", {
+    method: "POST",
+    body: JSON.stringify({ code: "mock:devtools" }),
+  });
+  const second = await api("/auth/wx-login", {
+    method: "POST",
+    body: JSON.stringify({ code: "mock:devtools" }),
+  });
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  const a = first.body as { user: { id: string } };
+  const b = second.body as { user: { id: string } };
+  assert.equal(a.user.id, b.user.id);
+
+  const other = await api("/auth/wx-login", {
+    method: "POST",
+    body: JSON.stringify({ code: "mock:other-collector" }),
+  });
+  assert.notEqual((other.body as { user: { id: string } }).user.id, a.user.id);
+
+  const ephemeralA = await api("/auth/wx-login", {
+    method: "POST",
+    body: JSON.stringify({ code: "081AAA" }),
+  });
+  const ephemeralB = await api("/auth/wx-login", {
+    method: "POST",
+    body: JSON.stringify({ code: "081BBB" }),
+  });
+  assert.notEqual(
+    (ephemeralA.body as { user: { id: string } }).user.id,
+    (ephemeralB.body as { user: { id: string } }).user.id,
+    "raw js_code maps to dev:<code> — client must not send a new code every cold start",
+  );
+  token = prev;
+});
+
 test("A05 follows persist; X01 privacy enum only", async () => {
   const put = await api("/me/follows", {
     method: "PUT",
