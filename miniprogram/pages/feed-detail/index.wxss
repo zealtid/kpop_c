@@ -1,0 +1,39 @@
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.badge-row .tag {
+  margin-top: 0;
+}
+
+.tag.trust {
+  color: #9ad0ff;
+}
+
+.tag.warn {
+  color: #f5c36b;
+}
+
+.label {
+  font-size: 24rpx;
+  color: #a9a3b3;
+  margin-bottom: 12rpx;
+}
+
+.body {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+
+.url {
+  margin-top: 12rpx;
+  word-break: break-all;
+}
+
+.hint {
+  margin-top: 16rpx;
+  text-align: center;
+}

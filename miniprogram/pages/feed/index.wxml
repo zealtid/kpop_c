@@ -1,8 +1,74 @@
 <view class="page">
-  <view class="placeholder-card">
-    <view class="icon">✦</view>
-    <view class="h1">情报即将开放</view>
-    <view class="sub">M1 不提供动态信息流或日程。本页仅为占位，请先去卡册收录小卡。</view>
-    <view class="btn" bindtap="goCardbook">去卡册</view>
+  <view class="h1">情报</view>
+  <view wx:if="{{mode === 'guest'}}" class="sub">游客精选 · 仅 L1。登录并关注组合后可看专属时间线。</view>
+  <view wx:elif="{{showingFeatured && emptyFollows}}" class="sub">精选情报 · 关注组合后可看专属时间线。</view>
+  <view wx:else class="sub">关注组合的动态与今日日程。时间均为北京时间。</view>
+
+  <scroll-view wx:if="{{chips.length}}" scroll-x class="chip-row" enable-flex>
+    <view
+      wx:for="{{chips}}"
+      wx:key="id"
+      class="chip {{item.on ? 'on' : ''}}"
+      bindtap="selectGroup"
+      data-id="{{item.id}}"
+    >{{item.name}}</view>
+  </scroll-view>
+
+  <view wx:if="{{mode === 'empty-follows' && !showingFeatured}}" class="empty-state">
+    <view class="empty-title">还没有关注组合</view>
+    <view class="empty-sub">去「我的」加关注后，这里会显示专属情报与今日日程。</view>
+    <view class="btn" bindtap="goMine">去我的加关注</view>
+    <view class="btn ghost" bindtap="loadFeatured">去看看精选</view>
   </view>
+
+  <block wx:else>
+    <view class="section-head">
+      <view class="section-title">今日日程</view>
+      <view class="section-link" bindtap="openScheduleList">全部日程 →</view>
+    </view>
+    <scroll-view wx:if="{{visibleToday.length}}" scroll-x class="today-strip">
+      <view
+        wx:for="{{visibleToday}}"
+        wx:key="id"
+        class="today-card"
+        bindtap="openSchedule"
+        data-id="{{item.id}}"
+      >
+        <view class="today-kind">{{item.kindLabel}}</view>
+        <view class="today-title">{{item.title}}</view>
+        <view class="muted">{{item.groupLabel}} · {{item.timeRange}}</view>
+        <view wx:if="{{item.isTicketSale}}" class="countdown {{item.countdownOverdue ? 'done' : ''}}">{{item.countdownText}}</view>
+      </view>
+    </scroll-view>
+    <view wx:else class="muted strip-empty">今天暂无日程</view>
+
+    <view class="section-head">
+      <view class="section-title">动态</view>
+      <view wx:if="{{timeline === 'featured'}}" class="muted">精选</view>
+    </view>
+
+    <view wx:if="{{!visibleItems.length}}" class="empty">暂无情报</view>
+
+    <view
+      wx:for="{{visibleItems}}"
+      wx:key="id"
+      class="card feed-card"
+      bindtap="openFeed"
+      data-id="{{item.id}}"
+    >
+      <view class="badge-row">
+        <view class="tag">{{item.sourceBadge}}</view>
+        <view class="tag trust">{{item.trustLabel}}</view>
+        <view wx:if="{{item.translatedMark}}" class="tag warn">{{item.translatedMark}}</view>
+      </view>
+      <view class="feed-title">{{item.title}}</view>
+      <view wx:if="{{item.summary}}" class="muted summary">{{item.summary}}</view>
+      <view class="row meta">
+        <view class="muted">{{item.groupLabel}}{{item.publishedLabel ? ' · ' + item.publishedLabel : ''}}</view>
+        <view wx:if="{{item.outboundUrl}}" class="link" catchtap="copyLink" data-url="{{item.outboundUrl}}">复制链接</view>
+      </view>
+    </view>
+
+    <view wx:if="{{emptyFollows && showingFeatured}}" class="btn ghost" bindtap="goMine">去我的加关注</view>
+  </block>
 </view>

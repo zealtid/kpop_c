@@ -8,8 +8,8 @@
 
 ## 硬约束（Scope freeze）
 
-- Tab：情报 | 卡册 | 图鉴 | 我的；启动默认落在 **卡册**。
-- **情报** 仅占位，没有假信息流 / 日程。
+- Tab：情报 | 卡册 | 图鉴 | 我的；启动默认落在 **卡册**（`pages[0]` 仍是卡册）。
+- **情报** Tab 接 M2 Feed / 日程 API（关注时间线 + 今日日程 + 详情）；无订阅消息、无爬虫 UI、无缺卡入口。
 - 试点：Hearts2Hearts（深）+ BTS 切片专辑《ARIRANG》（2026-03-20）。
 - 可见性只有 `private | public`，无私友 UI，无单卡可见性开关。分享长图包含该组 **全部已拥有** 卡片。
 - 拥有会自动去掉想要；已拥有再点想要 → HTTP **200** + 业务码 `OWN_WANT_MUTEX` Toast 互斥且 **不写入**；取消拥有 **不会** 加回想要。
@@ -18,7 +18,7 @@
 - 缺卡反馈 **仅文字**。
 - **P7**：卡册总览无搜索（搜索在图鉴）。
 - **P8**：分享长图必须拼完所有已拥有卡，禁止截成前 N 张。
-- 本阶段不做：真·信息流、订阅消息、交易开关、缺卡清单页、投稿审核、好友、AI。
+- 本阶段不做：订阅消息、交易开关、缺卡清单页、投稿审核、好友、AI。
 
 ## 本地运行
 
@@ -100,9 +100,31 @@ npm test              # 对 kpop_c_test 跑 M1 行为测试（含 Path B）
 | 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }` |
 | 反馈 | `POST /feedback/missing` `{ text }` |
 | 管理 | `POST /admin/import` `POST /admin/templates` `POST /admin/templates/:id/publish\|unpublish` Header `x-admin-token` |
+| 情报 | `GET /feed` `GET /feed/featured` `GET /feed/:id` |
+| 日程 | `GET /schedule/today` `GET /schedule` `GET /schedule/:id`（`startAtShanghai` / Asia/Shanghai） |
 | 埋点 | `POST /analytics/events`；服务端也会在业务路径自动打点 |
 
 管理默认令牌：`ADMIN_TOKEN=dev-admin`。
+
+## M2-b 情报 Tab（小程序）
+
+占位页换成真实情报。默认 Tab 仍是卡册。外链用 **复制链接 / 系统打开**，不内嵌 web-view。
+
+| 页面 | 路径 |
+| --- | --- |
+| 情报首页 | `miniprogram/pages/feed/index` |
+| Feed 详情 | `miniprogram/pages/feed-detail/index` |
+| 日程列表 | `miniprogram/pages/schedule/index` |
+| 日程详情 | `miniprogram/pages/schedule-detail/index` |
+| 展示辅助 | `miniprogram/utils/intel.js` |
+
+| ID | 行为 | 覆盖 |
+| --- | --- | --- |
+| **F01/F02/F03** | 时间线展示 source / trust；L3·hidden 不出现；机翻标「机翻」 | Feed API + 客户端过滤 |
+| **S01** | 今日日程横滑可见；门票开售红字倒计时 | `/schedule/today`；`startAtShanghai` |
+| **T01** | 冷启动仍落卡册 | `app.json` `pages[0]=pages/cardbook/index` |
+| **T02** | 未关注 → 空态去「我的」加关注，可「去看看精选」 | `/feed/featured`；游客走 L1 精选 |
+| **X01** | 情报 Tab 无缺卡入口、无爬虫 UI、无订阅消息模板 | 页面源码约束 |
 
 ## 埋点
 
@@ -129,4 +151,4 @@ docker-compose.yml
 
 ## 明确不做（M1 之外）
 
-真·情报流、订阅消息、交易、缺卡清单页、投稿审核、好友关系、AI、Web 客户端。
+订阅消息 Worker、微博爬虫、缺卡清单页、交易、投稿审核、好友关系、AI、Web 客户端。
