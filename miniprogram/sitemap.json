@@ -1,0 +1,4 @@
+{
+  "desc": "M1 小程序不对外 Web 索引",
+  "rules": [{ "action": "disallow", "page": "*" }]
+}

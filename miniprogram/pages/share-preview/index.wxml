@@ -1,0 +1,5 @@
+<view class="page">
+  <view class="sub">已拼接全部 {{n}} 张已拥有卡片（不截断）。底栏含小程序码与水印。</view>
+  <image class="long" src="{{url}}" mode="widthFix" show-menu-by-longpress="{{true}}"/>
+  <view class="btn" bindtap="save">保存到相册</view>
+</view>

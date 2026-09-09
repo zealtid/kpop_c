@@ -1,0 +1,47 @@
+.group-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1c1824;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin-top: 20rpx;
+}
+.left {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  flex: 1;
+}
+.dot {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+}
+.name {
+  font-size: 32rpx;
+  font-weight: 700;
+}
+.en {
+  color: #8a8494;
+  font-size: 22rpx;
+  margin-top: 4rpx;
+}
+.ring {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 50%;
+  border: 8rpx solid #ff6b9d;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.pct {
+  font-size: 28rpx;
+  font-weight: 700;
+}
+.frac {
+  font-size: 18rpx;
+  color: #a9a3b3;
+}

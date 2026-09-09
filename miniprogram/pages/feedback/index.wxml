@@ -1,0 +1,7 @@
+<view class="page">
+  <view class="h1">缺卡反馈</view>
+  <view class="sub">M1 仅支持文字。请描述组合、专辑、成员与版本，不要上传图片。</view>
+  <textarea class="box" maxlength="500" bindinput="onInput" placeholder="例如：FOCUS 缺 Juun 特典-Makestar"/>
+  <view class="muted">{{text.length}}/500</view>
+  <view class="btn" bindtap="submit">提交文字</view>
+</view>

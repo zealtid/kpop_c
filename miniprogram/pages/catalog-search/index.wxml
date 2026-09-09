@@ -1,0 +1,21 @@
+<view class="page">
+  <input class="search" value="{{q}}" confirm-type="search" bindconfirm="onSearch"/>
+  <view class="row" style="margin:20rpx 0">
+    <view class="muted">已选 {{selected.length}}</view>
+    <view class="btn slim" bindtap="batchOwn">批量拥有</view>
+  </view>
+  <view wx:if="{{empty}}" class="empty">没有匹配模板</view>
+  <view class="grid3">
+    <view class="tile" wx:for="{{templates}}" wx:key="id" bindtap="toggle" data-id="{{item.id}}">
+      <view class="ph {{item.on ? 'sel' : ''}}" style="background: {{item.memberColor}}">
+        <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
+      </view>
+      <view class="muted">{{item.memberNameEn}}</view>
+      <view class="tag">{{item.releaseTitle}} · {{item.version}}</view>
+      <view class="row mini-actions">
+        <text catchtap="ownOne" data-id="{{item.id}}">拥有</text>
+        <text catchtap="wantOne" data-id="{{item.id}}">想要</text>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,55 @@
+{
+  "pages": [
+    "pages/cardbook/index",
+    "pages/feed/index",
+    "pages/catalog/index",
+    "pages/mine/index",
+    "pages/cardbook-group/index",
+    "pages/catalog-group/index",
+    "pages/catalog-search/index",
+    "pages/feedback/index",
+    "pages/about/index",
+    "pages/share-preview/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#121016",
+    "navigationBarTitleText": "kpop_c",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#121016",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#8a8494",
+    "selectedColor": "#ff6b9d",
+    "backgroundColor": "#1a1620",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/feed/index",
+        "text": "情报",
+        "iconPath": "assets/tab-feed.png",
+        "selectedIconPath": "assets/tab-feed-on.png"
+      },
+      {
+        "pagePath": "pages/cardbook/index",
+        "text": "卡册",
+        "iconPath": "assets/tab-book.png",
+        "selectedIconPath": "assets/tab-book-on.png"
+      },
+      {
+        "pagePath": "pages/catalog/index",
+        "text": "图鉴",
+        "iconPath": "assets/tab-catalog.png",
+        "selectedIconPath": "assets/tab-catalog-on.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "assets/tab-mine.png",
+        "selectedIconPath": "assets/tab-mine-on.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

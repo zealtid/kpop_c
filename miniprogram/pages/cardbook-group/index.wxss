@@ -1,0 +1,6 @@
+.mini {
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  color: #ff8fb8;
+}
+.btn { margin-top: 24rpx; }
