@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const cardCondition = require("../../utils/cardCondition");
 
 Page({
   data: {
@@ -21,7 +22,11 @@ Page({
   },
   load() {
     api.request({ url: `/collection/groups/${this.data.id}` }).then((data) => {
-      const mapUrl = (c) => ({ ...c, mainImageUrl: api.mediaUrl(c.mainImageUrl) });
+      const mapUrl = (c) => ({
+        ...c,
+        mainImageUrl: api.mediaUrl(c.mainImageUrl),
+        conditionLabel: c.condition ? cardCondition.conditionLabel(c.condition) : "",
+      });
       const owned = (data.owned || []).map(mapUrl);
       const wanted = (data.wanted || []).map(mapUrl);
       const duplicates = (data.duplicates || []).map(mapUrl);
@@ -47,6 +52,12 @@ Page({
   applyTab() {
     const lists = [this.data.owned, this.data.wanted, this.data.duplicates];
     this.setData({ list: lists[this.data.tab] || [] });
+  },
+  openCard(e) {
+    if (this.data.tab === 1) return;
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/card-detail/index?id=${id}` });
   },
   unown(e) {
     const id = e.currentTarget.dataset.id;

@@ -228,6 +228,108 @@ test("O03 un-own does not re-add want", async () => {
   assert.ok(!(wants.body as { templateIds: string[] }).templateIds.includes(t.id));
 });
 
+test("O06 PATCH quantity/condition/notes is own-only; group detail returns fields", async () => {
+  const search = await api("/catalog/search?q=The%20Chase%20Carmen%20Photobook%20A");
+  const t = (search.body as { templates: { id: string }[] }).templates[0];
+  assert.ok(t);
+
+  await api("/collection/cards", {
+    method: "POST",
+    body: JSON.stringify({ items: [{ templateId: t.id, quantity: 1 }] }),
+  });
+
+  const patched = await api(`/collection/cards/${t.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity: 2, condition: "near_mint", notes: "  抽卡重复  " }),
+  });
+  assert.equal(patched.status, 200);
+  const saved = patched.body as {
+    templateId: string;
+    quantity: number;
+    condition: string | null;
+    notes: string | null;
+  };
+  assert.equal(saved.templateId, t.id);
+  assert.equal(saved.quantity, 2);
+  assert.equal(saved.condition, "near_mint");
+  assert.equal(saved.notes, "抽卡重复");
+
+  const got = await api(`/collection/cards/${t.id}`);
+  assert.equal(got.status, 200);
+  const card = got.body as { quantity: number; condition: string; notes: string; id: string };
+  assert.equal(card.id, t.id);
+  assert.equal(card.quantity, 2);
+  assert.equal(card.condition, "near_mint");
+  assert.equal(card.notes, "抽卡重复");
+
+  const group = await api("/collection/groups/h2h");
+  assert.equal(group.status, 200);
+  const owned = (
+    group.body as {
+      owned: { id: string; quantity: number; condition: string | null; notes: string | null }[];
+    }
+  ).owned;
+  const listed = owned.find((c) => c.id === t.id);
+  assert.ok(listed);
+  assert.equal(listed?.quantity, 2);
+  assert.equal(listed?.condition, "near_mint");
+  assert.equal(listed?.notes, "抽卡重复");
+  const dupes = (group.body as { duplicates: { id: string }[] }).duplicates;
+  assert.ok(dupes.some((c) => c.id === t.id));
+
+  const zero = await api(`/collection/cards/${t.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity: 0 }),
+  });
+  assert.equal(zero.status, 400);
+
+  const badCond = await api(`/collection/cards/${t.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ condition: "minted" }),
+  });
+  assert.equal(badCond.status, 400);
+
+  const notesOnly = await api(`/collection/cards/${t.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ notes: "" }),
+  });
+  assert.equal(notesOnly.status, 200);
+  assert.equal((notesOnly.body as { quantity: number; notes: string | null }).quantity, 2);
+  assert.equal((notesOnly.body as { notes: string | null }).notes, null);
+
+  const prev = token;
+  token = "";
+  const unauth = await api(`/collection/cards/${t.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity: 3 }),
+  });
+  assert.equal(unauth.status, 401);
+
+  const otherLogin = await api("/auth/wx-login", {
+    method: "POST",
+    body: JSON.stringify({ code: "mock:other-card-editor" }),
+  });
+  token = (otherLogin.body as { token: string }).token;
+  const stolen = await api(`/collection/cards/${t.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity: 9, notes: "not mine" }),
+  });
+  assert.equal(stolen.status, 404);
+  token = prev;
+
+  const still = await query(
+    "SELECT quantity, condition, notes FROM user_cards WHERE user_id = $1 AND template_id = $2",
+    [userId, t.id],
+  );
+  assert.equal(still.rowCount, 1);
+  assert.equal(still.rows[0].quantity, 2);
+  assert.equal(still.rows[0].notes, null);
+
+  await api(`/collection/cards/${t.id}`, { method: "DELETE" });
+  const afterDel = await api(`/collection/cards/${t.id}`);
+  assert.equal(afterDel.status, 404);
+});
+
 test("O06/O07 quantity>=1; revoke deletes row", async () => {
   const search = await api("/catalog/search?q=The%20Chase%20Stella%20Photobook%20A");
   const t = (search.body as { templates: { id: string }[] }).templates[0];
