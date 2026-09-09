@@ -2,6 +2,27 @@
   padding: 10rpx 28rpx;
   width: auto;
 }
+.empty-state {
+  margin-top: 40rpx;
+  background: #1c1824;
+  border-radius: 32rpx;
+  padding: 64rpx 40rpx;
+  text-align: center;
+}
+.empty-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #f4f1f6;
+}
+.empty-sub {
+  color: #8a8494;
+  font-size: 24rpx;
+  line-height: 1.6;
+  margin-top: 12rpx;
+}
+.empty-state .btn {
+  margin-top: 48rpx;
+}
 .sel {
   outline: 6rpx solid #ff6b9d;
 }

@@ -4,7 +4,11 @@
     <view class="muted">已选 {{selected.length}}</view>
     <view class="btn slim" bindtap="batchOwn">批量拥有</view>
   </view>
-  <view wx:if="{{empty}}" class="empty">没有匹配模板</view>
+  <view wx:if="{{empty}}" class="empty-state">
+    <view class="empty-title">没有匹配模板</view>
+    <view class="empty-sub">找不到想要的卡时，可以反馈缺卡。</view>
+    <view class="btn" bindtap="goFeedback">反馈缺卡</view>
+  </view>
   <view class="grid3">
     <view class="tile" wx:for="{{templates}}" wx:key="id" bindtap="toggle" data-id="{{item.id}}">
       <view class="ph {{item.on ? 'sel' : ''}}" style="background: {{item.memberColor}}">
