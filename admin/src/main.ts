@@ -1,5 +1,18 @@
 import "./styles.css";
 import { api, clearToken, errorMessage, getToken, setToken } from "./api";
+import { escapeHtml } from "./html";
+import {
+  type CatalogTab,
+  catalogSubnav,
+  findById,
+  groupsView,
+  loadCatalog,
+  membersView,
+  releasesView,
+  saveCatalog,
+  setCatalogStatus,
+  templatesView,
+} from "./catalogPage";
 
 type Menu = { id: string; label: string };
 type OpsUser = { id: string | null; username: string; role: string; menus: Menu[] };
@@ -27,18 +40,23 @@ type AuditLog = {
   entityId: string | null;
   createdAt: string;
 };
-type Group = { id: string; slug: string; nameZh: string };
 
 const app = document.querySelector("#app") as HTMLDivElement;
 let page: "login" | "catalog" | "intel" = "catalog";
+let catalogTab: CatalogTab = "groups";
+let editingId: string | null = null;
+let catalogNotice = "";
 let user: OpsUser | null = null;
 let notice = "";
 
-function routeFromHash(): "login" | "catalog" | "intel" {
+function parseHash(): { page: "login" | "catalog" | "intel"; tab: CatalogTab } {
   const h = location.hash.replace(/^#\/?/, "");
-  if (h.startsWith("intel")) return "intel";
-  if (h.startsWith("login")) return "login";
-  return "catalog";
+  if (h.startsWith("intel")) return { page: "intel", tab: catalogTab };
+  if (h.startsWith("login")) return { page: "login", tab: catalogTab };
+  const part = h.split("/")[1];
+  const tab: CatalogTab =
+    part === "members" || part === "releases" || part === "templates" || part === "groups" ? part : "groups";
+  return { page: "catalog", tab };
 }
 
 async function hydrate() {
@@ -55,12 +73,15 @@ async function hydrate() {
     return;
   }
   user = me.body.user;
-  page = routeFromHash() === "login" ? "catalog" : routeFromHash();
+  const route = parseHash();
+  page = route.page === "login" ? "catalog" : route.page;
+  catalogTab = route.tab;
   render();
 }
 
 function navLink(id: "catalog" | "intel", label: string) {
-  return `<a href="#/${id}" class="${page === id ? "active" : ""}">${label}</a>`;
+  const href = id === "catalog" ? `#/catalog/${catalogTab}` : `#/${id}`;
+  return `<a href="${href}" class="${page === id ? "active" : ""}">${label}</a>`;
 }
 
 function layout(inner: string) {
@@ -82,7 +103,7 @@ function loginView() {
   return `
     <form class="login" id="login-form">
       <h1>星卡运营后台</h1>
-      <p class="muted">用户名 / 密码登录（OPS-0，无微信扫码）</p>
+      <p class="muted">用户名 / 密码登录（无微信扫码）</p>
       <label>用户名</label>
       <input name="username" autocomplete="username" required />
       <label>密码</label>
@@ -90,25 +111,6 @@ function loginView() {
       <button class="btn" type="submit">登录</button>
       <div class="err" id="login-err">${notice}</div>
     </form>`;
-}
-
-function catalogView(groups: Group[]) {
-  const rows = groups
-    .map((g) => `<tr><td>${escapeHtml(g.nameZh)}</td><td>${escapeHtml(g.slug)}</td></tr>`)
-    .join("");
-  return layout(`
-    <section class="card">
-      <h1>图鉴</h1>
-      <div class="banner">OPS-1 CRUD 即将上线。本页仅为菜单壳，不提供草稿/发布或导入。</div>
-      <p class="muted">只读预览当前库内组合（C 端公开图鉴）。</p>
-      ${
-        groups.length
-          ? `<table><thead><tr><th>组合</th><th>slug</th></tr></thead><tbody>${rows}</tbody></table>`
-          : `<p class="empty">暂无组合</p>`
-      }
-    </section>
-    <section class="card" id="audit-card"><h2>最近审计</h2><p class="muted">加载中…</p></section>
-  `);
 }
 
 function intelView(feeds: FeedItem[], events: ScheduleEvent[]) {
@@ -147,14 +149,6 @@ function intelView(feeds: FeedItem[], events: ScheduleEvent[]) {
   `);
 }
 
-function escapeHtml(s: string) {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 function bindShell() {
   document.getElementById("logout")?.addEventListener("click", async () => {
     await api("/admin/auth/logout", { method: "POST" });
@@ -181,6 +175,46 @@ async function fillAudit() {
     )
     .join("");
   el.innerHTML = `<h2>最近审计</h2><ul class="audit">${items || "<li>暂无记录</li>"}</ul>`;
+}
+
+function bindCatalog(rows: { id: string }[]) {
+  document.querySelectorAll<HTMLButtonElement>("[data-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingId = btn.dataset.edit || null;
+      catalogNotice = "";
+      render();
+    });
+  });
+  document.getElementById("form-cancel")?.addEventListener("click", () => {
+    editingId = null;
+    catalogNotice = "";
+    render();
+  });
+  document.getElementById("catalog-form")?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const fd = new FormData(ev.target as HTMLFormElement);
+    const res = await saveCatalog(catalogTab, editingId, fd);
+    if (res.status !== 200) {
+      catalogNotice = errorMessage(res.body);
+      render();
+      return;
+    }
+    editingId = null;
+    catalogNotice = "已保存";
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-act]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const tr = btn.closest("tr");
+      const id = tr?.getAttribute("data-id");
+      const status = btn.dataset.act;
+      if (!id || !status) return;
+      const res = await setCatalogStatus(catalogTab, id, status);
+      catalogNotice = res.status === 200 ? `已更新为 ${status}` : errorMessage(res.body);
+      render();
+    });
+  });
+  void rows;
 }
 
 async function render() {
@@ -213,7 +247,7 @@ async function render() {
         return;
       }
       page = "catalog";
-      location.hash = "#/catalog";
+      location.hash = "#/catalog/groups";
       render();
     });
     return;
@@ -242,15 +276,56 @@ async function render() {
     return;
   }
 
-  const groups = await api<{ groups: Group[] }>("/catalog/groups");
-  app.innerHTML = catalogView(groups.status === 200 ? groups.body.groups || [] : []);
+  const data = await loadCatalog(catalogTab);
+  if ("error" in data) {
+    const denied = data.status === 403;
+    app.innerHTML = layout(
+      `<section class="card"><p class="err">${denied ? "没有权限访问运营接口" : escapeHtml(data.error)}</p></section>`,
+    );
+    bindShell();
+    return;
+  }
+
+  const innerNav = `<nav class="subnav">${catalogSubnav(catalogTab)}</nav>`;
+  let body = "";
+  if (catalogTab === "groups") {
+    body = groupsView(data.groups, findById(data.groups, editingId || ""), catalogNotice);
+  } else if (catalogTab === "members") {
+    body = membersView(data.members, data.groups, findById(data.members, editingId || ""), catalogNotice);
+  } else if (catalogTab === "releases") {
+    body = releasesView(data.releases, data.groups, findById(data.releases, editingId || ""), catalogNotice);
+  } else {
+    body = templatesView(
+      data.templates,
+      data.releases,
+      data.members,
+      findById(data.templates, editingId || ""),
+      catalogNotice,
+    );
+  }
+  app.innerHTML = layout(innerNav + body + `<section class="card" id="audit-card"><h2>最近审计</h2></section>`);
   bindShell();
+  bindCatalog(
+    catalogTab === "groups"
+      ? data.groups
+      : catalogTab === "members"
+        ? data.members
+        : catalogTab === "releases"
+          ? data.releases
+          : data.templates,
+  );
   await fillAudit();
 }
 
 window.addEventListener("hashchange", () => {
   if (!user) return;
-  page = routeFromHash() === "login" ? "catalog" : routeFromHash();
+  const route = parseHash();
+  if (route.page !== page || route.tab !== catalogTab) {
+    editingId = null;
+    catalogNotice = "";
+  }
+  page = route.page === "login" ? "catalog" : route.page;
+  catalogTab = route.tab;
   render();
 });
 

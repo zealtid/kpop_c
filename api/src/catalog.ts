@@ -2,21 +2,28 @@ import { query } from "./db.js";
 import { track } from "./analytics.js";
 import { notFound } from "./errors.js";
 
-const GROUP_SELECT = `id, slug, name_zh, name_en, name_ko, logo_color, scope_note, is_pilot`;
+const GROUP_SELECT = `id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, status`;
+const MEMBER_SELECT = `id, group_id, name_zh, name_en, name_ko, aliases, color, sort_order, status`;
 
-export async function listGroups() {
+export type CatalogStatus = "draft" | "published" | "deprecated";
+
+export async function listGroups(opts?: { includeUnpublished?: boolean }) {
+  const statusFilter = opts?.includeUnpublished ? "" : "AND status = 'published'";
   const r = await query(
-    `SELECT ${GROUP_SELECT} FROM idol_groups WHERE is_pilot = true ORDER BY slug`,
+    `SELECT ${GROUP_SELECT} FROM idol_groups WHERE is_pilot = true ${statusFilter} ORDER BY slug`,
   );
   return r.rows.map(mapGroup);
 }
 
-export async function getGroup(idOrSlug: string) {
+export async function getGroup(idOrSlug: string, opts?: { requirePublished?: boolean }) {
   const r = await query(
     `SELECT ${GROUP_SELECT} FROM idol_groups WHERE id::text = $1 OR slug = $1`,
     [idOrSlug],
   );
   if (!r.rows[0]) throw notFound("组合不存在");
+  if (opts?.requirePublished && r.rows[0].status !== "published") {
+    throw notFound("组合不存在");
+  }
   return mapGroup(r.rows[0]);
 }
 
@@ -26,15 +33,40 @@ export function mapMember(row: Record<string, unknown>) {
     groupId: String(row.group_id),
     nameZh: row.name_zh == null ? null : String(row.name_zh),
     nameEn: row.name_en == null ? null : String(row.name_en),
+    nameKo: row.name_ko == null ? "" : String(row.name_ko),
+    aliases: row.aliases == null ? "" : String(row.aliases),
     color: (row.color as string) || "#8a8494",
     sortOrder: row.sort_order as number,
+    status: (row.status as CatalogStatus) || "published",
   };
 }
 
-export async function listMembers(groupId: string) {
+export function mapRelease(row: Record<string, unknown>) {
+  const releasedOn = row.released_on;
+  return {
+    id: String(row.id),
+    groupId: String(row.group_id),
+    title: String(row.title),
+    titleZh: row.title_zh == null ? null : String(row.title_zh),
+    aliases: row.aliases == null ? "" : String(row.aliases),
+    releasedOn:
+      releasedOn instanceof Date
+        ? releasedOn.toISOString().slice(0, 10)
+        : releasedOn
+          ? String(releasedOn).slice(0, 10)
+          : null,
+    kind: String(row.kind || "album"),
+    status: (row.status as CatalogStatus) || "published",
+    groupSlug: row.group_slug == null ? undefined : String(row.group_slug),
+    groupNameZh: row.group_name_zh == null ? undefined : String(row.group_name_zh),
+  };
+}
+
+export async function listMembers(groupId: string, includeUnpublished = false) {
+  const statusFilter = includeUnpublished ? "" : "AND status = 'published'";
   const r = await query(
-    `SELECT id, group_id, name_zh, name_en, color, sort_order
-     FROM members WHERE group_id = $1 ORDER BY sort_order`,
+    `SELECT ${MEMBER_SELECT}
+     FROM members WHERE group_id = $1 ${statusFilter} ORDER BY sort_order, name_en`,
     [groupId],
   );
   return r.rows.map(mapMember);
@@ -48,6 +80,7 @@ export async function listReleases(groupId: string, includeDraft = false) {
      ORDER BY released_on DESC`,
     [groupId],
   );
+  // Public C-side (catalog-group) reads released_on / kind on the raw row.
   return r.rows;
 }
 
@@ -58,6 +91,7 @@ type SearchOpts = {
   memberId?: string;
   includeDraft?: boolean;
   userId?: string | null;
+  status?: string;
 };
 
 export async function searchTemplates(opts: SearchOpts) {
@@ -69,11 +103,18 @@ export async function searchTemplates(opts: SearchOpts) {
   };
 
   if (!opts.includeDraft) {
-    conds.push("t.status = 'published' AND r.status = 'published'");
+    conds.push("t.status = 'published' AND r.status = 'published' AND g.status = 'published'");
   }
   if (opts.groupId) add("r.group_id = ?", opts.groupId);
   if (opts.releaseId) add("t.release_id = ?", opts.releaseId);
   if (opts.memberId) add("t.member_id = ?", opts.memberId);
+  if (opts.status === "deprecated") {
+    conds.push("t.is_deprecated = true");
+  } else if (opts.status === "draft") {
+    conds.push("t.status = 'draft' AND t.is_deprecated = false");
+  } else if (opts.status === "published") {
+    conds.push("t.status = 'published' AND t.is_deprecated = false");
+  }
   if (opts.q) {
     const tokens = opts.q.split(/\s+/).filter(Boolean);
     // C02: en/zh + name_ko + lightweight aliases (comma-separated TEXT)
@@ -133,9 +174,11 @@ export function mapGroup(row: Record<string, unknown>) {
     nameZh: row.name_zh,
     nameEn: row.name_en,
     nameKo: row.name_ko,
+    aliases: row.aliases == null ? "" : String(row.aliases),
     logoColor: row.logo_color,
     scopeNote: row.scope_note,
     isPilot: row.is_pilot,
+    status: (row.status as CatalogStatus) || "published",
   };
 }
 
@@ -161,5 +204,6 @@ export function mapTemplate(row: Record<string, unknown>) {
     groupId: row.group_id,
     groupSlug: row.group_slug,
     groupNameZh: row.group_name_zh,
+    catalogStatus: row.is_deprecated ? "deprecated" : row.status,
   };
 }

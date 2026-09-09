@@ -31,7 +31,7 @@ npm run migrate
 npm run seed          # H2H 样品 + BTS ARIRANG 切片 + 占位卡图
 npm run dev           # API :3000，启动时默认会再跑一遍幂等 seed
 npm run dev:admin     # 运营后台 Vite :5173（代理 /admin 到 API）
-npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 行为测试
+npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 行为测试
 ```
 
 也可用 `docker compose up --build` 拉起 postgres + API。
@@ -100,7 +100,7 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 行为测试
 | 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
 | 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }` |
 | 反馈 | `POST /feedback/missing` `{ text }` |
-| 管理 | `POST /admin/import` `POST /admin/templates` `POST /admin/templates/:id/publish\|unpublish`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
+| 管理 | `POST /admin/import` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
 | OPS 登录 | `POST /admin/auth/login` `GET /admin/auth/me` `POST /admin/auth/logout` `GET /admin/audit` |
 | 情报 | `GET /feed` `GET /feed/featured` `GET /feed/:id` |
 | 日程 | `GET /schedule/today` `GET /schedule` `GET /schedule/:id`（`startAtShanghai` / Asia/Shanghai） |
@@ -145,28 +145,39 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 行为测试
 api/                 Express + pg + sharp 分享长图
   migrations/        PostgreSQL
   src/               路由与领域逻辑
-  tests/             M1 / M2-a / OPS-0
-admin/               独立 Web 运营后台（Vite，OPS-0 菜单壳）
+  tests/             M1 / M2-a / OPS-0 / OPS-1
+admin/               独立 Web 运营后台（Vite，图鉴 CRUD + 情报只读）
 miniprogram/         微信小程序
 project.config.json  微信开发者工具打开仓库根目录用
 docker-compose.yml
 ```
 
-## M2.5 OPS-0 运营后台（本切片）
+## M2.5 OPS-1 图鉴主数据 CRUD
 
-独立 Web Admin：登录 + RBAC 骨架 + 图鉴/情报菜单壳 + 写操作审计。
+在 OPS-0 登录壳上，图鉴页改为真实 CRUD。实体对齐现有表，不另建平行表。
 
 **In**
 
-- `admin/`：用户名/密码登录、图鉴 | 情报导航、退出。
-- 图鉴页仅为壳（「OPS-1 CRUD 即将上线」），不做草稿→发布。
-- 情报页只读调用已有 `GET /admin/feed`、`GET /admin/schedule`。
-- `ops` 可写后续主数据；`reviewer` 仅预留在 schema/类型中，无审核队列。
-- `admin_audit_logs` + 特权写路径记 actor / time / entity；`GET /admin/audit`。
+- 组合 `idol_groups` / 成员 `members` / 发行 `releases` / 小卡模板 `templates`
+- 状态机：`draft → published / deprecated`（模板废弃沿用 `is_deprecated`，C 端进度不含废弃）
+- **无主图不能发布**（`400 IMAGE_REQUIRED`）
+- 已发布去重键冲突拒绝（`409 DUPLICATE_PUBLISHED`）；`POST /admin/import` 仍按 `dedupe_key` upsert（D02）
+- 发行 `kind=concert_md` 表示演唱会特典；**没有**图鉴 Event 表
+- 创建 / 更新 / 状态变更写入 `admin_audit_logs`
+- 鉴权：ops JWT（OPS-0）+ `x-admin-token` 脚本回退
 
 **Out**
 
-- OPS-1 图鉴 CRUD、OPS-2 导入完整度、OPS-3 缺卡工单、投稿审核、爬虫、C 端改动。
+- OPS-2 完整度看板 / 导入产品化、OPS-3 缺卡工单、审核队列、爬虫、C 端大改
+
+| ID | 行为 |
+| --- | --- |
+| **A02** | 草稿不出现在小程序图鉴 / 进度分母 |
+| **A03** | 无主图发布失败 |
+| **A04** | 发布后图鉴可见、进度计入 |
+| **A05** | 相同 `dedupe_key` 的已发布重复创建被拒绝 |
+
+`dedupe_key` = `{groupSlug}:{releaseTitle}:{memberEn\|group}:{version}`。
 
 ### 本地打开 Admin
 
@@ -193,6 +204,10 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 | `GET /admin/auth/me` | 当前 ops 用户 + 菜单 图鉴/情报 |
 | `POST /admin/auth/logout` | 清 cookie |
 | `GET /admin/audit` | 最近审计（ops） |
+| `GET\|POST /admin/catalog/groups` `PATCH .../:id` `POST .../:id/status` | 组合 CRUD + 状态 |
+| `GET\|POST /admin/catalog/members` `PATCH .../:id` `POST .../:id/status` | 成员 |
+| `GET\|POST /admin/catalog/releases` `PATCH .../:id` `POST .../:id/status` | 发行（含 `concert_md`） |
+| `GET\|POST /admin/catalog/templates` `PATCH .../:id` `POST .../:id/status` | 小卡模板；无主图不可 `published` |
 
 ### 生产部署（Railway 静态服务 `admin`）
 
@@ -213,4 +228,4 @@ npm run build:admin   # 本地确认 dist/；需设置 VITE_API_BASE
 
 ## 明确不做（M1 之外）
 
-订阅消息 Worker、微博爬虫、缺卡清单页、交易、投稿审核、好友关系、AI。Web 运营后台仅 OPS-0 菜单壳（无 OPS-1 图鉴 CRUD）。
+订阅消息 Worker、微博爬虫、缺卡清单页、交易、投稿审核、好友关系、AI。OPS-2 完整度看板与导入产品化、OPS-3 缺卡工单不在本切片。
