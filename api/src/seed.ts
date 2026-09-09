@@ -5,6 +5,7 @@ import { runMigrations } from "./migrate.js";
 import { sid, GROUP_H2H, GROUP_BTS } from "./ids.js";
 import { writePlaceholderCard } from "./placeholders.js";
 import { config } from "./config.js";
+import { shanghaiDayUtcRange } from "./time.js";
 
 type MemberDef = { en: string; zh: string; ko: string; aliases: string; color: string };
 
@@ -214,7 +215,9 @@ export async function seed() {
     [draftNoImg, sid("release:h2h:the-chase"), memberIds.get("h2h:Carmen")],
   );
 
-  console.log(`seeded M1 catalog; published templates≈${published}; public=${config.publicBaseUrl}`);
+  await seedFeedAndSchedule();
+
+  console.log(`seeded M1 catalog + M2-a feed/schedule; published templates≈${published}; public=${config.publicBaseUrl}`);
 }
 
 async function upsertTemplate(opts: {
@@ -261,6 +264,64 @@ async function upsertTemplate(opts: {
     ],
   );
   return id;
+}
+
+/** Pilot L1 feeds + ticket_sale / live so Railway/dev can smoke without UI. */
+async function seedFeedAndSchedule() {
+  const h2hFeed = sid("feed:h2h:l1-sample");
+  const btsFeed = sid("feed:bts:l1-sample");
+  await query(
+    `INSERT INTO feed_items
+       (id, title, summary, body, category, trust_level, canonical_url, published_at,
+        is_machine_translated, source_note, status, featured)
+     VALUES
+       ($1, 'H2H 《FOCUS》官方预告', 'Hearts2Hearts 官方频道发布新预告', NULL, 'official', 'L1',
+        'https://weverse.io/hearts2hearts', now(), false, 'Weverse 官方', 'published', true),
+       ($2, 'BTS 《ARIRANG》日程提醒', 'ARIRANG 相关官方日程整理', NULL, 'news', 'L1',
+        'https://ibighit.com/bts', now(), true, '官方站点（机翻）', 'published', true)
+     ON CONFLICT (id) DO UPDATE SET
+       title = EXCLUDED.title,
+       summary = EXCLUDED.summary,
+       trust_level = EXCLUDED.trust_level,
+       is_machine_translated = EXCLUDED.is_machine_translated,
+       source_note = EXCLUDED.source_note,
+       status = 'published',
+       featured = true,
+       published_at = COALESCE(feed_items.published_at, EXCLUDED.published_at),
+       updated_at = now()`,
+    [h2hFeed, btsFeed],
+  );
+  await query(
+    `INSERT INTO feed_item_groups (feed_item_id, group_id) VALUES ($1, $2), ($3, $4)
+     ON CONFLICT DO NOTHING`,
+    [h2hFeed, GROUP_H2H, btsFeed, GROUP_BTS],
+  );
+
+  const ticketId = sid("sched:bts:ticket-sale-sample");
+  const liveId = sid("sched:h2h:live-sample");
+  const { start } = shanghaiDayUtcRange();
+  const ticketStart = new Date(start.getTime() + 10 * 3600 * 1000); // 10:00 Asia/Shanghai
+  const liveStart = new Date(start.getTime() + 21 * 3600 * 1000);
+  const liveEnd = new Date(start.getTime() + 22 * 3600 * 1000);
+  await query(
+    `INSERT INTO schedule_events
+       (id, group_id, title, start_at, end_at, timezone_note, kind, location, source_url,
+        trust_level, status, release_id)
+     VALUES
+       ($1, $2, 'BTS ARIRANG 门票开售', $3, NULL, 'KST', 'ticket_sale', NULL,
+        'https://weverse.io/bts', 'L1', 'published', NULL),
+       ($4, $5, 'H2H Weverse Live', $6, $7, 'KST 21:00', 'live', 'Weverse',
+        'https://weverse.io/hearts2hearts', 'L1', 'published', NULL)
+     ON CONFLICT (id) DO UPDATE SET
+       title = EXCLUDED.title,
+       start_at = EXCLUDED.start_at,
+       end_at = EXCLUDED.end_at,
+       kind = EXCLUDED.kind,
+       status = 'published',
+       trust_level = 'L1',
+       updated_at = now()`,
+    [ticketId, GROUP_BTS, ticketStart, liveId, GROUP_H2H, liveStart, liveEnd],
+  );
 }
 
 function slug(s: string) {
