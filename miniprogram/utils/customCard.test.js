@@ -1,6 +1,24 @@
-const { test } = require("node:test");
+const { test, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
+
+const modals = [];
+const toasts = [];
+
+global.wx = {
+  showModal(opts) {
+    modals.push(opts);
+  },
+  showToast(opts) {
+    toasts.push(opts);
+  },
+};
+
 const customCard = require("./customCard");
+
+beforeEach(() => {
+  modals.length = 0;
+  toasts.length = 0;
+});
 
 test("custom badge and count label", () => {
   assert.equal(customCard.CUSTOM_BADGE, "自定义");
@@ -28,6 +46,44 @@ test("UX05 switch group clears member not in the new list", () => {
   assert.equal(customCard.nextMemberIdOnGroupChange(a, [{ id: "member-a" }]), a);
   assert.equal(customCard.nextMemberIdOnGroupChange(a, [{ id: "member-b" }]), "");
   assert.equal(customCard.nextMemberIdOnGroupChange(a, []), "");
+});
+
+test("confirmDeleteCustomCard: cancel does not call DELETE", async () => {
+  let called = 0;
+  const p = customCard.confirmDeleteCustomCard("card-1", () => {
+    called += 1;
+    return Promise.resolve({ deleted: true });
+  });
+  assert.equal(modals.length, 1);
+  assert.equal(modals[0].title, "删除自定义卡");
+  modals[0].success({ confirm: false });
+  const result = await p;
+  assert.equal(result.cancelled, true);
+  assert.equal(called, 0);
+  assert.equal(toasts.length, 0);
+});
+
+test("confirmDeleteCustomCard: confirm DELETEs owner card and toasts", async () => {
+  const calls = [];
+  const p = customCard.confirmDeleteCustomCard("card-2", (opts) => {
+    calls.push(opts);
+    return Promise.resolve({ deleted: true });
+  });
+  modals[0].success({ confirm: true });
+  const result = await p;
+  assert.equal(result.cancelled, false);
+  assert.equal(result.data.deleted, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "/collection/custom-cards/card-2");
+  assert.equal(calls[0].method, "DELETE");
+  assert.equal(toasts[0].title, "已删除");
+});
+
+test("confirmDeleteCustomCard: missing id rejects without modal", async () => {
+  await assert.rejects(() => customCard.confirmDeleteCustomCard("", () => Promise.resolve({})), {
+    status: 400,
+  });
+  assert.equal(modals.length, 0);
 });
 
 test("mapCatalogMember accepts camelCase or snake_case", () => {

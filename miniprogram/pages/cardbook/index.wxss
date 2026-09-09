@@ -67,3 +67,9 @@
   justify-content: space-between;
   margin-bottom: 8rpx;
 }
+
+.mini {
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  color: var(--color-brand);
+}

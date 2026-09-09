@@ -78,6 +78,38 @@ function clearPreviewSrc() {
   previewSrc = "";
 }
 
+/**
+ * 删除私人自定义卡：wx.showModal 确认后调用 DELETE /collection/custom-cards/:id。
+ * 取消时 { cancelled: true }；成功时 { cancelled: false, data }。
+ */
+function confirmDeleteCustomCard(id, request) {
+  return new Promise((resolve, reject) => {
+    if (!id) {
+      reject({ status: 400, message: "缺少卡片" });
+      return;
+    }
+    wx.showModal({
+      title: "删除自定义卡",
+      content: "删除后不可恢复",
+      success(res) {
+        if (!res.confirm) {
+          resolve({ cancelled: true });
+          return;
+        }
+        request({ url: `/collection/custom-cards/${id}`, method: "DELETE" })
+          .then((data) => {
+            wx.showToast({ title: "已删除" });
+            resolve({ cancelled: false, data });
+          })
+          .catch(reject);
+      },
+      fail(err) {
+        reject(err);
+      },
+    });
+  });
+}
+
 module.exports = {
   CUSTOM_BADGE,
   customCountLabel,
@@ -91,4 +123,5 @@ module.exports = {
   openFullscreen,
   takePreviewSrc,
   clearPreviewSrc,
+  confirmDeleteCustomCard,
 };

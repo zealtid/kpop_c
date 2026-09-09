@@ -76,6 +76,16 @@ Page({
     if (!card || !customCard.canOpenFullscreen(card.moderationStatus)) return;
     customCard.openFullscreen(card.mainImageUrl);
   },
+  removeCustom(e) {
+    const id = e.currentTarget.dataset.id;
+    customCard
+      .confirmDeleteCustomCard(id, api.request)
+      .then((result) => {
+        if (result.cancelled) return;
+        this.load();
+      })
+      .catch(api.handleWriteError);
+  },
   addCustom() {
     const gid = (this.data.group && this.data.group.id) || "";
     wx.navigateTo({
