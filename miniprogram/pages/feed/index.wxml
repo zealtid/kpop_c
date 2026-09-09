@@ -1,0 +1,8 @@
+<view class="page">
+  <view class="placeholder-card">
+    <view class="icon">✦</view>
+    <view class="h1">情报即将开放</view>
+    <view class="sub">M1 不提供动态信息流或日程。本页仅为占位，请先去卡册收录小卡。</view>
+    <view class="btn" bindtap="goCardbook">去卡册</view>
+  </view>
+</view>

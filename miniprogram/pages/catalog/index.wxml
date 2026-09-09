@@ -1,0 +1,17 @@
+<view class="page">
+  <view class="h1">图鉴</view>
+  <view class="sub">搜索专辑或成员，可多选后批量标记拥有。</view>
+  <input class="search" placeholder="搜索专辑 / 成员 / 版本" confirm-type="search" bindconfirm="onSearch" value="{{q}}"/>
+  <view class="muted" style="margin-top:12rpx">搜索仅在图鉴，卡册总览不提供搜索。</view>
+
+  <view wx:for="{{groups}}" wx:key="id" class="card" bindtap="openGroup" data-id="{{item.slug}}">
+    <view class="row">
+      <view>
+        <view class="h1" style="font-size:32rpx">{{item.nameZh}}</view>
+        <view class="muted">{{item.nameEn}}</view>
+        <view wx:if="{{item.scopeNote}}" class="footnote">{{item.scopeNote}}</view>
+      </view>
+      <view class="muted">浏览 →</view>
+    </view>
+  </view>
+</view>

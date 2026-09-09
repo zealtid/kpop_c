@@ -1,0 +1,2 @@
+.btn.slim { flex: 1; margin: 0 8rpx; }
+.row .btn + .btn { margin-top: 0; }

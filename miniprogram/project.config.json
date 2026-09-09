@@ -1,0 +1,17 @@
+{
+  "miniprogramRoot": "./",
+  "projectname": "kpop_c",
+  "description": "K-pop photocards WeChat mini-program M1",
+  "appid": "touristappid",
+  "compileType": "miniprogram",
+  "libVersion": "3.5.5",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "minified": true,
+    "urlCheck": false,
+    "coverView": true,
+    "lazyloadPlaceholderEnable": true,
+    "preloadBackgroundData": false
+  }
+}

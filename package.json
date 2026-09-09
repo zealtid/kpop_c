@@ -1,0 +1,18 @@
+{
+  "name": "kpop_c",
+  "private": true,
+  "description": "K-pop photocard WeChat mini-program (M1)",
+  "workspaces": [
+    "api"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w api",
+    "start": "npm run start -w api",
+    "migrate": "npm run migrate -w api",
+    "seed": "npm run seed -w api",
+    "test": "npm test -w api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

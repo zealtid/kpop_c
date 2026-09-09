@@ -1,0 +1,20 @@
+<view class="page">
+  <view class="h1">我的卡册</view>
+  <view class="sub">{{copy}}</view>
+  <view class="muted" style="margin-top:12rpx">总览不提供搜索，请到「图鉴」检索专辑与模板。</view>
+
+  <view wx:for="{{groups}}" wx:key="id" class="group-card" bindtap="openGroup" data-id="{{item.slug}}">
+    <view class="left">
+      <view class="dot" style="background: {{item.logoColor}}"></view>
+      <view>
+        <view class="name">{{item.nameZh}}</view>
+        <view class="en">{{item.nameEn}}</view>
+        <view wx:if="{{item.scopeNote}}" class="footnote">{{item.scopeNote}}</view>
+      </view>
+    </view>
+    <view class="ring">
+      <view class="pct">{{item.pct}}%</view>
+      <view class="frac">{{item.progress.ownedDistinct}}/{{item.progress.publishedCount}}</view>
+    </view>
+  </view>
+</view>

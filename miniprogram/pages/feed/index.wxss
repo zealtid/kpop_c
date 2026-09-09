@@ -1,0 +1,15 @@
+.placeholder-card {
+  margin-top: 80rpx;
+  background: #1c1824;
+  border-radius: 32rpx;
+  padding: 64rpx 40rpx;
+  text-align: center;
+}
+.icon {
+  font-size: 72rpx;
+  margin-bottom: 24rpx;
+  color: #ff8fb8;
+}
+.btn {
+  margin-top: 48rpx;
+}
