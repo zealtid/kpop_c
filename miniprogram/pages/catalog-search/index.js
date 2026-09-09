@@ -12,7 +12,7 @@ Page({
   },
   search() {
     const q = this.data.q;
-    api.request({ url: `/catalog/search?q=${encodeURIComponent(q)}` }).then((d) => {
+    api.request({ url: `/catalog/search?q=${encodeURIComponent(q)}`, auth: false }).then((d) => {
       const templates = (d.templates || []).map((t) => ({
         ...t,
         mainImageUrl: api.mediaUrl(t.mainImageUrl),
@@ -35,9 +35,12 @@ Page({
       wx.showToast({ title: "先点选卡片", icon: "none" });
       return;
     }
-    api.request({ url: "/collection/cards/batch", method: "POST", data: { items } }).then(() => {
-      wx.showToast({ title: `已拥有 ${items.length} 张` });
-    });
+    api
+      .request({ url: "/collection/cards/batch", method: "POST", data: { items } })
+      .then(() => {
+        wx.showToast({ title: `已拥有 ${items.length} 张` });
+      })
+      .catch(api.handleWriteError);
   },
   ownOne(e) {
     const id = e.currentTarget.dataset.id;
@@ -47,7 +50,8 @@ Page({
         method: "POST",
         data: { items: [{ templateId: id, quantity: 1 }] },
       })
-      .then(() => wx.showToast({ title: "已标记拥有" }));
+      .then(() => wx.showToast({ title: "已标记拥有" }))
+      .catch(api.handleWriteError);
   },
   wantOne(e) {
     const id = e.currentTarget.dataset.id;
@@ -60,8 +64,6 @@ Page({
         }
         wx.showToast({ title: "已加入想要" });
       })
-      .catch((err) => {
-        wx.showToast({ title: err.message || "失败", icon: "none" });
-      });
+      .catch(api.handleWriteError);
   },
 });

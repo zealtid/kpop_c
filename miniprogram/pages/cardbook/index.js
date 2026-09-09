@@ -6,6 +6,7 @@ Page({
   data: {
     groups: [],
     emptyFollows: false,
+    needsLogin: false,
     copy: "进度 = 已拥有不重复模板数 / 范围内已发布模板数（含特典，不含已废弃）",
   },
   onShow() {
@@ -35,11 +36,15 @@ Page({
                   ? Math.round((g.progress.ownedDistinct / g.progress.publishedCount) * 100)
                   : 0,
               }));
-        this.setData({ groups, emptyFollows, copy: data.copy || this.data.copy });
+        this.setData({ needsLogin: false, groups, emptyFollows, copy: data.copy || this.data.copy });
       })
       .catch((err) => {
-        if (err.status === 401) {
-          getApp().login();
+        if (!api.isUnauthorized(err)) return;
+        this.setData({ needsLogin: true, groups: [], emptyFollows: false });
+        const app = getApp();
+        // 冷启动登录进行中：成功后 refreshCardbook 会再 load，避免 401 重试死循环
+        if (app && (app._loginPromise || (app.globalData && app.globalData.loginState === "pending"))) {
+          return;
         }
       });
   },
@@ -49,5 +54,12 @@ Page({
   },
   goFollowPicker() {
     onboarding.openOnboarding({ force: true });
+  },
+  goCatalog() {
+    wx.switchTab({ url: "/pages/catalog/index" });
+  },
+  doLogin() {
+    const app = getApp();
+    if (app && typeof app.login === "function") app.login();
   },
 });

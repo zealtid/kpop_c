@@ -76,7 +76,7 @@ Page({
       })
       .catch((err) => {
         this.setData({ saving: false });
-        wx.showToast({ title: (err && err.message) || "保存失败", icon: "none" });
+        api.handleWriteError(err);
       });
   },
 

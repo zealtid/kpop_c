@@ -36,7 +36,8 @@ Page({
         method: "POST",
         data: { items: [{ templateId: e.currentTarget.dataset.id, quantity: 1 }] },
       })
-      .then(() => wx.showToast({ title: "已标记拥有" }));
+      .then(() => wx.showToast({ title: "已标记拥有" }))
+      .catch(api.handleWriteError);
   },
   wantOne(e) {
     api
@@ -52,8 +53,6 @@ Page({
         }
         wx.showToast({ title: "已加入想要" });
       })
-      .catch((err) => {
-        wx.showToast({ title: err.message || "失败", icon: "none" });
-      });
+      .catch(api.handleWriteError);
   },
 });

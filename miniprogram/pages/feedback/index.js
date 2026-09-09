@@ -17,6 +17,6 @@ Page({
         wx.showToast({ title: "已提交" });
         this.setData({ text: "" });
       })
-      .catch((err) => wx.showToast({ title: err.message || "失败", icon: "none" }));
+      .catch(api.handleWriteError);
   },
 });

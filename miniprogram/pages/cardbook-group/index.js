@@ -50,11 +50,17 @@ Page({
   },
   unown(e) {
     const id = e.currentTarget.dataset.id;
-    api.request({ url: `/collection/cards/${id}`, method: "DELETE" }).then(() => this.load());
+    api
+      .request({ url: `/collection/cards/${id}`, method: "DELETE" })
+      .then(() => this.load())
+      .catch(api.handleWriteError);
   },
   unwant(e) {
     const id = e.currentTarget.dataset.id;
-    api.request({ url: `/collection/wants/${id}`, method: "DELETE" }).then(() => this.load());
+    api
+      .request({ url: `/collection/wants/${id}`, method: "DELETE" })
+      .then(() => this.load())
+      .catch(api.handleWriteError);
   },
   share() {
     wx.showLoading({ title: "生成长图" });
@@ -68,7 +74,7 @@ Page({
       })
       .catch((err) => {
         wx.hideLoading();
-        wx.showToast({ title: err.message || "生成失败", icon: "none" });
+        api.handleWriteError(err);
       });
   },
 });
