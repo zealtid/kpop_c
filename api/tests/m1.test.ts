@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createApp } from "../src/app.js";
 import { pool, query } from "../src/db.js";
 import { seed } from "../src/seed.js";
-import { GROUP_BTS, sid } from "../src/ids.js";
+import { GROUP_H2H, GROUP_BTS, sid } from "../src/ids.js";
 import type { Server } from "node:http";
 
 let server: Server;
@@ -641,4 +641,124 @@ test("PC01-PC06 private photo custom cards", async () => {
   assert.equal(del.status, 200);
   const gone = await query("SELECT 1 FROM user_custom_cards WHERE id = $1", [card.id]);
   assert.equal(gone.rowCount, 0);
+});
+
+test("UX03-UX05 custom card optional member_id and group membership", async () => {
+  const memberRm = sid("member:bts:RM");
+  const memberCarmen = sid("member:h2h:Carmen");
+
+  const members = await api("/catalog/groups/bts/members");
+  assert.equal(members.status, 200);
+  const list = (members.body as { members: { id: string; nameEn: string; groupId: string }[] }).members;
+  assert.ok(list.some((m) => m.id === memberRm && m.nameEn === "RM"));
+  assert.ok(list.every((m) => m.groupId && m.nameEn));
+
+  const skipMember = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({
+      imageFrontBase64: TINY_PNG,
+      mimeType: "image/png",
+      title: "UX03_SKIP_MEMBER",
+      groupId: GROUP_BTS,
+    }),
+  });
+  assert.equal(skipMember.status, 200);
+  const skipped = skipMember.body as { id: string; memberId: string | null; member: unknown; groupId: string };
+  assert.equal(skipped.groupId, GROUP_BTS);
+  assert.equal(skipped.memberId, null);
+  assert.equal(skipped.member, null);
+  const skipRow = await query("SELECT member_id FROM user_custom_cards WHERE id = $1", [skipped.id]);
+  assert.equal(skipRow.rows[0].member_id, null);
+
+  const withMember = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({
+      imageFrontBase64: TINY_PNG,
+      mimeType: "image/png",
+      title: "UX04_WITH_MEMBER",
+      groupId: GROUP_BTS,
+      memberId: memberRm,
+    }),
+  });
+  assert.equal(withMember.status, 200);
+  const picked = withMember.body as {
+    id: string;
+    memberId: string;
+    memberNameEn: string;
+    member: { id: string; nameEn: string };
+    imageFront: string;
+  };
+  assert.equal(picked.memberId, memberRm);
+  assert.equal(picked.memberNameEn, "RM");
+  assert.equal(picked.member.id, memberRm);
+  const dbMember = await query("SELECT member_id, group_id FROM user_custom_cards WHERE id = $1", [picked.id]);
+  assert.equal(String(dbMember.rows[0].member_id), memberRm);
+  assert.equal(String(dbMember.rows[0].group_id), GROUP_BTS);
+
+  const detail = await api(`/collection/custom-cards/${picked.id}`);
+  assert.equal((detail.body as { memberId: string; imageFront: string }).memberId, memberRm);
+  assert.ok((detail.body as { imageFront: string }).imageFront.startsWith("/media/custom/"));
+
+  const overview = await api("/collection/overview");
+  const ov = overview.body as { customCards: { id: string; memberId: string; memberNameEn: string }[] };
+  const ovCard = ov.customCards.find((c) => c.id === picked.id);
+  assert.equal(ovCard?.memberId, memberRm);
+  assert.equal(ovCard?.memberNameEn, "RM");
+
+  const wrongGroup = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({
+      imageFrontBase64: TINY_PNG,
+      mimeType: "image/png",
+      groupId: GROUP_BTS,
+      memberId: memberCarmen,
+    }),
+  });
+  assert.equal(wrongGroup.status, 400);
+
+  const memberNoGroup = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({
+      imageFrontBase64: TINY_PNG,
+      mimeType: "image/png",
+      memberId: memberRm,
+    }),
+  });
+  assert.equal(memberNoGroup.status, 400);
+
+  const switched = await api(`/collection/custom-cards/${picked.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ groupId: GROUP_H2H }),
+  });
+  assert.equal(switched.status, 200);
+  const afterSwitch = switched.body as { groupId: string; memberId: string | null };
+  assert.equal(afterSwitch.groupId, GROUP_H2H);
+  assert.equal(afterSwitch.memberId, null);
+  const switchedRow = await query("SELECT member_id FROM user_custom_cards WHERE id = $1", [picked.id]);
+  assert.equal(switchedRow.rows[0].member_id, null);
+
+  const restored = await api(`/collection/custom-cards/${picked.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ groupId: GROUP_BTS, memberId: memberRm }),
+  });
+  assert.equal((restored.body as { memberId: string }).memberId, memberRm);
+  const cleared = await api(`/collection/custom-cards/${picked.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ memberId: null }),
+  });
+  assert.equal((cleared.body as { memberId: string | null }).memberId, null);
+
+  const templatesBefore = await query("SELECT COUNT(*)::int AS n FROM templates");
+  const prog = await api("/collection/groups/bts/progress");
+  const owned = (prog.body as { ownedDistinct: number }).ownedDistinct;
+  const search = await api("/catalog/search?q=UX04_WITH_MEMBER");
+  const found = (search.body as { templates: unknown[] }).templates;
+  assert.equal(found.length, 0);
+  const templatesAfter = await query("SELECT COUNT(*)::int AS n FROM templates");
+  assert.equal(templatesAfter.rows[0].n, templatesBefore.rows[0].n);
+  const progAfter = await api("/collection/groups/bts/progress");
+  assert.equal((progAfter.body as { ownedDistinct: number }).ownedDistinct, owned);
+
+  await api(`/collection/custom-cards/${skipped.id}`, { method: "DELETE" });
+  await api(`/collection/custom-cards/${picked.id}`, { method: "DELETE" });
 });

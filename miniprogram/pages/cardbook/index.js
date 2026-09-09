@@ -88,6 +88,12 @@ Page({
     if (!id) return;
     wx.navigateTo({ url: `/pages/custom-card/index?id=${id}` });
   },
+  openPreview(e) {
+    const id = e.currentTarget.dataset.id;
+    const card = (this.data.customCards || []).find((c) => c.id === id);
+    if (!card || !customCard.canOpenFullscreen(card.moderationStatus)) return;
+    customCard.openFullscreen(card.mainImageUrl);
+  },
   addCustomCard() {
     if (this.data.needsLogin) {
       this.doLogin();

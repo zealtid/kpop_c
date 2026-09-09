@@ -3,7 +3,7 @@
 
   <block wx:else>
     <view class="hero">
-      <view class="ph hero-ph" style="background: {{card.memberColor || '#2a2233'}}">
+      <view class="ph hero-ph" style="background: {{card.memberColor || '#2a2233'}}" bindtap="openPreview">
         <image wx:if="{{card.mainImageUrl}}" src="{{card.mainImageUrl}}" mode="aspectFill"/>
       </view>
       <view class="meta">
@@ -11,9 +11,13 @@
         <view class="tag">{{card.badge}}</view>
         <view wx:if="{{card.moderationLabel}}" class="tag warn">{{card.moderationLabel}}</view>
         <view wx:if="{{card.groupNameZh}}" class="sub">{{card.groupNameZh}}</view>
-        <view class="muted">审核未通过的卡不进入常规卡册，也不会出现在分享长图。</view>
+        <view wx:if="{{card.memberNameEn || card.memberNameZh}}" class="sub">{{card.memberNameEn || card.memberNameZh}}</view>
+        <view wx:if="{{card.moderationStatus==='rejected'}}" class="muted">未通过审核，不进入常规卡册收藏，也不会出现在分享长图。</view>
+        <view wx:else class="muted">审核未通过的卡不进入常规卡册，也不会出现在分享长图。</view>
       </view>
     </view>
+
+    <view wx:if="{{canPreview}}" class="btn ghost preview-btn" bindtap="openPreview">查看大图</view>
 
     <view class="card">
       <view class="label">标题</view>

@@ -1,0 +1,8 @@
+<view class="preview-page" bindtap="close">
+  <movable-area class="area" wx:if="{{src}}">
+    <movable-view class="mv" direction="all" scale scale-min="1" scale-max="4" inertia="{{false}}">
+      <image class="full" src="{{src}}" mode="aspectFit" catchtap="noop"/>
+    </movable-view>
+  </movable-area>
+  <view class="hint">点击空白关闭 · 可双指缩放</view>
+</view>

@@ -1,0 +1,41 @@
+.crop-page {
+  min-height: 100vh;
+  background: #121016;
+}
+
+.stage {
+  margin: 32rpx 0 40rpx;
+  display: flex;
+  justify-content: center;
+}
+
+.frame {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  border: 2rpx solid #ff6b9d;
+  border-radius: 8rpx;
+}
+
+.img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.touch {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.offscreen {
+  position: fixed;
+  left: -2400px;
+  top: 0;
+}
+
+.btn.off {
+  opacity: 0.5;
+}

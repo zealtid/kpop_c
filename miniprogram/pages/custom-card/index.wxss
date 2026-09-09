@@ -10,3 +10,7 @@
   min-height: 72rpx;
   height: 72rpx;
 }
+
+.preview-btn {
+  margin-bottom: 24rpx;
+}
