@@ -16,6 +16,7 @@ import * as admin from "./admin.js";
 import * as adminCatalog from "./adminCatalog.js";
 import { previewOrCommitImport } from "./importValidate.js";
 import { getCompletenessDashboard } from "./completeness.js";
+import * as tickets from "./tickets.js";
 import { ANALYTICS_EVENTS, track } from "./analytics.js";
 import { query } from "./db.js";
 import * as customCards from "./customCards.js";
@@ -39,7 +40,7 @@ export function createApp() {
   app.use(optionalAuth);
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, service: "kpop_c-api", phase: "M2.5-OPS-2" });
+    res.json({ ok: true, service: "kpop_c-api", phase: "M2.5-OPS-3" });
   });
 
   app.get("/", (_req, res) => {
@@ -47,7 +48,7 @@ export function createApp() {
       name: "星卡 API",
       client: "WeChat mini-program + ops admin",
       docs: "see repository README",
-      phase: "M2.5-OPS-2",
+      phase: "M2.5-OPS-3",
     });
   });
 
@@ -490,6 +491,89 @@ export function createApp() {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 50;
       res.json({ logs: await listAuditLogs(limit) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/tickets", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(
+        await tickets.listTickets({
+          status: req.query.status as string | undefined,
+          limit: req.query.limit ? Number(req.query.limit) : undefined,
+          offset: req.query.offset ? Number(req.query.offset) : undefined,
+        }),
+      );
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/tickets/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await tickets.getTicket(req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/admin/tickets/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await tickets.updateTicket(
+        req.params.id,
+        {
+          status: req.body?.status,
+          assigneeOpsId: req.body?.assigneeOpsId,
+          internalNote: req.body?.internalNote,
+        },
+        req.ops,
+      );
+      await writeAuditLog({
+        actor: req.ops,
+        action: "ticket.update",
+        entityType: "missing_feedback",
+        entityId: result.id,
+        payload: {
+          status: result.status,
+          assigneeOpsId: result.assignee?.id,
+          closed: !!result.closedAt,
+        },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/tickets/:id/templates", requireAdmin, async (req, res, next) => {
+    try {
+      const templateId = req.body?.templateId ? String(req.body.templateId) : "";
+      if (templateId) {
+        const result = await tickets.linkTicketTemplate(req.params.id, templateId);
+        await writeAuditLog({
+          actor: req.ops,
+          action: "ticket.link_template",
+          entityType: "missing_feedback",
+          entityId: result.id,
+          payload: { templateId, templateStatus: result.linkedTemplate?.status },
+        });
+        res.json(result);
+        return;
+      }
+      const created = await tickets.createDraftAndLink(req.params.id, req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "ticket.create_template",
+        entityType: "missing_feedback",
+        entityId: created.ticket.id,
+        payload: {
+          templateId: created.template.id,
+          status: created.template.status,
+          version: req.body?.version,
+        },
+      });
+      res.json(created);
     } catch (e) {
       next(e);
     }

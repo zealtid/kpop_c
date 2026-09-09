@@ -31,7 +31,7 @@ npm run migrate
 npm run seed          # H2H 样品 + BTS ARIRANG 切片 + 占位卡图
 npm run dev           # API :3000，启动时默认会再跑一遍幂等 seed
 npm run dev:admin     # 运营后台 Vite :5173（代理 /admin 到 API）
-npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 行为测试
+npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 / OPS-3 行为测试
 ```
 
 也可用 `docker compose up --build` 拉起 postgres + API。
@@ -87,6 +87,7 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 �
 | **D01** | 管理 draft ↔ published | `POST /admin/templates/:id/publish\|unpublish` |
 | **D02** | 导入按 `dedupe_key` 去重 | `POST /admin/import` |
 | **D03** | 无主图不可发布 | `400 IMAGE_REQUIRED` |
+| **A08** | 用户提交文字缺卡反馈 → Admin 出现待处理工单，可关联草稿模板 / 关闭 | `POST /feedback/missing`；`GET\|PATCH /admin/tickets` |
 
 ## API 一览
 
@@ -99,8 +100,8 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 �
 | 拥有 | `POST /collection/cards` `POST /collection/cards/batch` `PATCH\|DELETE /collection/cards/:templateId` |
 | 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
 | 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }` |
-| 反馈 | `POST /feedback/missing` `{ text }` |
-| 管理 | `POST /admin/import` `POST /admin/import/validate` `GET /admin/completeness` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
+| 反馈 | `POST /feedback/missing` `{ text }`（仅文字；不返回工单进度） |
+| 管理 | `POST /admin/import` `POST /admin/import/validate` `GET /admin/completeness` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`；缺卡工单 `GET\|PATCH /admin/tickets` `POST /admin/tickets/:id/templates`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
 | OPS 登录 | `POST /admin/auth/login` `GET /admin/auth/me` `POST /admin/auth/logout` `GET /admin/audit` |
 | 情报 | `GET /feed` `GET /feed/featured` `GET /feed/:id` |
 | 日程 | `GET /schedule/today` `GET /schedule` `GET /schedule/:id`（`startAtShanghai` / Asia/Shanghai） |
@@ -145,8 +146,8 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 �
 api/                 Express + pg + sharp 分享长图
   migrations/        PostgreSQL
   src/               路由与领域逻辑
-  tests/             M1 / M2-a / OPS-0 / OPS-1 / OPS-2
-admin/               独立 Web 运营后台（Vite，图鉴 CRUD + 完整度 + 导入校验 + 情报只读）
+  tests/             M1 / M2-a / OPS-0 / OPS-1 / OPS-2 / OPS-3
+admin/               独立 Web 运营后台（Vite：图鉴 CRUD + 完整度 + 导入 + 缺卡工单 + 情报只读）
 miniprogram/         微信小程序
 project.config.json  微信开发者工具打开仓库根目录用
 docker-compose.yml
@@ -206,6 +207,29 @@ docker-compose.yml
 
 Admin：图鉴 → **完整度** / **导入**。
 
+## M2.5 OPS-3 缺卡反馈工单
+
+消费 M1 `missing_feedback`（小程序空搜 C03 的文字提交），在 Admin 走工单，不向 C 端展示进度。
+
+**In**
+
+- 每条 `POST /feedback/missing` 即为一张工单，默认 `open`
+- 状态：`open` / `in_progress` / `done` / `wontfix`；关闭（done / wontfix）必须写内部备注
+- 可关联已有 `PhotocardTemplate`，或新建模板（**始终 draft**）；工单页**没有**申请入库 / 发布
+- 写操作记 `admin_audit_logs`；鉴权仍是 ops JWT + `x-admin-token`
+- Admin 顶栏菜单 **反馈/工单**（`#/tickets`）
+
+**Out**
+
+- 审核队列 / 申请入库 / 爬虫
+- C 端缺卡进度页（小程序不读工单状态）
+- 不重做 OPS-2 完整度 / 导入
+- 未改 `WX_SECRET` / `API_BASE`；无视觉大改
+
+| ID | 行为 |
+| --- | --- |
+| **A08** | 用户提交文字缺卡反馈 → Admin 出现 open 工单，可关联草稿 / 关闭 |
+
 ### 本地打开 Admin
 
 ```bash
@@ -228,7 +252,7 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 | 路径 | 说明 |
 | --- | --- |
 | `POST /admin/auth/login` | `{ username, password }` → `{ token, user }` |
-| `GET /admin/auth/me` | 当前 ops 用户 + 菜单 图鉴/情报 |
+| `GET /admin/auth/me` | 当前 ops 用户 + 菜单 图鉴/情报/反馈工单 |
 | `POST /admin/auth/logout` | 清 cookie |
 | `GET /admin/audit` | 最近审计（ops） |
 | `GET\|POST /admin/catalog/groups` `PATCH .../:id` `POST .../:id/status` | 组合 CRUD + 状态 |
@@ -237,6 +261,8 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 | `GET\|POST /admin/catalog/templates` `PATCH .../:id` `POST .../:id/status` | 小卡模板；无主图不可 `published` |
 | `GET /admin/completeness` | 完整度看板（A06）+ 发布闸门（只读，无签署人） |
 | `POST /admin/import/validate` `POST /admin/import` | CSV / Markdown / JSON；先报告后写入 |
+| `GET /admin/tickets` `GET\|PATCH /admin/tickets/:id` | 缺卡工单列表 / 状态（open / in_progress / done / wontfix） |
+| `POST /admin/tickets/:id/templates` | 关联已有模板，或新建 **draft** 模板并关联（不入库） |
 
 ### 生产部署（Railway 静态服务 `admin`）
 
@@ -257,4 +283,4 @@ npm run build:admin   # 本地确认 dist/；需设置 VITE_API_BASE
 
 ## 明确不做（M1 之外）
 
-订阅消息 Worker、微博爬虫、缺卡清单页、交易、投稿审核、好友关系、AI。OPS-3 缺卡工单不在本切片。
+订阅消息 Worker、微博爬虫、缺卡清单页（C 端进度）、交易、投稿审核、好友关系、AI。
