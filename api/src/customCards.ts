@@ -29,24 +29,28 @@ const SELECT_SQL = `
 
 export function mapCustomCard(row: CustomRow) {
   const status = String(row.moderation_status || "pending");
+  const title = row.title == null ? null : String(row.title);
+  const note = row.note == null ? null : String(row.note);
+  const memberNameEn = row.member_name_en == null ? null : String(row.member_name_en);
+  const memberNameZh = row.member_name_zh == null ? null : String(row.member_name_zh);
   return {
-    id: row.id,
+    id: String(row.id),
     kind: "custom" as const,
     custom: true,
     badge: CUSTOM_BADGE,
-    imageFront: row.image_front,
-    imageBack: row.image_back || null,
-    mainImageUrl: row.image_front,
-    groupId: row.group_id || null,
-    groupSlug: row.group_slug || null,
-    groupNameZh: row.group_name_zh || null,
-    memberId: row.member_id || null,
-    memberNameEn: row.member_name_en || null,
-    memberNameZh: row.member_name_zh || null,
+    imageFront: String(row.image_front),
+    imageBack: row.image_back ? String(row.image_back) : null,
+    mainImageUrl: String(row.image_front),
+    groupId: row.group_id ? String(row.group_id) : null,
+    groupSlug: row.group_slug ? String(row.group_slug) : null,
+    groupNameZh: row.group_name_zh ? String(row.group_name_zh) : null,
+    memberId: row.member_id ? String(row.member_id) : null,
+    memberNameEn,
+    memberNameZh,
     memberColor: (row.member_color as string | null) || "#8a8494",
-    title: row.title || null,
-    note: row.note || null,
-    notes: row.note || null,
+    title,
+    note,
+    notes: note,
     quantity: row.quantity as number,
     condition: (row.condition as string | null) || null,
     moderationStatus: status,
