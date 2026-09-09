@@ -50,7 +50,9 @@ Page({
       api.request({ url: "/feed", auth: false }),
       api.request({ url: "/schedule/today", auth: false }),
     ])
-      .then(([feed, today]) => {
+      .then((results) => {
+        const feed = results[0];
+        const today = results[1];
         const items = intel.visibleFeeds(feed.items).map(intel.decorateFeed);
         const todayEvents = intel.visibleSchedules(today.events).map((e) => intel.decorateSchedule(e));
         this.setData({
@@ -81,7 +83,10 @@ Page({
       api.request({ url: "/feed" }),
       api.request({ url: "/schedule/today" }),
     ])
-      .then(([follows, feed, today]) => {
+      .then((results) => {
+        const follows = results[0];
+        const feed = results[1];
+        const today = results[2];
         const groups = (follows && follows.groups) || [];
         if (!groups.length) {
           this.setData({

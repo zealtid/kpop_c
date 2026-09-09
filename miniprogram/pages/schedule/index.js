@@ -45,7 +45,9 @@ Page({
       api.request({ url: todayUrl, auth: false }),
       api.request({ url: listUrl, auth: false }),
     ])
-      .then(([today, list]) => {
+      .then((results) => {
+        const today = results[0];
+        const list = results[1];
         const todayEvents = intel.visibleSchedules(today.events).map((e) => intel.decorateSchedule(e));
         const events = intel.visibleSchedules(list.events).map((e) => intel.decorateSchedule(e));
         this.setData({
@@ -81,7 +83,10 @@ Page({
 
     this.setData({ loading: true });
     Promise.all(reqs)
-      .then(([today, list, follows]) => {
+      .then((results) => {
+        const today = results[0];
+        const list = results[1];
+        const follows = results[2];
         const groups = (follows && follows.groups) || [];
         const emptyFollows = authed && !gid && groups.length === 0;
         const todayEvents = intel.visibleSchedules(today.events).map((e) => intel.decorateSchedule(e));

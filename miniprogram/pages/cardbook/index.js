@@ -25,7 +25,9 @@ Page({
       api.request({ url: "/collection/overview" }),
       api.request({ url: "/me/follows" }),
     ])
-      .then(([data, follows]) => {
+      .then((results) => {
+        const data = results[0];
+        const follows = results[1];
         const followed = (follows && follows.groups) || [];
         const emptyFollows = followed.length === 0;
         if (emptyFollows) {

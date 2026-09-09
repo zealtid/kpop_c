@@ -18,7 +18,9 @@ Page({
     Promise.all([
       api.request({ url: "/catalog/groups", auth: false }),
       api.request({ url: "/me/follows" }).catch(() => ({ groups: [] })),
-    ]).then(([catalog, follows]) => {
+    ]).then((results) => {
+      const catalog = results[0];
+      const follows = results[1];
       const followed = new Set(((follows && follows.groups) || []).map((g) => g.id));
       const groups = ((catalog && catalog.groups) || []).map((g) => ({
         ...g,
