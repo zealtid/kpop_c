@@ -30,7 +30,7 @@ function getS3() {
   if (!isBucketConfigured()) return null;
   if (!s3) {
     s3 = new S3Client({
-      region: config.bucketRegion || "sin",
+      region: config.bucketRegion || "auto",
       endpoint: config.bucketEndpoint,
       credentials: {
         accessKeyId: config.bucketAccessKeyId,
