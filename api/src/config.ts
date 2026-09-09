@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseCorsOrigins } from "./cors.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(here, "../../.env") });
@@ -23,6 +24,8 @@ export const config = {
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
+  /** Extra CORS origins (comma-separated). localhost and *.up.railway.app are always allowed. */
+  corsOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
   dataDir: path.resolve(process.env.DATA_DIR || path.join(here, "../data")),
   wxAppId: process.env.WX_APPID || "",
   wxSecret: process.env.WX_SECRET || "",
