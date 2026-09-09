@@ -10,8 +10,14 @@
     "enhance": true,
     "minified": true,
     "urlCheck": false,
+    "postcss": true,
     "coverView": true,
     "lazyloadPlaceholderEnable": true,
     "preloadBackgroundData": false
-  }
+  },
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {}
 }
