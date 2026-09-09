@@ -76,10 +76,27 @@ export async function searchTemplates(opts: SearchOpts) {
   if (opts.memberId) add("t.member_id = ?", opts.memberId);
   if (opts.q) {
     const tokens = opts.q.split(/\s+/).filter(Boolean);
+    // C02: en/zh + name_ko + lightweight aliases (comma-separated TEXT)
+    const searchFields = [
+      "t.name",
+      "t.code",
+      "t.version",
+      "r.title",
+      "r.title_zh",
+      "r.aliases",
+      "m.name_en",
+      "m.name_zh",
+      "m.name_ko",
+      "m.aliases",
+      "g.name_en",
+      "g.name_zh",
+      "g.name_ko",
+      "g.aliases",
+    ];
     for (const token of tokens) {
       params.push(`%${token}%`);
       conds.push(
-        `(t.name ILIKE $${params.length} OR t.code ILIKE $${params.length} OR t.version ILIKE $${params.length} OR r.title ILIKE $${params.length} OR r.title_zh ILIKE $${params.length} OR m.name_en ILIKE $${params.length} OR m.name_zh ILIKE $${params.length} OR g.name_en ILIKE $${params.length} OR g.name_zh ILIKE $${params.length})`,
+        `(${searchFields.map((f) => `${f} ILIKE $${params.length}`).join(" OR ")})`,
       );
     }
   }

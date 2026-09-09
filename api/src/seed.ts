@@ -6,27 +6,27 @@ import { sid, GROUP_H2H, GROUP_BTS } from "./ids.js";
 import { writePlaceholderCard } from "./placeholders.js";
 import { config } from "./config.js";
 
-type MemberDef = { en: string; zh: string; color: string };
+type MemberDef = { en: string; zh: string; ko: string; aliases: string; color: string };
 
 const H2H_MEMBERS: MemberDef[] = [
-  { en: "Carmen", zh: "카르멘", color: "#2ec4b6" },
-  { en: "Jiwoo", zh: "지우", color: "#e63946" },
-  { en: "Yuha", zh: "유하", color: "#ffb703" },
-  { en: "Stella", zh: "스텔라", color: "#9b5de5" },
-  { en: "Juun", zh: "주은", color: "#00bbf9" },
-  { en: "A-na", zh: "에이나", color: "#f15bb5" },
-  { en: "Ian", zh: "이안", color: "#00f5d4" },
-  { en: "Ye-on", zh: "예온", color: "#fee440" },
+  { en: "Carmen", zh: "카르멘", ko: "카르멘", aliases: "卡门", color: "#2ec4b6" },
+  { en: "Jiwoo", zh: "지우", ko: "지우", aliases: "智雨", color: "#e63946" },
+  { en: "Yuha", zh: "유하", ko: "유하", aliases: "有河", color: "#ffb703" },
+  { en: "Stella", zh: "스텔라", ko: "스텔라", aliases: "斯特拉", color: "#9b5de5" },
+  { en: "Juun", zh: "주은", ko: "주은", aliases: "主恩", color: "#00bbf9" },
+  { en: "A-na", zh: "에이나", ko: "에이나", aliases: "艾娜", color: "#f15bb5" },
+  { en: "Ian", zh: "이안", ko: "이안", aliases: "伊恩", color: "#00f5d4" },
+  { en: "Ye-on", zh: "예온", ko: "예온", aliases: "艺温", color: "#fee440" },
 ];
 
 const BTS_MEMBERS: MemberDef[] = [
-  { en: "RM", zh: "RM", color: "#7c6cf0" },
-  { en: "Jin", zh: "진", color: "#f4a261" },
-  { en: "SUGA", zh: "슈가", color: "#2a9d8f" },
-  { en: "j-hope", zh: "제이홉", color: "#e9c46a" },
-  { en: "Jimin", zh: "지민", color: "#e76f51" },
-  { en: "V", zh: "뷔", color: "#4cc9f0" },
-  { en: "Jung Kook", zh: "정국", color: "#d62828" },
+  { en: "RM", zh: "RM", ko: "알엠", aliases: "南俊,金南俊", color: "#7c6cf0" },
+  { en: "Jin", zh: "진", ko: "진", aliases: "金硕珍,硕珍", color: "#f4a261" },
+  { en: "SUGA", zh: "슈가", ko: "슈가", aliases: "闵玧其,玧其", color: "#2a9d8f" },
+  { en: "j-hope", zh: "제이홉", ko: "제이홉", aliases: "郑号锡,号锡", color: "#e9c46a" },
+  { en: "Jimin", zh: "지민", ko: "지민", aliases: "朴智旻,智旻", color: "#e76f51" },
+  { en: "V", zh: "뷔", ko: "뷔", aliases: "金泰亨,泰亨,泰泰", color: "#4cc9f0" },
+  { en: "Jung Kook", zh: "정국", ko: "정국", aliases: "柾国,田柾国,JK", color: "#d62828" },
 ];
 
 const H2H_RELEASES = [
@@ -34,6 +34,7 @@ const H2H_RELEASES = [
     key: "the-chase",
     title: "The Chase",
     titleZh: "The Chase",
+    aliases: "追逐",
     releasedOn: "2025-02-24",
     kind: "single",
     versions: [
@@ -47,6 +48,7 @@ const H2H_RELEASES = [
     key: "focus",
     title: "FOCUS",
     titleZh: "FOCUS",
+    aliases: "焦点",
     releasedOn: "2025-10-20",
     kind: "mini",
     versions: [
@@ -59,6 +61,7 @@ const H2H_RELEASES = [
     key: "lemon-tang",
     title: "Lemon Tang",
     titleZh: "Lemon Tang",
+    aliases: "柠檬糖",
     releasedOn: "2026-06-22",
     kind: "mini",
     versions: [
@@ -73,6 +76,7 @@ const BTS_RELEASE = {
   key: "arirang",
   title: "ARIRANG",
   titleZh: "ARIRANG",
+  aliases: "阿里郎",
   releasedOn: "2026-03-20",
   kind: "album",
   versions: [
@@ -86,15 +90,21 @@ export async function seed() {
   await runMigrations();
 
   await query(
-    `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, logo_color, scope_note, is_pilot)
-     VALUES ($1,'h2h','Hearts2Hearts','Hearts2Hearts','하츠투하츠','#ff6b9d',NULL,true)
-     ON CONFLICT (id) DO UPDATE SET name_zh = EXCLUDED.name_zh`,
+    `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot)
+     VALUES ($1,'h2h','Hearts2Hearts','Hearts2Hearts','하츠투하츠','H2H,心心','#ff6b9d',NULL,true)
+     ON CONFLICT (id) DO UPDATE SET
+       name_zh = EXCLUDED.name_zh,
+       name_ko = EXCLUDED.name_ko,
+       aliases = EXCLUDED.aliases`,
     [GROUP_H2H],
   );
   await query(
-    `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, logo_color, scope_note, is_pilot)
-     VALUES ($1,'bts','防弹少年团','BTS','방탄소년단','#7c9cff','当前图鉴仅含《ARIRANG》切片',true)
-     ON CONFLICT (id) DO UPDATE SET scope_note = EXCLUDED.scope_note`,
+    `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot)
+     VALUES ($1,'bts','防弹少年团','BTS','방탄소년단','防弹,邦炭','#7c9cff','当前图鉴仅含《ARIRANG》切片',true)
+     ON CONFLICT (id) DO UPDATE SET
+       scope_note = EXCLUDED.scope_note,
+       name_ko = EXCLUDED.name_ko,
+       aliases = EXCLUDED.aliases`,
     [GROUP_BTS],
   );
 
@@ -103,20 +113,26 @@ export async function seed() {
     const id = sid(`member:h2h:${m.en}`);
     memberIds.set(`h2h:${m.en}`, id);
     await query(
-      `INSERT INTO members (id, group_id, name_zh, name_en, color, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (id) DO UPDATE SET color = EXCLUDED.color`,
-      [id, GROUP_H2H, m.zh, m.en, m.color, i],
+      `INSERT INTO members (id, group_id, name_zh, name_en, name_ko, aliases, color, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (id) DO UPDATE SET
+         color = EXCLUDED.color,
+         name_ko = EXCLUDED.name_ko,
+         aliases = EXCLUDED.aliases`,
+      [id, GROUP_H2H, m.zh, m.en, m.ko, m.aliases, m.color, i],
     );
   }
   for (const [i, m] of BTS_MEMBERS.entries()) {
     const id = sid(`member:bts:${m.en}`);
     memberIds.set(`bts:${m.en}`, id);
     await query(
-      `INSERT INTO members (id, group_id, name_zh, name_en, color, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (id) DO UPDATE SET color = EXCLUDED.color`,
-      [id, GROUP_BTS, m.zh, m.en, m.color, i],
+      `INSERT INTO members (id, group_id, name_zh, name_en, name_ko, aliases, color, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (id) DO UPDATE SET
+         color = EXCLUDED.color,
+         name_ko = EXCLUDED.name_ko,
+         aliases = EXCLUDED.aliases`,
+      [id, GROUP_BTS, m.zh, m.en, m.ko, m.aliases, m.color, i],
     );
   }
 
@@ -124,10 +140,12 @@ export async function seed() {
   for (const rel of H2H_RELEASES) {
     const rid = sid(`release:h2h:${rel.key}`);
     await query(
-      `INSERT INTO releases (id, group_id, title, title_zh, released_on, kind, status)
-       VALUES ($1,$2,$3,$4,$5,$6,'published')
-       ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title`,
-      [rid, GROUP_H2H, rel.title, rel.titleZh, rel.releasedOn, rel.kind],
+      `INSERT INTO releases (id, group_id, title, title_zh, aliases, released_on, kind, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'published')
+       ON CONFLICT (id) DO UPDATE SET
+         title = EXCLUDED.title,
+         aliases = EXCLUDED.aliases`,
+      [rid, GROUP_H2H, rel.title, rel.titleZh, rel.aliases, rel.releasedOn, rel.kind],
     );
     for (const m of H2H_MEMBERS) {
       for (const v of rel.versions) {
@@ -149,10 +167,12 @@ export async function seed() {
 
   const arirangId = sid("release:bts:arirang");
   await query(
-    `INSERT INTO releases (id, group_id, title, title_zh, released_on, kind, status)
-     VALUES ($1,$2,$3,$4,$5,$6,'published')
-     ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title`,
-    [arirangId, GROUP_BTS, BTS_RELEASE.title, BTS_RELEASE.titleZh, BTS_RELEASE.releasedOn, BTS_RELEASE.kind],
+    `INSERT INTO releases (id, group_id, title, title_zh, aliases, released_on, kind, status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,'published')
+     ON CONFLICT (id) DO UPDATE SET
+       title = EXCLUDED.title,
+       aliases = EXCLUDED.aliases`,
+    [arirangId, GROUP_BTS, BTS_RELEASE.title, BTS_RELEASE.titleZh, BTS_RELEASE.aliases, BTS_RELEASE.releasedOn, BTS_RELEASE.kind],
   );
   for (const m of BTS_MEMBERS) {
     for (const v of BTS_RELEASE.versions) {

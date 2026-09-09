@@ -472,6 +472,59 @@ test("D01-D03 admin draft/publish/dedupe/image required", async () => {
   assert.equal(second.status, 200);
 });
 
+test("C02 search matches name_ko and aliases; unrelated stays empty", async () => {
+  type Tpl = {
+    status: string;
+    groupSlug: string;
+    memberNameEn?: string | null;
+    releaseTitle?: string;
+    isDeprecated: boolean;
+  };
+
+  async function search(q: string) {
+    const res = await api(`/catalog/search?q=${encodeURIComponent(q)}`);
+    assert.equal(res.status, 200);
+    const body = res.body as { templates: Tpl[]; empty: boolean };
+    return body;
+  }
+
+  const byGroupKo = await search("방탄소년단");
+  assert.ok(byGroupKo.templates.length >= 21);
+  assert.equal(byGroupKo.empty, false);
+  assert.ok(byGroupKo.templates.every((t) => t.groupSlug === "bts"));
+  assert.ok(byGroupKo.templates.every((t) => t.status === "published"));
+  assert.ok(byGroupKo.templates.every((t) => !t.isDeprecated));
+
+  const byH2hKo = await search("하츠투하츠");
+  assert.ok(byH2hKo.templates.length > 0);
+  assert.ok(byH2hKo.templates.every((t) => t.groupSlug === "h2h"));
+  assert.ok(byH2hKo.templates.every((t) => t.status === "published"));
+
+  const byMemberKo = await search("알엠");
+  assert.ok(byMemberKo.templates.length >= 3);
+  assert.ok(byMemberKo.templates.every((t) => t.memberNameEn === "RM"));
+  assert.ok(byMemberKo.templates.every((t) => t.groupSlug === "bts"));
+
+  const byAlias = await search("柾国");
+  assert.ok(byAlias.templates.length >= 3);
+  assert.equal(byAlias.empty, false);
+  assert.ok(byAlias.templates.every((t) => t.memberNameEn === "Jung Kook"));
+  assert.ok(byAlias.templates.every((t) => t.groupSlug === "bts"));
+  assert.ok(byAlias.templates.every((t) => t.status === "published"));
+
+  const byAlbumAlias = await search("阿里郎");
+  assert.ok(byAlbumAlias.templates.length >= 21);
+  assert.ok(byAlbumAlias.templates.every((t) => t.releaseTitle === "ARIRANG"));
+
+  const byGroupAlias = await search("心心");
+  assert.ok(byGroupAlias.templates.length > 0);
+  assert.ok(byGroupAlias.templates.every((t) => t.groupSlug === "h2h"));
+
+  const miss = await search("definitely-not-an-album-xyz");
+  assert.equal(miss.templates.length, 0);
+  assert.equal(miss.empty, true);
+});
+
 test("catalog_search empty is tracked", async () => {
   await api("/catalog/search?q=definitely-not-an-album-xyz");
   const ev = await query(
