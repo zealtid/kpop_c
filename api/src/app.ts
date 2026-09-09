@@ -24,7 +24,7 @@ export function createApp() {
 
   app.get("/", (_req, res) => {
     res.json({
-      name: "kpop_c API",
+      name: "星卡 API",
       client: "WeChat mini-program only",
       docs: "see repository README",
     });
@@ -258,8 +258,8 @@ export function createApp() {
 
   app.get("/share/landing", (req, res) => {
     res.type("html").send(
-      `<!doctype html><meta charset="utf-8"><title>kpop_c</title>
-       <body style="font-family:sans-serif;padding:24px">请使用微信打开 kpop_c 小程序（M1 无 Web 客户端）。group=${String(req.query.g || "")}</body>`,
+      `<!doctype html><meta charset="utf-8"><title>星卡</title>
+       <body style="font-family:sans-serif;padding:24px">请使用微信打开星卡小程序（M1 无 Web 客户端）。group=${String(req.query.g || "")}</body>`,
     );
   });
 

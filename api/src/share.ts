@@ -169,7 +169,7 @@ function shareSvg(opts: {
 
   return `<svg width="${opts.width}" height="${opts.height}" xmlns="http://www.w3.org/2000/svg">
     <rect width="${opts.width}" height="${opts.height}" fill="#121016"/>
-    <text x="${opts.pad}" y="48" fill="#ff8fb8" font-size="18" font-family="sans-serif" font-weight="700">kpop_c · 卡册长图</text>
+    <text x="${opts.pad}" y="48" fill="#ff8fb8" font-size="18" font-family="sans-serif" font-weight="700">星卡 · 卡册长图</text>
     <text x="${opts.pad}" y="92" fill="#ffffff" font-size="36" font-family="sans-serif" font-weight="700">${escapeXml(opts.groupName)}</text>
     <text x="${opts.pad}" y="126" fill="#d7d4de" font-size="18" font-family="sans-serif">${opts.ownedDistinct}/${opts.published} · ${opts.pct}%</text>
     ${note}
@@ -177,7 +177,7 @@ function shareSvg(opts: {
     ${cardsXml}
     <rect x="0" y="${opts.height - opts.footerH}" width="${opts.width}" height="${opts.footerH}" fill="#1c1822"/>
     <text x="${opts.pad + 188}" y="${opts.height - opts.footerH + 88}" fill="#ffffff" font-size="20" font-family="sans-serif">微信扫码打开小程序</text>
-    <text x="${opts.pad + 188}" y="${opts.height - opts.footerH + 122}" fill="#ff8fb8" font-size="16" font-family="sans-serif">kpop_c · 小卡图鉴</text>
+    <text x="${opts.pad + 188}" y="${opts.height - opts.footerH + 122}" fill="#ff8fb8" font-size="16" font-family="sans-serif">星卡 · 小卡图鉴</text>
     <text data-watermark="1" x="${opts.pad + 188}" y="${opts.height - opts.footerH + 156}" fill="#8a8494" font-size="13" font-family="sans-serif">分享图含水印与小程序码 · 含全部已拥有卡片</text>
   </svg>`;
 }

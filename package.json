@@ -1,7 +1,7 @@
 {
   "name": "kpop_c",
   "private": true,
-  "description": "K-pop photocard WeChat mini-program (M1)",
+  "description": "星卡 — 微信小程序小卡图鉴（M1）",
   "workspaces": [
     "api"
   ],

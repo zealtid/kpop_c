@@ -1,6 +1,6 @@
-# kpop_c
+# 星卡
 
-K-pop 小卡图鉴 **微信小程序**（M1）。仓库路径：[`github.com/zealtid/kpop_c`](https://github.com/zealtid/kpop_c)。
+星卡是微信小程序小卡图鉴（M1）。仓库路径：[`github.com/zealtid/kpop_c`](https://github.com/zealtid/kpop_c)。
 
 本阶段 **只有小程序客户端**，没有 Web App。后端是 Node.js + PostgreSQL。
 

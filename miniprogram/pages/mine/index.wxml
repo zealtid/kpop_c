@@ -17,5 +17,5 @@
   </view>
 
   <view class="btn" bindtap="goFeedback">文字反馈缺卡</view>
-  <view class="btn ghost" bindtap="goAbout">关于 M1</view>
+  <view class="btn ghost" bindtap="goAbout">关于星卡</view>
 </view>
