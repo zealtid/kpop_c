@@ -72,7 +72,7 @@ test("wxml has confirm crop and no skip/original action", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   assert.match(wxml, /bindtap="confirm">确认裁剪/);
   assert.match(wxml, /不可跳过/);
-  assert.doesNotMatch(wxml, /跳过|使用原图|自由比例/);
+  assert.doesNotMatch(wxml, /使用原图|自由比例|跳过裁剪/);
   const js = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
   assert.match(js, /crop\.CROP_ASPECT/);
 });
