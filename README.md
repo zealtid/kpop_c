@@ -35,7 +35,7 @@ npm test              # 对 kpop_c_test 跑 M1 行为测试（含 Path B）
 
 也可用 `docker compose up --build` 拉起 postgres + API。
 
-微信开发者工具打开 `miniprogram/`。关闭「不校验合法域名」。默认 API：`http://127.0.0.1:3000`（改 `miniprogram/utils/config.js`）。
+微信开发者工具打开仓库根目录（`project.config.json` 的 `miniprogramRoot` 指向 `miniprogram/`）。关闭「不校验合法域名」。默认 API：`http://127.0.0.1:3000`（改 `miniprogram/utils/config.js`）。
 
 真机请把 `PUBLIC_BASE_URL` 和 `API_BASE` 换成已配置的 HTTPS。
 
@@ -123,6 +123,7 @@ api/                 Express + pg + sharp 分享长图
   src/               路由与领域逻辑
   tests/m1.test.ts   Path B 与 M1 约束
 miniprogram/         微信小程序
+project.config.json  微信开发者工具打开仓库根目录用
 docker-compose.yml
 ```
 
