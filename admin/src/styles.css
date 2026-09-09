@@ -60,6 +60,7 @@ select { appearance: auto; }
 .btn.ok { background: var(--ok); }
 .btn.danger { background: var(--danger); }
 .err { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; }
+.ok-msg { color: var(--ok); font-size: 13px; margin-top: 8px; }
 .warn { color: #9a5b00; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }

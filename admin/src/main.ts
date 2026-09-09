@@ -280,7 +280,7 @@ async function render() {
   if ("error" in data) {
     const denied = data.status === 403;
     app.innerHTML = layout(
-      `<section class="card"><p class="err">${denied ? "没有权限访问运营接口" : escapeHtml(data.error)}</p></section>`,
+      `<section class="card"><p class="err">${denied ? "没有权限访问运营接口" : escapeHtml(data.error || "请求失败")}</p></section>`,
     );
     bindShell();
     return;
@@ -304,6 +304,7 @@ async function render() {
     );
   }
   app.innerHTML = layout(innerNav + body + `<section class="card" id="audit-card"><h2>最近审计</h2></section>`);
+  if (catalogNotice) document.getElementById("catalog-notice")?.scrollIntoView({ block: "start" });
   bindShell();
   bindCatalog(
     catalogTab === "groups"

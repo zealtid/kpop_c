@@ -111,7 +111,7 @@ export function groupsView(groups: Group[], editing: Group | null, notice: strin
     <section class="card">
       <h1>图鉴 · 组合</h1>
       <p class="muted">ArtistGroup → <code>idol_groups</code>。新建为草稿；发布后才出现在小程序图鉴。</p>
-      ${notice ? `<p class="err">${escapeHtml(notice)}</p>` : ""}
+      ${notice ? `<p class="${/^已/.test(notice) ? "ok-msg" : "err"}" id="catalog-notice">${escapeHtml(notice)}</p>` : ""}
       <div class="split">
         <div>
           ${
@@ -155,7 +155,7 @@ export function membersView(members: Member[], groups: Group[], editing: Member 
     <section class="card">
       <h1>图鉴 · 成员</h1>
       <p class="muted">Member。草稿成员不出现在小程序组合页。</p>
-      ${notice ? `<p class="err">${escapeHtml(notice)}</p>` : ""}
+      ${notice ? `<p class="${/^已/.test(notice) ? "ok-msg" : "err"}" id="catalog-notice">${escapeHtml(notice)}</p>` : ""}
       <div class="split">
         <div>
           ${
@@ -206,7 +206,7 @@ export function releasesView(releases: Release[], groups: Group[], editing: Rele
     <section class="card">
       <h1>图鉴 · 发行</h1>
       <p class="muted">Release。演唱会特典用 <code>kind=concert_md</code>，<strong>没有</strong>独立 Event 表。</p>
-      ${notice ? `<p class="err">${escapeHtml(notice)}</p>` : ""}
+      ${notice ? `<p class="${/^已/.test(notice) ? "ok-msg" : "err"}" id="catalog-notice">${escapeHtml(notice)}</p>` : ""}
       <div class="split">
         <div>
           ${
@@ -261,7 +261,7 @@ export function templatesView(
     <section class="card">
       <h1>图鉴 · 小卡模板</h1>
       <p class="muted">PhotocardTemplate。<strong>无主图不能发布</strong>。去重键 = slug:发行标题:成员:version。</p>
-      ${notice ? `<p class="err">${escapeHtml(notice)}</p>` : ""}
+      ${notice ? `<p class="${/^已/.test(notice) ? "ok-msg" : "err"}" id="catalog-notice">${escapeHtml(notice)}</p>` : ""}
       <div class="split">
         <div class="table-wrap">
           ${
