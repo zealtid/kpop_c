@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "选择关注",
+  "navigationBarTitleText": "管理关注",
   "usingComponents": {
     "follow-picker": "/components/follow-picker/index"
   }

@@ -1,0 +1,32 @@
+<view class="page">
+  <view wx:if="{{needsLogin}}" class="card">
+    <view class="h1">未登录</view>
+    <view class="muted">可见性与关注管理需要先登录。</view>
+    <view wx:if="{{loginFailed}}" class="muted" style="margin-top:12rpx">登录失败，请重试</view>
+    <view class="btn" style="margin-top:24rpx" bindtap="doLogin">{{loginBtnLabel}}</view>
+  </view>
+
+  <block wx:else>
+    <view class="card">
+      <view class="h1 section-title">可见性</view>
+      <view class="sub">仅自己或公开，无私友选项。不影响现有分享与卡册行为。</view>
+      <view class="privacy-row">
+        <view
+          class="privacy-opt {{privateOn ? 'on' : ''}}"
+          bindtap="setPrivacy"
+          data-v="private"
+        >仅自己</view>
+        <view
+          class="privacy-opt {{publicOn ? 'on' : ''}}"
+          bindtap="setPrivacy"
+          data-v="public"
+        >公开</view>
+      </view>
+    </view>
+
+    <view class="card row settings-row" bindtap="goFollowManage">
+      <view>管理关注</view>
+      <view class="muted">选择或调整关注的团体</view>
+    </view>
+  </block>
+</view>

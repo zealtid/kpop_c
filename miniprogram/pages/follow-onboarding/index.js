@@ -1,6 +1,7 @@
 const api = require("../../utils/api");
 const analytics = require("../../utils/analytics");
 const onboarding = require("../../utils/followOnboarding");
+const followPicker = require("../../utils/followPicker");
 
 Page({
   data: {
@@ -8,6 +9,9 @@ Page({
     selectedCount: 0,
     canComplete: false,
     saving: false,
+    maxCount: onboarding.MAX_FOLLOW_GROUPS,
+    minCount: 1,
+    hint: "选择 1–3 个组合，卡册会展示他们的收集进度。也可以先跳过，之后再选。",
   },
 
   onLoad() {
@@ -31,30 +35,35 @@ Page({
   },
 
   applySelection(groups) {
-    const selectedCount = groups.filter((g) => g.selected).length;
+    const selectedCount = followPicker.selectedIds(groups).length;
     this.setData({
       groups,
       selectedCount,
-      canComplete: selectedCount >= 1 && selectedCount <= onboarding.MAX_FOLLOW_GROUPS,
+      canComplete: followPicker.canComplete(groups, {
+        minCount: 1,
+        maxCount: onboarding.MAX_FOLLOW_GROUPS,
+      }),
     });
   },
 
-  toggle(e) {
-    const id = e.currentTarget.dataset.id;
-    const groups = this.data.groups.map((g) => {
-      if (g.id !== id) return g;
-      if (g.selected) return { ...g, selected: false };
-      if (this.data.selectedCount >= onboarding.MAX_FOLLOW_GROUPS) {
-        wx.showToast({ title: "最多选择 3 个组合", icon: "none" });
-        return g;
-      }
-      return { ...g, selected: true };
+  onToggle(e) {
+    const id = e.detail && e.detail.id;
+    const result = followPicker.toggleGroup(this.data.groups, id, {
+      maxCount: onboarding.MAX_FOLLOW_GROUPS,
     });
-    this.applySelection(groups);
+    if (result.blocked) {
+      wx.showToast({ title: "最多选择 3 个组合", icon: "none" });
+      return;
+    }
+    this.applySelection(result.groups);
+  },
+
+  onClear() {
+    this.applySelection(followPicker.clearSelected(this.data.groups));
   },
 
   selectedIds() {
-    return this.data.groups.filter((g) => g.selected).map((g) => g.id);
+    return followPicker.selectedIds(this.data.groups);
   },
 
   complete() {

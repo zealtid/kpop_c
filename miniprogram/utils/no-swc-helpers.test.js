@@ -55,4 +55,16 @@ test("cold start stays cardbook; intel Tab + lazyCodeLoading kept", () => {
   assert.equal(appJson.tabBar.list[0].text, "情报");
   assert.ok(appJson.pages.includes("pages/feed/index"));
   assert.ok(appJson.pages.includes("pages/schedule/index"));
+  assert.ok(appJson.pages.includes("pages/settings/index"));
+  assert.ok(appJson.pages.includes("pages/follow-manage/index"));
+});
+
+test("UX-A does not use getUserProfile as nickname path", () => {
+  const files = walkJs(ROOT, []);
+  const hits = [];
+  for (const file of files) {
+    const src = fs.readFileSync(file, "utf8");
+    if (/getUserProfile/.test(src)) hits.push(path.relative(ROOT, file).replace(/\\/g, "/"));
+  }
+  assert.deepEqual(hits, []);
 });

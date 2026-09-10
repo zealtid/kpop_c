@@ -1,0 +1,36 @@
+.section-title {
+  font-size: 32rpx;
+}
+
+.privacy-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.privacy-opt {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  background: var(--color-button-secondary-bg);
+  border: 2rpx solid var(--color-button-secondary-border);
+  color: var(--color-button-secondary-text);
+}
+
+.privacy-opt.on {
+  background: var(--color-button-primary-bg);
+  border-color: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
+}
+
+.settings-row {
+  align-items: flex-start;
+}
+
+.settings-row .muted {
+  margin-left: 24rpx;
+  text-align: right;
+  flex: 1;
+}
