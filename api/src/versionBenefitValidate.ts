@@ -42,11 +42,23 @@ export type CatalogTemplate = {
   id: string;
   groupId: string;
   releaseId: string;
-  /** Exact slot_label. Live catalog uses templates.name (no slot_label column). */
-  slotLabel: string;
+  name: string;
+  /**
+   * 过渡口径（不取消未来 slot_label 模型）：
+   * 有非空 slot_label 则只精确匹配 trim(slot_label)；否则精确匹配 name。禁止模糊。
+   */
+  slotLabel?: string | null;
   versionLabel: string;
   memberId: string | null;
 };
+
+/** Exact slot match: prefer trim(slot_label) when present, else name. No fuzzy / no space-fix. */
+export function templateMatchesSlot(t: CatalogTemplate, slot: string): boolean {
+  const want = slot;
+  const label = String(t.slotLabel ?? "").trim();
+  if (label) return label === want;
+  return String(t.name ?? "") === want;
+}
 
 export type CatalogSnapshot = {
   groups: CatalogGroup[];
@@ -189,7 +201,7 @@ function matchTemplatesForSlot(
 ): { matches: CatalogTemplate[]; memberResolved: boolean; memberRequired: boolean } {
   const wantVersion = versionLabel.trim().toLowerCase();
   const bySlot = catalog.templates.filter(
-    (t) => t.groupId === group.id && t.releaseId === release.id && t.slotLabel === slot,
+    (t) => t.groupId === group.id && t.releaseId === release.id && templateMatchesSlot(t, slot),
   );
   const byVersion = bySlot.filter((t) => t.versionLabel.trim().toLowerCase() === wantVersion);
   const scope = memberScope.trim().toLowerCase();
@@ -305,10 +317,12 @@ export function validateBenefitRow(row: BenefitMapRow, opts: ValidateBenefitOpti
           row.member_scope,
         );
         const anySlot = opts.catalog.templates.some(
-          (t) => t.groupId === group.id && t.releaseId === release.id && t.slotLabel === slot,
+          (t) => t.groupId === group.id && t.releaseId === release.id && templateMatchesSlot(t, slot),
         );
         if (!anySlot) {
-          issues.push(issue("error", "E_SLOT_MISS", `找不到 slot_label：${slot}`, row.row, "maps_to_slot_labels"));
+          issues.push(
+            issue("error", "E_SLOT_MISS", `slot_label/name 均未命中：${slot}`, row.row, "maps_to_slot_labels"),
+          );
           continue;
         }
         if (!memberResolved) {
@@ -320,7 +334,7 @@ export function validateBenefitRow(row: BenefitMapRow, opts: ValidateBenefitOpti
             (t) =>
               t.groupId === group.id &&
               t.releaseId === release.id &&
-              t.slotLabel === slot &&
+              templateMatchesSlot(t, slot) &&
               t.versionLabel.trim().toLowerCase() === wantVersion.toLowerCase(),
           );
           if (!byVersion) {

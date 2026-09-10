@@ -102,6 +102,25 @@ bts,bts-arirang,standard,weverse,其他特典,不存在的卡槽,slots,https://e
   assert.ok(body.report.issues.some((i) => i.code === "E_SLOT_MISS"));
 });
 
+test("import with any row error returns 4xx and writes nothing", async () => {
+  const token = await opsToken();
+  const before = await query("SELECT count(*)::int AS n FROM release_benefit_map");
+  const mixed = `${PASS_CSV}
+bts,bts-arirang,standard,weverse,坏行,不存在的卡槽,slots,https://example.invalid/x,confirmed`;
+  const res = await api("/admin/version-benefit/import", {
+    method: "POST",
+    headers: auth(token),
+    body: JSON.stringify({ text: mixed }),
+  });
+  assert.equal(res.status, 400, JSON.stringify(res.body));
+  const err = res.body as { error: { code: string; details?: { ok: boolean; errorCount: number } } };
+  assert.equal(err.error.code, "IMPORT_INVALID");
+  assert.ok((err.error.details?.errorCount || 0) > 0);
+  assert.equal(err.error.details?.ok, false);
+  const after = await query("SELECT count(*)::int AS n FROM release_benefit_map");
+  assert.equal(after.rows[0].n, before.rows[0].n);
+});
+
 test("validate + persist confirmed row; list by release; no imageless publish", async () => {
   const token = await opsToken();
   const beforeTpl = await query("SELECT status, main_image_url FROM templates WHERE dedupe_key = $1", [

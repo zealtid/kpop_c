@@ -10,6 +10,7 @@ import { emptyBenefitRow, parseBenefitCsv, splitSlotLabels } from "../src/versio
 import {
   findGroup,
   findRelease,
+  templateMatchesSlot,
   validateBenefitRow,
   type CatalogSnapshot,
 } from "../src/versionBenefitValidate.js";
@@ -34,7 +35,8 @@ const SLOT_TPL = {
   id: "t1",
   groupId: "g-bts",
   releaseId: "r-arirang",
-  slotLabel: "预购特典 Weverse",
+  name: "预购特典 Weverse",
+  slotLabel: "",
   versionLabel: "Standard",
   memberId: null as string | null,
 };
@@ -170,8 +172,37 @@ test("E_SLOT_EMPTY / E_SLOT_MISS / no auto space fix", () => {
   assert.ok(codes(empty.issues).includes("E_SLOT_EMPTY"));
   const miss = validateBenefitRow(row({ maps_to_slot_labels: "预购特典 天猫" }), { dict, catalog: catalog() });
   assert.ok(codes(miss.issues).includes("E_SLOT_MISS"));
+  assert.ok(miss.issues.some((i) => i.code === "E_SLOT_MISS" && /slot_label\/name 均未命中/.test(i.message)));
   const nospace = validateBenefitRow(row({ maps_to_slot_labels: "预购特典Weverse" }), { dict, catalog: catalog() });
   assert.ok(codes(nospace.issues).includes("E_SLOT_MISS"));
+});
+
+test("slot match prefers trim(slot_label), else exact name; no fuzzy", () => {
+  assert.equal(templateMatchesSlot({ ...SLOT_TPL, slotLabel: "", name: "预购特典 Weverse" }, "预购特典 Weverse"), true);
+  assert.equal(templateMatchesSlot({ ...SLOT_TPL, slotLabel: null, name: "预购特典 Weverse" }, "预购特典 Weverse"), true);
+  assert.equal(templateMatchesSlot({ ...SLOT_TPL, slotLabel: " 卡槽A ", name: "预购特典 Weverse" }, "卡槽A"), true);
+  assert.equal(
+    templateMatchesSlot({ ...SLOT_TPL, slotLabel: "卡槽A", name: "预购特典 Weverse" }, "预购特典 Weverse"),
+    false,
+  );
+  assert.equal(templateMatchesSlot({ ...SLOT_TPL, name: "预购特典 Weverse" }, "预购特典"), false);
+  assert.equal(templateMatchesSlot({ ...SLOT_TPL, name: "预购特典 Weverse" }, "预购特典Weverse"), false);
+
+  const byLabel = validateBenefitRow(row({ maps_to_slot_labels: "卡槽A" }), {
+    dict,
+    catalog: catalog({
+      templates: [{ ...SLOT_TPL, slotLabel: "卡槽A", name: "RM ARIRANG 特典-Weverse" }],
+    }),
+  });
+  assert.equal(byLabel.ok, true, JSON.stringify(byLabel.issues));
+
+  const noFallback = validateBenefitRow(row({ maps_to_slot_labels: "预购特典 Weverse" }), {
+    dict,
+    catalog: catalog({
+      templates: [{ ...SLOT_TPL, slotLabel: "卡槽A", name: "预购特典 Weverse" }],
+    }),
+  });
+  assert.ok(codes(noFallback.issues).includes("E_SLOT_MISS"));
 });
 
 test("E_SLOT_AMBIG when specific member hits two templates", () => {

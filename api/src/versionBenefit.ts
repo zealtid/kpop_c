@@ -1,4 +1,5 @@
 import { query } from "./db.js";
+import { AppError } from "./errors.js";
 import { loadChannelDictionary, type ChannelDictionary } from "./channelDictionary.js";
 import { parseBenefitCsv, type BenefitMapRow } from "./versionBenefitParse.js";
 import {
@@ -23,7 +24,8 @@ function parseOptionalTime(raw: string): string | null {
   return new Date(ms).toISOString();
 }
 
-/** Build an in-memory catalog snapshot for the pure validator. */
+/** Build an in-memory catalog snapshot for the pure validator.
+ * templates.slot_label 列若尚未落地，匹配回退到 name（过渡口径）。 */
 export async function loadCatalogSnapshot(tagsStrict = false): Promise<CatalogSnapshot> {
   const groups = await query(`SELECT id, slug FROM idol_groups`);
   const releases = await query(
@@ -31,8 +33,13 @@ export async function loadCatalogSnapshot(tagsStrict = false): Promise<CatalogSn
      FROM releases r`,
   );
   const members = await query(`SELECT id, group_id, name_en, name_zh FROM members`);
+  const hasSlotLabel = await query(
+    `SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'templates' AND column_name = 'slot_label'`,
+  );
+  const slotCol = (hasSlotLabel.rowCount || 0) > 0 ? ", t.slot_label" : "";
   const templates = await query(
-    `SELECT t.id, t.release_id, r.group_id, t.name, t.version, t.member_id, t.is_benefit
+    `SELECT t.id, t.release_id, r.group_id, t.name, t.version, t.member_id, t.is_benefit${slotCol}
      FROM templates t
      JOIN releases r ON r.id = t.release_id`,
   );
@@ -72,7 +79,8 @@ export async function loadCatalogSnapshot(tagsStrict = false): Promise<CatalogSn
       id: String(t.id),
       groupId: String(t.group_id),
       releaseId: String(t.release_id),
-      slotLabel: String(t.name),
+      name: String(t.name),
+      slotLabel: t.slot_label == null ? "" : String(t.slot_label),
       versionLabel: String(t.version),
       memberId: t.member_id == null ? null : String(t.member_id),
     })),
@@ -105,6 +113,9 @@ export async function previewOrCommitBenefitMap(
   const report = compileBenefitReport(parsed.issues, results);
   if (!body.commit) {
     return { committed: false, report, written: 0 };
+  }
+  if (!report.ok || report.errorCount > 0) {
+    throw new AppError(400, "IMPORT_INVALID", "版本×特典校验未通过，未写入", report);
   }
   const written = await persistConfirmedRows(results, body.importedBy || null);
   return {
