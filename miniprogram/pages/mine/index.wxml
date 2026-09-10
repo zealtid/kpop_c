@@ -8,28 +8,18 @@
   </view>
 
   <block wx:else>
-    <view class="card profile" bindtap="openNicknameEditor">
+    <view class="card profile">
       <view class="h1 {{nicknameUnset ? 'placeholder' : ''}}">{{displayName}}</view>
-      <view class="muted">{{nicknameUnset ? '点击设置昵称，或同步微信昵称' : '点击修改展示名'}}</view>
-    </view>
-
-    <view wx:if="{{editingNickname}}" class="card nickname-editor">
-      <input
-        class="search"
-        type="nickname"
-        value="{{draftNickname}}"
-        focus="{{nicknameFocus}}"
-        maxlength="32"
-        placeholder="点击设置昵称"
-        bindinput="onNicknameInput"
-        bindblur="onNicknameBlur"
-        bindnicknamereview="onNicknameReview"
-      />
-      <view class="row nickname-actions">
-        <view class="btn slim ghost" catchtap="requestWxNicknameSync">同步微信昵称</view>
-        <view class="btn slim" catchtap="saveNickname">保存</view>
+      <view wx:if="{{nicknameUnset}}" class="nickname-sync-wrap">
+        <view class="btn nickname-sync-btn">同步微信昵称</view>
+        <input
+          class="nickname-fill"
+          type="nickname"
+          maxlength="32"
+          bindblur="onWxNicknameFill"
+          bindnicknamereview="onNicknameReview"
+        />
       </view>
-      <view class="muted policy">展示名保存在星卡。手改优先；再次同步微信昵称会覆盖，已有自定义名时会先确认。</view>
     </view>
 
     <view wx:if="{{followCount > 0}}" class="card">
@@ -53,7 +43,18 @@
     </view>
   </block>
 
-  <view class="btn ghost" bindtap="goSettings">设置</view>
-  <view class="btn" bindtap="goFeedback">文字反馈缺卡</view>
-  <view class="btn ghost" bindtap="goAbout">关于星卡</view>
+  <view class="card action-list">
+    <view class="action-row" bindtap="goSettings">
+      <text class="action-label">设置</text>
+      <text class="action-arrow">›</text>
+    </view>
+    <view class="action-row" bindtap="goFeedback">
+      <text class="action-label">文字反馈缺卡</text>
+      <text class="action-arrow">›</text>
+    </view>
+    <view class="action-row" bindtap="goAbout">
+      <text class="action-label">关于星卡</text>
+      <text class="action-arrow">›</text>
+    </view>
+  </view>
 </view>
