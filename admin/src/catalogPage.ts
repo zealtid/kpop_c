@@ -1,7 +1,7 @@
 import { api, errorMessage } from "./api";
 import { escapeHtml, option, statusBadge } from "./html";
 
-export type CatalogTab = "groups" | "members" | "releases" | "templates" | "completeness" | "import";
+export type CatalogTab = "groups" | "members" | "releases" | "templates" | "completeness" | "import" | "benefits";
 
 type Group = {
   id: string;
@@ -66,6 +66,7 @@ const TABS: { id: CatalogTab; label: string }[] = [
   { id: "templates", label: "小卡模板" },
   { id: "completeness", label: "完整度" },
   { id: "import", label: "导入" },
+  { id: "benefits", label: "特典对照" },
 ];
 
 export function catalogSubnav(tab: CatalogTab) {
@@ -360,7 +361,7 @@ const PATH: Record<"groups" | "members" | "releases" | "templates", string> = {
 };
 
 export async function saveCatalog(tab: CatalogTab, editingId: string | null, fd: FormData) {
-  if (tab === "completeness" || tab === "import") {
+  if (tab === "completeness" || tab === "import" || tab === "benefits") {
     throw new Error("该页不支持表单保存");
   }
   const body = formPayload(tab, fd);
@@ -369,7 +370,7 @@ export async function saveCatalog(tab: CatalogTab, editingId: string | null, fd:
 }
 
 export async function setCatalogStatus(tab: CatalogTab, id: string, status: string) {
-  if (tab === "completeness" || tab === "import") {
+  if (tab === "completeness" || tab === "import" || tab === "benefits") {
     throw new Error("该页不支持状态变更");
   }
   return api(`${PATH[tab]}/${id}/status`, { method: "POST", body: JSON.stringify({ status }) });

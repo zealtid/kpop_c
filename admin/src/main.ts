@@ -15,6 +15,7 @@ import {
 } from "./catalogPage";
 import { completenessView, type CompletenessGroup } from "./completenessPage";
 import { buildImportBody, importView, type ImportReport } from "./importPage";
+import { benefitMapView, type BenefitMapRow, type BenefitReport } from "./benefitMapPage";
 import { ticketDetailView, ticketsListView, type Ticket } from "./ticketsPage";
 
 type Menu = { id: string; label: string };
@@ -55,6 +56,12 @@ let importText = "";
 let importFormat = "csv";
 let importReport: ImportReport | null = null;
 let importCommitted = false;
+let benefitText = "";
+let benefitReport: BenefitReport | null = null;
+let benefitCommitted = false;
+let benefitWritten = 0;
+let benefitTagsStrict = false;
+let benefitReleaseFilter = "";
 let user: OpsUser | null = null;
 let notice = "";
 let ticketId: string | null = null;
@@ -76,7 +83,8 @@ function parseHash(): { page: Page; tab: CatalogTab; ticketId: string | null } {
     part === "templates" ||
     part === "groups" ||
     part === "completeness" ||
-    part === "import"
+    part === "import" ||
+    part === "benefits"
       ? part
       : "groups";
   return { page: "catalog", tab, ticketId: null };
@@ -310,6 +318,71 @@ function bindImport() {
   });
 }
 
+function bindBenefit() {
+  const textEl = document.getElementById("benefit-text") as HTMLTextAreaElement | null;
+  const fileEl = document.getElementById("benefit-file") as HTMLInputElement | null;
+  const strictEl = document.getElementById("benefit-tags-strict") as HTMLInputElement | null;
+  const form = document.getElementById("benefit-form") as HTMLFormElement | null;
+  textEl?.addEventListener("input", () => {
+    benefitText = textEl.value;
+  });
+  strictEl?.addEventListener("change", () => {
+    benefitTagsStrict = !!strictEl.checked;
+  });
+  fileEl?.addEventListener("change", async () => {
+    const file = fileEl.files?.[0];
+    if (!file) return;
+    benefitText = await file.text();
+    if (textEl) textEl.value = benefitText;
+  });
+  form?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    benefitText = textEl?.value || benefitText;
+    benefitTagsStrict = !!strictEl?.checked;
+    const res = await api<{ committed: boolean; report: BenefitReport }>("/admin/version-benefit/validate", {
+      method: "POST",
+      body: JSON.stringify({ text: benefitText, tagsStrict: benefitTagsStrict }),
+    });
+    benefitCommitted = false;
+    benefitWritten = 0;
+    if (res.status !== 200) {
+      benefitReport = null;
+      catalogNotice = errorMessage(res.body);
+      render();
+      return;
+    }
+    benefitReport = res.body.report;
+    catalogNotice = benefitReport.ok ? "校验通过，可写入 confirmed 行" : "校验未通过，请先修错误";
+    render();
+  });
+  document.getElementById("benefit-commit")?.addEventListener("click", async () => {
+    benefitText = textEl?.value || benefitText;
+    benefitTagsStrict = !!strictEl?.checked;
+    const res = await api<{ committed: boolean; report: BenefitReport; written?: number }>(
+      "/admin/version-benefit/import",
+      {
+        method: "POST",
+        body: JSON.stringify({ text: benefitText, tagsStrict: benefitTagsStrict }),
+      },
+    );
+    if (res.status !== 200) {
+      benefitCommitted = false;
+      catalogNotice = errorMessage(res.body);
+      render();
+      return;
+    }
+    benefitReport = res.body.report;
+    benefitWritten = res.body.written || 0;
+    benefitCommitted = benefitWritten > 0;
+    catalogNotice = benefitWritten ? `已写入 ${benefitWritten} 条 confirmed 对照（只读）` : "没有可写入的 confirmed 行";
+    render();
+  });
+  document.getElementById("benefit-release")?.addEventListener("change", (ev) => {
+    benefitReleaseFilter = (ev.target as HTMLSelectElement).value;
+    render();
+  });
+}
+
 function ticketNote() {
   const area = document.querySelector<HTMLTextAreaElement>("#ticket-close-form textarea");
   return area?.value || "";
@@ -524,6 +597,46 @@ async function render() {
     );
     bindShell();
     bindImport();
+    await fillAudit();
+    return;
+  }
+
+  if (catalogTab === "benefits") {
+    const qs = benefitReleaseFilter ? `?releaseId=${encodeURIComponent(benefitReleaseFilter)}` : "";
+    const [mapsRes, catalog] = await Promise.all([
+      api<{ maps: BenefitMapRow[] }>(`/admin/version-benefit/maps${qs}`),
+      loadCatalog("releases"),
+    ]);
+    if (mapsRes.status === 403 || ("error" in catalog && catalog.status === 403)) {
+      app.innerHTML = layout(`<section class="card"><p class="err">没有权限访问运营接口</p></section>`);
+      bindShell();
+      return;
+    }
+    if (mapsRes.status !== 200) {
+      app.innerHTML = layout(
+        innerNav + `<section class="card"><p class="err">${escapeHtml(errorMessage(mapsRes.body))}</p></section>`,
+      );
+      bindShell();
+      return;
+    }
+    const releases = "error" in catalog ? [] : catalog.releases;
+    app.innerHTML = layout(
+      innerNav +
+        benefitMapView({
+          text: benefitText,
+          notice: catalogNotice,
+          report: benefitReport,
+          committed: benefitCommitted,
+          written: benefitWritten,
+          maps: mapsRes.body.maps || [],
+          releases,
+          releaseFilter: benefitReleaseFilter,
+          tagsStrict: benefitTagsStrict,
+        }) +
+        `<section class="card" id="audit-card"><h2>最近审计</h2></section>`,
+    );
+    bindShell();
+    bindBenefit();
     await fillAudit();
     return;
   }

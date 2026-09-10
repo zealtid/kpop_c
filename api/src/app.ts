@@ -15,6 +15,8 @@ import { createShareImage } from "./share.js";
 import * as admin from "./admin.js";
 import * as adminCatalog from "./adminCatalog.js";
 import { previewOrCommitImport } from "./importValidate.js";
+import { loadChannelDictionary } from "./channelDictionary.js";
+import { listBenefitMaps, previewOrCommitBenefitMap } from "./versionBenefit.js";
 import { getCompletenessDashboard } from "./completeness.js";
 import * as tickets from "./tickets.js";
 import { ANALYTICS_EVENTS, track } from "./analytics.js";
@@ -612,6 +614,70 @@ export function createApp() {
             format: result.report.format,
             count: result.count,
             batches: result.report.batches.map((b) => b.releaseTitle),
+          },
+        });
+      }
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  // ---- version × benefit map (刀 A; does not touch catalog import / completeness) ----
+  app.get("/admin/version-benefit/channels", requireAdmin, async (_req, res, next) => {
+    try {
+      res.json(loadChannelDictionary());
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/version-benefit/maps", requireAdmin, async (req, res, next) => {
+    try {
+      const releaseId = req.query.releaseId ? String(req.query.releaseId) : "";
+      const groupId = req.query.groupId ? String(req.query.groupId) : "";
+      res.json({
+        maps: await listBenefitMaps({
+          releaseId: releaseId || undefined,
+          groupId: groupId || undefined,
+        }),
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/version-benefit/validate", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await previewOrCommitBenefitMap({
+        text: req.body?.text,
+        tagsStrict: !!req.body?.tagsStrict,
+        commit: false,
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/version-benefit/import", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await previewOrCommitBenefitMap({
+        text: req.body?.text,
+        tagsStrict: !!req.body?.tagsStrict,
+        commit: true,
+        importedBy: req.ops?.username || null,
+      });
+      if (result.written > 0) {
+        await writeAuditLog({
+          actor: req.ops,
+          action: "version_benefit.import",
+          entityType: "release_benefit_map",
+          entityId: result.maps?.[0]?.releaseId,
+          payload: {
+            written: result.written,
+            errorCount: result.report.errorCount,
+            rowCount: result.report.rowCount,
           },
         });
       }
