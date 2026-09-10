@@ -94,6 +94,8 @@ test("channel dictionary loads and aliases fold case-insensitively", () => {
   const copy = parseChannelDictionary(JSON.parse(readFileSync(fixturePath, "utf8")));
   assert.equal(copy.channels.length, dict.channels.length);
   assert.equal(readFileSync(fixturePath, "utf8"), readFileSync(docsPath, "utf8"));
+  const dockerfile = readFileSync(path.resolve(here, "../Dockerfile"), "utf8");
+  assert.match(dockerfile, /COPY\s+fixtures\s+\.\/fixtures/);
 });
 
 test("sample CSV parses; slot split trims but does not invent spaces", () => {

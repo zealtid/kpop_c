@@ -8,6 +8,7 @@ COPY tsconfig.json ./
 COPY src ./src
 COPY migrations ./migrations
 COPY assets ./assets
+COPY fixtures ./fixtures
 ENV NODE_ENV=production
 EXPOSE 3000
 CMD ["npx", "tsx", "src/index.ts"]
