@@ -1,5 +1,5 @@
 /**
- * UX-A 我的页 ME01–ME05
+ * UX-A / UX-A2 我的页：昵称仅同步微信 + 底部入口统一
  * run: node --test miniprogram/pages/mine/index.test.js
  */
 const { test, beforeEach, after } = require("node:test");
@@ -9,7 +9,6 @@ const path = require("node:path");
 
 const navigations = [];
 const toasts = [];
-const modals = [];
 
 global.wx = {
   getStorageSync() {
@@ -18,10 +17,6 @@ global.wx = {
   setStorageSync() {},
   showToast(opts) {
     toasts.push(opts);
-  },
-  showModal(opts) {
-    modals.push(opts);
-    return opts;
   },
   request() {},
   navigateTo(opts) {
@@ -66,28 +61,42 @@ function flush() {
 beforeEach(() => {
   navigations.length = 0;
   toasts.length = 0;
-  modals.length = 0;
   token = "t";
   api.request = origRequest;
 });
 
-test("ME01–ME03 wxml: nickname fill, placeholder, no 收藏家 default, no getUserProfile, no privacy switch", () => {
+test("UX-A2 wxml: nickname fill only, no free-text edit, no getUserProfile, no privacy switch", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   const js = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
+  const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
   assert.match(wxml, /type="nickname"/);
-  assert.match(wxml, /点击设置昵称/);
   assert.match(wxml, /同步微信昵称/);
+  assert.match(wxml, /wx:if="\{\{nicknameUnset\}\}"/);
+  assert.match(wxml, /bindblur="onWxNicknameFill"/);
   assert.match(wxml, /管理关注/);
   assert.match(wxml, /bindtap="goSettings"/);
   assert.doesNotMatch(wxml, /收藏家/);
-  assert.doesNotMatch(wxml, /setPrivacy|data-v="private"|data-v="public"/);
+  assert.doesNotMatch(wxml, /点击设置昵称|点击修改/);
+  assert.doesNotMatch(wxml, /saveNickname|openNicknameEditor|requestWxNicknameSync/);
+  assert.doesNotMatch(wxml, /catchtap="saveNickname"|placeholder="点击设置昵称"/);
   assert.doesNotMatch(js, /getUserProfile/);
+  assert.doesNotMatch(js, /saveNickname|openNicknameEditor|onNicknameInput|editingNickname|draftNickname/);
   assert.doesNotMatch(wxml, /getUserProfile/);
+  assert.doesNotMatch(wxml, /setPrivacy|data-v="private"|data-v="public"/);
   assert.doesNotMatch(wxml, /情报|pages\/feed\/|实验室/);
   assert.doesNotMatch(js, /pages\/feed\/|pages\/schedule\//);
+  assert.match(wxml, /action-list/);
+  assert.match(wxml, /action-row/);
+  assert.match(wxml, /文字反馈缺卡/);
+  assert.match(wxml, /关于星卡/);
+  assert.match(wxss, /\.action-row/);
+  assert.match(wxss, /min-height:\s*104rpx/);
+  assert.doesNotMatch(wxml, /class="btn ghost" bindtap="goSettings"/);
+  assert.doesNotMatch(wxml, /class="btn" bindtap="goFeedback"/);
+  assert.doesNotMatch(wxml, /class="btn ghost" bindtap="goAbout"/);
 });
 
-test("ME01 load shows real nickname; ME05 follow summary + strip", async () => {
+test("ME01 load shows real nickname (display-only); ME05 follow summary + strip", async () => {
   api.request = (opts) => {
     if (opts.url === "/me") return Promise.resolve({ id: "u1", nickname: "星卡用户", privacy: "private" });
     if (opts.url === "/me/follows") {
@@ -109,9 +118,11 @@ test("ME01 load shows real nickname; ME05 follow summary + strip", async () => {
   assert.equal(page.data.followLabel, "已关注 2 个团体");
   assert.equal(page.data.followPreview.length, 2);
   assert.equal(page.data.followPreview[0].initial, "H");
+  assert.equal(page.data.editingNickname, undefined);
+  assert.equal(page.data.draftNickname, undefined);
 });
 
-test("ME03 empty/收藏家 and unauthorized use 点击设置昵称", async () => {
+test("ME03 empty/收藏家 and unauthorized use 未设置昵称", async () => {
   api.request = (opts) => {
     if (opts.url === "/me") return Promise.resolve({ id: "u1", nickname: "收藏家", privacy: "private" });
     if (opts.url === "/me/follows") return Promise.resolve({ groups: [] });
@@ -120,7 +131,7 @@ test("ME03 empty/收藏家 and unauthorized use 点击设置昵称", async () =>
   const page = pageWithData({});
   page.load();
   await flush();
-  assert.equal(page.data.displayName, "点击设置昵称");
+  assert.equal(page.data.displayName, "未设置昵称");
   assert.equal(page.data.nicknameUnset, true);
   assert.equal(page.data.followCount, 0);
 
@@ -132,49 +143,66 @@ test("ME03 empty/收藏家 and unauthorized use 点击设置昵称", async () =>
   guest.load();
   await flush();
   assert.equal(guest.data.needsLogin, true);
-  assert.equal(guest.data.displayName, "点击设置昵称");
+  assert.equal(guest.data.displayName, "未设置昵称");
 });
 
-test("ME04 save nickname PATCHes /me; wx sync confirms when custom name exists", async () => {
+test("UX-A2 WeChat nickname fill PATCHes /me; existing name is display-only", async () => {
   const calls = [];
   api.request = (opts) => {
     calls.push(opts);
     if (opts.method === "PATCH") {
       return Promise.resolve({ id: "u1", nickname: opts.data.nickname, privacy: "private" });
     }
-    return Promise.resolve({ id: "u1", nickname: "星卡用户", privacy: "private" });
+    return Promise.resolve({ id: "u1", nickname: "收藏家", privacy: "private" });
   };
-  const page = pageWithData({
-    user: { id: "u1", nickname: "星卡用户" },
-    draftNickname: "新名字",
+  const unset = pageWithData({
+    user: { id: "u1", nickname: "收藏家" },
+    nicknameUnset: true,
     follows: [{ id: "h2h", nameZh: "Hearts2Hearts", logoColor: "#f00" }],
     followPreview: [{ id: "h2h", nameZh: "Hearts2Hearts", logoColor: "#f00", initial: "H" }],
     followCount: 1,
   });
-  page.saveNickname();
+  unset.onWxNicknameFill({ detail: { value: "  微信昵称  " } });
   await flush();
-  assert.ok(calls.some((c) => c.url === "/me" && c.method === "PATCH" && c.data.nickname === "新名字"));
-  assert.equal(page.data.displayName, "新名字");
-  assert.equal(page.data.followCount, 1);
+  assert.ok(calls.some((c) => c.url === "/me" && c.method === "PATCH" && c.data.nickname === "微信昵称"));
+  assert.equal(unset.data.displayName, "微信昵称");
+  assert.equal(unset.data.nicknameUnset, false);
+  assert.equal(unset.data.followCount, 1);
 
-  page.requestWxNicknameSync();
-  assert.equal(modals.length, 1);
-  assert.match(modals[0].content, /覆盖当前展示名/);
-  modals[0].success({ confirm: true });
-  assert.equal(page.data.editingNickname, true);
-  assert.equal(page.data.nicknameFocus, true);
+  calls.length = 0;
+  const named = pageWithData({
+    user: { id: "u1", nickname: "星卡用户" },
+    nicknameUnset: false,
+    displayName: "星卡用户",
+  });
+  named.onWxNicknameFill({ detail: { value: "新名字" } });
+  await flush();
+  assert.equal(
+    calls.filter((c) => c.method === "PATCH").length,
+    0,
+  );
+  assert.equal(named.data.displayName, "星卡用户");
+
+  unset.onWxNicknameFill({ detail: { value: "   " } });
+  await flush();
+  assert.equal(typeof pageDef.saveNickname, "undefined");
+  assert.equal(typeof pageDef.openNicknameEditor, "undefined");
 });
 
-test("ME05 empty follows nudges to 管理关注; entries go to settings / follow-manage", () => {
+test("ME05 empty follows nudges to 管理关注; unified entries navigate", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   assert.match(wxml, /还没有关注组合/);
   assert.match(wxml, /去选择关注/);
   const page = pageWithData({});
   page.goFollowManage();
   page.goSettings();
+  page.goFeedback();
+  page.goAbout();
   assert.deepEqual(navigations, [
     { url: "/pages/follow-manage/index" },
     { url: "/pages/settings/index" },
+    { url: "/pages/feedback/index" },
+    { url: "/pages/about/index" },
   ]);
 });
 
