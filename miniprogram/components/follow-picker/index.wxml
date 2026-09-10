@@ -1,0 +1,39 @@
+<view class="follow-picker">
+  <view wx:if="{{hint}}" class="sub hint">{{hint}}</view>
+  <view class="muted count">{{label}}</view>
+
+  <input
+    wx:if="{{showSearch}}"
+    class="search"
+    value="{{query}}"
+    bindinput="onQuery"
+    placeholder="搜索团体名称或别名"
+  />
+
+  <view wx:if="{{showClear}}" class="clear-row" bindtap="clear">清空已选</view>
+
+  <view
+    wx:for="{{visibleGroups}}"
+    wx:key="id"
+    class="group-card {{item.selected ? 'on' : ''}}"
+    bindtap="toggle"
+    data-id="{{item.id}}"
+  >
+    <view class="left">
+      <view class="dot" style="background: {{item.logoColor}}"></view>
+      <view>
+        <view class="name">{{item.nameZh}}</view>
+        <view class="en">{{item.nameEn}}</view>
+        <view wx:if="{{item.scopeNote}}" class="footnote">{{item.scopeNote}}</view>
+      </view>
+    </view>
+    <view class="tag {{item.selected ? 'on' : ''}}">{{item.selected ? '已选' : '选择'}}</view>
+  </view>
+
+  <view wx:if="{{!visibleGroups.length}}" class="empty">没有匹配的团体</view>
+
+  <view class="sticky-bar">
+    <view class="btn {{canComplete && !saving ? '' : 'disabled'}}" bindtap="complete">{{completeText}}</view>
+    <view wx:if="{{showSkip}}" class="btn ghost" bindtap="skip">跳过</view>
+  </view>
+</view>

@@ -1,12 +1,11 @@
 <view class="page">
-  <view class="h1">关注你喜欢的组合</view>
   <follow-picker
     groups="{{groups}}"
-    mode="onboarding"
-    max-count="{{maxCount}}"
-    min-count="{{minCount}}"
-    complete-text="进入卡册"
-    show-skip="{{true}}"
+    mode="manage"
+    max-count="{{0}}"
+    min-count="{{0}}"
+    complete-text="完成"
+    show-skip="{{false}}"
     show-search="{{true}}"
     show-clear="{{true}}"
     saving="{{saving}}"
@@ -14,6 +13,5 @@
     bind:toggle="onToggle"
     bind:clear="onClear"
     bind:complete="complete"
-    bind:skip="skip"
   />
 </view>

@@ -9,6 +9,8 @@
     "pages/catalog-search/index",
     "pages/feedback/index",
     "pages/about/index",
+    "pages/settings/index",
+    "pages/follow-manage/index",
     "pages/share-preview/index",
     "pages/follow-onboarding/index",
     "pages/card-detail/index",

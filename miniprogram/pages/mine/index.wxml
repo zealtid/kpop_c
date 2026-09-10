@@ -1,30 +1,59 @@
 <view class="page">
   <view wx:if="{{needsLogin}}" class="card">
     <view class="h1">未登录</view>
+    <view class="h1 placeholder name-slot">{{displayName}}</view>
     <view class="muted">浏览「图鉴」无需登录。关注、可见性与缺卡反馈需要先登录。</view>
     <view wx:if="{{loginFailed}}" class="muted" style="margin-top:12rpx">登录失败，请重试</view>
     <view class="btn" style="margin-top:24rpx" bindtap="doLogin">{{loginBtnLabel}}</view>
   </view>
 
   <block wx:else>
-    <view class="card">
-      <view class="h1">{{user.nickname || '收藏家'}}</view>
-      <view class="muted">可见性：{{user.privacy === 'public' ? '公开' : '仅自己'}}（无私友选项）</view>
-      <view class="row" style="margin-top:20rpx">
-        <view class="btn slim" bindtap="setPrivacy" data-v="private">private</view>
-        <view class="btn slim ghost" bindtap="setPrivacy" data-v="public">public</view>
-      </view>
+    <view class="card profile" bindtap="openNicknameEditor">
+      <view class="h1 {{nicknameUnset ? 'placeholder' : ''}}">{{displayName}}</view>
+      <view class="muted">{{nicknameUnset ? '点击设置昵称，或同步微信昵称' : '点击修改展示名'}}</view>
     </view>
 
-    <view class="h1" style="margin:24rpx 0 12rpx;font-size:32rpx">关注组合</view>
-    <view wx:for="{{groups}}" wx:key="id" class="card" bindtap="toggleFollow" data-id="{{item.id}}">
-      <view class="row">
-        <view>{{item.nameZh}}</view>
-        <view class="tag">{{item.followed ? '已关注' : '未关注'}}</view>
+    <view wx:if="{{editingNickname}}" class="card nickname-editor">
+      <input
+        class="search"
+        type="nickname"
+        value="{{draftNickname}}"
+        focus="{{nicknameFocus}}"
+        maxlength="32"
+        placeholder="点击设置昵称"
+        bindinput="onNicknameInput"
+        bindblur="onNicknameBlur"
+        bindnicknamereview="onNicknameReview"
+      />
+      <view class="row nickname-actions">
+        <view class="btn slim ghost" catchtap="requestWxNicknameSync">同步微信昵称</view>
+        <view class="btn slim" catchtap="saveNickname">保存</view>
       </view>
+      <view class="muted policy">展示名保存在星卡。手改优先；再次同步微信昵称会覆盖，已有自定义名时会先确认。</view>
+    </view>
+
+    <view wx:if="{{followCount > 0}}" class="card">
+      <view class="row">
+        <view class="h1 follow-title">{{followLabel}}</view>
+        <view class="link" bindtap="goFollowManage">管理关注</view>
+      </view>
+      <view class="avatar-strip">
+        <view
+          wx:for="{{followPreview}}"
+          wx:key="id"
+          class="avatar-dot"
+          style="background: {{item.logoColor}}"
+        >{{item.initial}}</view>
+      </view>
+    </view>
+    <view wx:else class="card">
+      <view class="empty-title">还没有关注组合</view>
+      <view class="empty-sub">选择喜欢的团体后，卡册会展示收集进度。</view>
+      <view class="btn" bindtap="goFollowManage">去选择关注</view>
     </view>
   </block>
 
+  <view class="btn ghost" bindtap="goSettings">设置</view>
   <view class="btn" bindtap="goFeedback">文字反馈缺卡</view>
   <view class="btn ghost" bindtap="goAbout">关于星卡</view>
 </view>
