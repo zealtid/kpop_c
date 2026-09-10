@@ -32,10 +32,14 @@ export const router = createRouter({
           meta: { title: "情报", hint: "切片后续" },
         },
         {
-          path: "tickets/:id?",
+          path: "tickets",
           name: "tickets",
-          component: () => import("../views/ComingSoonView.vue"),
-          meta: { title: "反馈/工单", hint: "切片后续" },
+          component: () => import("../views/TicketsListView.vue"),
+        },
+        {
+          path: "tickets/:id",
+          name: "ticket-detail",
+          component: () => import("../views/TicketDetailView.vue"),
         },
       ],
     },
