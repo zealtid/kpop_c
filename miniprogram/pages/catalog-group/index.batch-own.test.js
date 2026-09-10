@@ -138,7 +138,21 @@ test("app.json keeps pages[0]=cardbook and 星卡 branding", () => {
   const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, "../../app.json"), "utf8"));
   assert.equal(appJson.pages[0], "pages/cardbook/index");
   assert.ok(appJson.pages.includes("pages/catalog-group/index"));
+  assert.ok(appJson.pages.includes("pages/catalog-release/index"));
   assert.equal(appJson.window.navigationBarTitleText, "星卡");
+});
+
+test("特典对照 opens catalog-release without a global 特典 Tab", () => {
+  const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
+  assert.match(wxml, /catchtap="openRelease"/);
+  assert.match(wxml, /特典对照/);
+  const page = pageWithData({});
+  const navigations = [];
+  const prev = global.wx.navigateTo;
+  global.wx.navigateTo = (opts) => navigations.push(opts);
+  page.openRelease({ currentTarget: { dataset: { id: "rel-1" } } });
+  global.wx.navigateTo = prev;
+  assert.deepEqual(navigations, [{ url: "/pages/catalog-release/index?id=rel-1" }]);
 });
 
 test("ME08–ME09 load maps released_on to Shanghai calendar label", async () => {

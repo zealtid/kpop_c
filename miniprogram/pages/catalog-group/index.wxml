@@ -14,6 +14,7 @@
         <view>{{item.title}}</view>
         <view class="muted">{{item.releasedOnLabel}} · {{item.kind}}</view>
       </view>
+      <view class="muted" catchtap="openRelease" data-id="{{item.id}}">特典对照 →</view>
     </view>
     <view class="grid3" style="margin-top:16rpx">
       <view class="tile" wx:for="{{item.templates}}" wx:for-item="t" wx:key="id" bindtap="toggle" data-id="{{t.id}}">

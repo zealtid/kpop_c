@@ -17,6 +17,7 @@ import * as adminCatalog from "./adminCatalog.js";
 import { previewOrCommitImport } from "./importValidate.js";
 import { loadChannelDictionary } from "./channelDictionary.js";
 import { listBenefitMaps, previewOrCommitBenefitMap } from "./versionBenefit.js";
+import { getReleaseBenefitMatrix } from "./benefitMatrix.js";
 import { getCompletenessDashboard } from "./completeness.js";
 import * as tickets from "./tickets.js";
 import { ANALYTICS_EVENTS, track } from "./analytics.js";
@@ -151,6 +152,15 @@ export function createApp() {
     try {
       const templates = await catalog.searchTemplates({ releaseId: req.params.id });
       res.json({ templates });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  // 刀 B：游客可读版本×confirmed 特典矩阵；无 confirmed 返回 empty，不改 completeness 主路径
+  app.get("/catalog/releases/:id/benefit-matrix", async (req, res, next) => {
+    try {
+      res.json(await getReleaseBenefitMatrix(req.params.id));
     } catch (e) {
       next(e);
     }
