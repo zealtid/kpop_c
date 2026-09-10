@@ -4,11 +4,19 @@ const session = require("../../utils/session");
 const displayName = require("../../utils/displayName");
 const followPicker = require("../../utils/followPicker");
 
+function resolveAvatarSrc(user) {
+  const raw = user && (user.avatarUrl || user.avatar_url);
+  if (!raw) return "";
+  return api.mediaUrl(String(raw).trim());
+}
+
 Page({
   data: {
     user: {},
     displayName: displayName.UNSET_PLACEHOLDER,
     nicknameUnset: true,
+    avatarSrc: "",
+    hasAvatar: false,
     follows: [],
     followCount: 0,
     followLabel: "",
@@ -27,6 +35,7 @@ Page({
     const followed = (follows && follows.groups) || this.data.follows || [];
     const summary = followPicker.followSummary(followed, 5);
     const nicknameUnset = displayName.isUnsetNickname(user && user.nickname);
+    const avatarSrc = resolveAvatarSrc(user);
     this.setData({
       needsLogin: false,
       loginFailed: false,
@@ -34,6 +43,8 @@ Page({
       user: user || {},
       displayName: displayName.displayNickname(user && user.nickname),
       nicknameUnset,
+      avatarSrc,
+      hasAvatar: !!avatarSrc,
       follows: followed,
       followCount: summary.count,
       followLabel: summary.label,
@@ -60,6 +71,8 @@ Page({
           user: {},
           displayName: displayName.UNSET_PLACEHOLDER,
           nicknameUnset: true,
+          avatarSrc: "",
+          hasAvatar: false,
           follows: [],
           followCount: 0,
           followLabel: "",
@@ -89,6 +102,25 @@ Page({
   patchNickname(nickname) {
     api
       .request({ url: "/me", method: "PATCH", data: { nickname } })
+      .then((user) => {
+        session.persistUser(user);
+        const app = getApp();
+        if (app && app.globalData) app.globalData.user = user;
+        this.applyProfile(user, { groups: this.data.follows });
+        wx.showToast({ title: "已更新", icon: "none" });
+      })
+      .catch(api.handleWriteError);
+  },
+
+  // 微信头像选择（button open-type=chooseAvatar）；写入 PATCH /me avatarUrl。
+  onChooseAvatar(e) {
+    if (this.data.needsLogin) return;
+    const avatarUrl = e && e.detail && e.detail.avatarUrl;
+    if (!avatarUrl || typeof avatarUrl !== "string") return;
+    const next = avatarUrl.trim();
+    if (!next) return;
+    api
+      .request({ url: "/me", method: "PATCH", data: { avatarUrl: next } })
       .then((user) => {
         session.persistUser(user);
         const app = getApp();

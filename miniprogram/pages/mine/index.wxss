@@ -7,13 +7,75 @@
   margin-top: 12rpx;
 }
 
+.profile {
+  padding: 20rpx 24rpx;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+}
+
+.avatar-btn {
+  width: 104rpx;
+  height: 104rpx;
+  min-width: 104rpx;
+  min-height: 104rpx;
+  padding: 0;
+  margin: 0;
+  background: var(--color-bg-muted);
+  border: none;
+  border-radius: 50%;
+  overflow: hidden;
+  line-height: 0;
+  font-size: 0;
+}
+
+.avatar-btn::after {
+  border: none;
+}
+
+.avatar,
+.avatar-ph {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 50%;
+  display: block;
+}
+
+.avatar-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-muted);
+  color: var(--color-text-tertiary);
+  font-size: 36rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.profile-meta {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+}
+
+.profile-name {
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .nickname-sync-wrap {
   position: relative;
-  margin-top: 24rpx;
+  display: inline-block;
+  margin-top: 10rpx;
 }
 
 .nickname-sync-btn {
   pointer-events: none;
+  padding: 10rpx 28rpx;
+  font-size: 24rpx;
 }
 
 .nickname-fill {

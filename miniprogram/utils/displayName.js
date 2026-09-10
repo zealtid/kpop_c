@@ -1,5 +1,5 @@
 /**
- * 我的页展示名（UX-A / UX-A2）。
+ * 我的页展示名（UX-A / UX-A2；UX-A3 头像另存 avatarUrl，不改昵称策略）。
  *
  * 策略：
  * - 应用展示名以 GET/PATCH /me 的 nickname 为准，不另做持久化本地覆盖。
