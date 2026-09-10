@@ -40,6 +40,7 @@ async function onSubmit() {
             autocomplete="username"
             placeholder="用户名"
             :disabled="submitting"
+            :input-props="{ name: 'username', id: 'login-username' }"
           />
         </n-form-item>
         <n-form-item label="密码">
@@ -50,6 +51,7 @@ async function onSubmit() {
             autocomplete="current-password"
             placeholder="密码"
             :disabled="submitting"
+            :input-props="{ name: 'password', id: 'login-password' }"
           />
         </n-form-item>
         <n-button type="primary" attr-type="submit" block :loading="submitting" :disabled="submitting">
