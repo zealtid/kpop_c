@@ -40,6 +40,7 @@ function menuTo(id: string) {
 
 function isActive(id: string) {
   if (id === "catalog") return route.name === "catalog" || route.path.startsWith("/catalog");
+  if (id === "tickets") return route.name === "tickets" || route.name === "ticket-detail";
   return route.name === id || route.path === `/${id}` || route.path.startsWith(`/${id}/`);
 }
 
