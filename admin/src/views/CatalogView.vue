@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref, watch } from "vue";
+import { computed, h, nextTick, onMounted, ref, watch } from "vue";
 import {
   NAlert,
   NButton,
@@ -189,17 +189,20 @@ function openEdit(row: AnyRow) {
 
 async function onSave(payload: Record<string, unknown>) {
   if (!isCrudTab(tab.value)) return;
+  const editingId = editing.value?.id || null;
   acting.value = true;
-  const res = await saveCatalog(tab.value, editing.value?.id || null, payload);
+  const res = await saveCatalog(tab.value, editingId, payload);
   acting.value = false;
   if (res.status !== 200) {
     message.error(errorMessage(res.body));
     return;
   }
-  message.success(editing.value ? "已保存" : "已创建为草稿");
   formShow.value = false;
   editing.value = null;
+  await nextTick();
+  message.success(editingId ? "已保存" : "已创建为草稿");
   await refresh();
+  formShow.value = false;
 }
 
 async function onStatus(row: AnyRow, status: "published" | "draft" | "deprecated") {
@@ -218,6 +221,7 @@ async function onStatus(row: AnyRow, status: "published" | "draft" | "deprecated
 watch(tab, () => {
   formShow.value = false;
   editing.value = null;
+  message.destroyAll();
 });
 
 watch(
