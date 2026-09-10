@@ -117,14 +117,13 @@ test("TH04 cardbook/catalog/feed/mine consume tokens; progress + own/want badges
   assert.match(catalogWxss, /app\.wxss/);
 });
 
-test("TH05 tabBar + primary/secondary buttons; IA unchanged", () => {
+test("TH05 tabBar + primary/secondary buttons; ME10 情报 hidden", () => {
   const appJson = JSON.parse(fs.readFileSync(APP_JSON, "utf8"));
   assert.equal(appJson.pages[0], "pages/cardbook/index");
-  assert.equal(appJson.tabBar.list.length, 4);
-  assert.equal(appJson.tabBar.list[0].text, "情报");
-  assert.equal(appJson.tabBar.list[1].text, "卡册");
-  assert.equal(appJson.tabBar.list[2].text, "图鉴");
-  assert.equal(appJson.tabBar.list[3].text, "我的");
+  assert.equal(appJson.tabBar.list.length, 3);
+  assert.equal(appJson.tabBar.list[0].text, "卡册");
+  assert.equal(appJson.tabBar.list[1].text, "图鉴");
+  assert.equal(appJson.tabBar.list[2].text, "我的");
   assert.equal(appJson.tabBar.color.toUpperCase(), "#667085");
   assert.equal(appJson.tabBar.selectedColor.toUpperCase(), "#6B5CFF");
   assert.equal(appJson.tabBar.backgroundColor.toUpperCase(), "#FFFFFF");

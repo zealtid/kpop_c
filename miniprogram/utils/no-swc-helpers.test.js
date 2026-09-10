@@ -47,16 +47,23 @@ test("packed miniprogram JS has no @swc/helpers and no array destructuring", () 
   assert.deepEqual(hits, []);
 });
 
-test("cold start stays cardbook; intel Tab + lazyCodeLoading kept", () => {
+test("cold start stays cardbook; ME10 hides intel Tab; lazyCodeLoading kept", () => {
   const appJson = JSON.parse(fs.readFileSync(path.join(ROOT, "app.json"), "utf8"));
   assert.equal(appJson.pages[0], "pages/cardbook/index");
   assert.equal(appJson.lazyCodeLoading, "requiredComponents");
-  assert.equal(appJson.tabBar.list[0].pagePath, "pages/feed/index");
-  assert.equal(appJson.tabBar.list[0].text, "情报");
+  const tabs = (appJson.tabBar.list || []).map((t) => t.text);
+  assert.deepEqual(tabs, ["卡册", "图鉴", "我的"]);
+  assert.equal(appJson.tabBar.list[0].pagePath, "pages/cardbook/index");
+  assert.ok(!tabs.includes("情报"));
+  assert.ok(!(appJson.tabBar.list || []).some((t) => t.pagePath === "pages/feed/index"));
   assert.ok(appJson.pages.includes("pages/feed/index"));
   assert.ok(appJson.pages.includes("pages/schedule/index"));
   assert.ok(appJson.pages.includes("pages/settings/index"));
   assert.ok(appJson.pages.includes("pages/follow-manage/index"));
+  const settings = fs.readFileSync(path.join(ROOT, "pages/settings/index.wxml"), "utf8");
+  const mine = fs.readFileSync(path.join(ROOT, "pages/mine/index.wxml"), "utf8");
+  const about = fs.readFileSync(path.join(ROOT, "pages/about/index.wxml"), "utf8");
+  assert.doesNotMatch(settings + mine + about, /pages\/feed\/|实验室/);
 });
 
 test("UX-A does not use getUserProfile as nickname path", () => {

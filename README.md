@@ -8,8 +8,8 @@ C 端只有微信小程序；M2.5 OPS-0 起另有独立 **Web 运营后台**（`
 
 ## 硬约束（Scope freeze）
 
-- Tab：情报 | 卡册 | 图鉴 | 我的；启动默认落在 **卡册**（`pages[0]` 仍是卡册）。
-- **情报** Tab 接 M2 Feed / 日程 API（关注时间线 + 今日日程 + 详情）；无订阅消息、无爬虫 UI、无缺卡入口。
+- Tab：卡册 | 图鉴 | 我的；启动默认落在 **卡册**（`pages[0]` 仍是卡册）。情报底栏入口按 UX-B / ME10 隐藏（页面文件保留，深链回卡册）。
+- **情报** 页仍接 M2 Feed / 日程 API（关注时间线 + 今日日程 + 详情）；无订阅消息、无爬虫 UI、无缺卡入口；无设置/实验室入口。
 - 试点：Hearts2Hearts（深）+ BTS 切片专辑《ARIRANG》（2026-03-20）。
 - 可见性只有 `private | public`，无私友 UI，无单卡可见性开关。分享长图包含该组 **全部已拥有** 卡片。
 - 拥有会自动去掉想要；已拥有再点想要 → HTTP **200** + 业务码 `OWN_WANT_MUTEX` Toast 互斥且 **不写入**；取消拥有 **不会** 加回想要。
@@ -59,7 +59,7 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 / 
 
 | ID | 行为 | 屏幕 / 接口 |
 | --- | --- | --- |
-| **T01** | 四个 Tab：情报 / 卡册 / 图鉴 / 我的 | `miniprogram/app.json` tabBar |
+| **T01** | 三个 Tab：卡册 / 图鉴 / 我的（情报底栏已隐藏） | `miniprogram/app.json` tabBar |
 | **T02** | 默认落地卡册 | `pages` 首项 `pages/cardbook/index` |
 | **A01** | 游客可读图鉴 | `GET /catalog/groups` 等，无需 token |
 | **A02** | 未登录写操作 401 | collection / share / feedback / follows |
@@ -109,9 +109,9 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 / 
 
 管理默认令牌：`ADMIN_TOKEN=dev-admin`（脚本 / 测试回退）。运营后台请用用户名密码会话，见下方 OPS-0。
 
-## M2-b 情报 Tab（小程序）
+## M2-b 情报页（小程序）
 
-占位页换成真实情报。默认 Tab 仍是卡册。外链用 **复制链接 / 系统打开**，不内嵌 web-view。
+占位页换成真实情报。默认 Tab 仍是卡册。UX-B / ME10 起情报不再出现在底栏；页面保留，深链回卡册。外链用 **复制链接 / 系统打开**，不内嵌 web-view。
 
 | 页面 | 路径 |
 | --- | --- |

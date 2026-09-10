@@ -108,6 +108,13 @@ test("ME06 管理关注 is under 设置", () => {
   assert.deepEqual(navigations, [{ url: "/pages/follow-manage/index" }]);
 });
 
+test("ME10 settings has no intel / lab entry", () => {
+  const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
+  const js = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
+  assert.doesNotMatch(wxml, /情报|pages\/feed\/|pages\/schedule\/|实验室/);
+  assert.doesNotMatch(js, /pages\/feed\/|pages\/schedule\/|情报/);
+});
+
 after(() => {
   api.request = origRequest;
 });

@@ -143,7 +143,7 @@ test("wxml has chips, today strip, feed cards, empty/featured CTAs", () => {
   assert.match(wxml, /countdown/);
 });
 
-test("T01 pages[0] stays 卡册; 情报 remains tab; detail pages registered", () => {
+test("T01 pages[0] stays 卡册; ME10 情报 not a tab; pages kept", () => {
   const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, "../../app.json"), "utf8"));
   assert.equal(appJson.pages[0], "pages/cardbook/index");
   assert.ok(appJson.pages.includes("pages/feed/index"));
@@ -151,9 +151,17 @@ test("T01 pages[0] stays 卡册; 情报 remains tab; detail pages registered", (
   assert.ok(appJson.pages.includes("pages/schedule/index"));
   assert.ok(appJson.pages.includes("pages/schedule-detail/index"));
   const tabsList = (appJson.tabBar.list || []).map((t) => t.text);
-  assert.deepEqual(tabsList, ["情报", "卡册", "图鉴", "我的"]);
-  assert.equal(appJson.tabBar.list[0].pagePath, "pages/feed/index");
-  assert.equal(appJson.tabBar.list.length, 4);
+  assert.deepEqual(tabsList, ["卡册", "图鉴", "我的"]);
+  assert.ok(!tabsList.includes("情报"));
+  assert.ok(!(appJson.tabBar.list || []).some((t) => t.pagePath === "pages/feed/index"));
+  assert.equal(appJson.tabBar.list.length, 3);
+});
+
+test("ME10 deep link to intel page switches to 卡册", () => {
+  const page = pageWithData({});
+  page.onShow();
+  assert.deepEqual(tabs, [{ url: "/pages/cardbook/index" }]);
+  assert.equal(requests.length, 0);
 });
 
 test("X01 no 缺卡 entry, crawler, subscribe template, or web-view", () => {
