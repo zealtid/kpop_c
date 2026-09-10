@@ -16,8 +16,9 @@ import { errorMessage } from "../api";
 import { loadCatalog, saveCatalog, setCatalogStatus } from "../catalog/api";
 import {
   CATALOG_TABS,
+  isBenefitsTab,
+  isCompletenessTab,
   isCrudTab,
-  isLaterTab,
   parseCatalogTab,
   rowStatus,
   statusLabel,
@@ -31,6 +32,8 @@ import {
 } from "../catalog/types";
 import CatalogFormModal from "../components/catalog/CatalogFormModal.vue";
 import StatusActions from "../components/catalog/StatusActions.vue";
+import CatalogBenefitsView from "./CatalogBenefitsView.vue";
+import CatalogCompletenessView from "./CatalogCompletenessView.vue";
 import CatalogImportView from "./CatalogImportView.vue";
 import { useNarrow } from "../narrow";
 
@@ -43,7 +46,8 @@ const { isNarrow } = useNarrow();
 
 const tab = computed(() => parseCatalogTab(route.params.tab));
 const crudTab = computed<CatalogCrudTab>(() => (isCrudTab(tab.value) ? tab.value : "groups"));
-const isLater = computed(() => isLaterTab(tab.value));
+const isBenefits = computed(() => isBenefitsTab(tab.value));
+const isCompleteness = computed(() => isCompletenessTab(tab.value));
 const isImport = computed(() => tab.value === "import");
 
 const loading = ref(true);
@@ -58,14 +62,9 @@ const headings: Record<CatalogTab, { title: string; hint: string }> = {
   members: { title: "图鉴 · 成员", hint: "Member。草稿成员不出现在小程序组合页。" },
   releases: { title: "图鉴 · 发行", hint: "Release。演唱会特典用 kind=concert_md，没有独立 Event 表。" },
   templates: { title: "图鉴 · 小卡模板", hint: "PhotocardTemplate。无主图不能发布（API 返回 4xx）。去重键 = slug:发行标题:成员:version。" },
-  completeness: { title: "图鉴 · 完整度", hint: "切片后续（B2）" },
+  completeness: { title: "图鉴 · 完整度", hint: "" },
   import: { title: "图鉴 · 导入校验", hint: "" },
-  benefits: { title: "图鉴 · 特典对照", hint: "切片后续（B2）" },
-};
-
-const laterHint: Record<string, string> = {
-  completeness: "完整度看板归 B2，本页仅占位。",
-  benefits: "特典对照归 B2，本页仅占位。",
+  benefits: { title: "图鉴 · 特典对照", hint: "" },
 };
 
 const pageNotice = ref("");
@@ -280,9 +279,12 @@ onMounted(() => {
         <CatalogImportView />
       </template>
 
-      <template v-else-if="isLater">
-        <n-alert type="warning" :show-icon="false">{{ headings[tab].hint }}</n-alert>
-        <p class="muted">{{ laterHint[tab] }}</p>
+      <template v-else-if="isBenefits">
+        <CatalogBenefitsView :releases="bundle.releases" :groups="bundle.groups" />
+      </template>
+
+      <template v-else-if="isCompleteness">
+        <CatalogCompletenessView />
       </template>
 
       <template v-else>

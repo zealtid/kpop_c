@@ -1,6 +1,5 @@
 export type CatalogCrudTab = "groups" | "members" | "releases" | "templates";
-export type CatalogLaterTab = "completeness" | "benefits";
-export type CatalogTab = CatalogCrudTab | CatalogLaterTab | "import";
+export type CatalogTab = CatalogCrudTab | "completeness" | "benefits" | "import";
 
 export type Group = {
   id: string;
@@ -70,9 +69,9 @@ export const CATALOG_TABS: { id: CatalogTab; label: string; later?: boolean }[] 
   { id: "members", label: "成员" },
   { id: "releases", label: "发行" },
   { id: "templates", label: "小卡模板" },
-  { id: "import", label: "导入" },
-  { id: "completeness", label: "完整度", later: true },
-  { id: "benefits", label: "特典对照", later: true },
+  { id: "import", label: "图鉴导入" },
+  { id: "completeness", label: "完整度" },
+  { id: "benefits", label: "特典对照" },
 ];
 
 export const CRUD_TABS: CatalogCrudTab[] = ["groups", "members", "releases", "templates"];
@@ -88,8 +87,12 @@ export function isCrudTab(tab: string): tab is CatalogCrudTab {
   return (CRUD_TABS as string[]).includes(tab);
 }
 
-export function isLaterTab(tab: string) {
-  return tab === "completeness" || tab === "benefits";
+export function isBenefitsTab(tab: string) {
+  return tab === "benefits";
+}
+
+export function isCompletenessTab(tab: string) {
+  return tab === "completeness";
 }
 
 export function parseCatalogTab(raw: unknown): CatalogTab {
