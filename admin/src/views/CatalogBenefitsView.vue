@@ -206,6 +206,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <div class="b2-page" :class="{ narrow: isNarrow }">
   <p class="muted">
     上传运营 Sheet/CSV，按行校验通路词典与卡槽。只把校验通过的
     <code>confirmed</code> 行只读落库；<strong>不会</strong>自动 published 无图 Template，也不改图鉴导入。
@@ -312,6 +313,7 @@ onMounted(() => {
     </div>
     <p v-if="!mapsDeny && !mapsLoading && !maps.length" class="muted">还没有 confirmed 对照。校验通过后可写入。</p>
   </n-card>
+  </div>
 </template>
 
 <style scoped>
@@ -416,6 +418,15 @@ onMounted(() => {
 }
 .wide-only {
   display: block;
+}
+.narrow .wide-only {
+  display: none;
+}
+.narrow .narrow-only {
+  display: flex;
+}
+.narrow .filters {
+  grid-template-columns: 1fr;
 }
 @media (max-width: 390px) {
   .filters {

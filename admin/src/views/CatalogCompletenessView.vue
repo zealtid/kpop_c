@@ -112,6 +112,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <div class="b2-page" :class="{ narrow: isNarrow }">
   <p class="muted">
     按组合 / 发行统计草稿与已发布、缺主图、缺成员。扩展专辑的发布闸门只展示状态，<strong>不</strong>接入签署人流程。本页只读。
   </p>
@@ -183,6 +184,7 @@ onMounted(() => {
     </div>
     <p v-if="!group.releases.length" class="muted">该组合暂无发行</p>
   </n-card>
+  </div>
 </template>
 
 <style scoped>
@@ -258,6 +260,12 @@ onMounted(() => {
 }
 .wide-only {
   display: block;
+}
+.narrow .narrow-only {
+  display: flex;
+}
+.narrow .wide-only {
+  display: none;
 }
 @media (max-width: 390px) {
   .narrow-only {
