@@ -74,14 +74,26 @@ function codes(issues: { code: string }[]) {
 
 test("channel dictionary loads and aliases fold case-insensitively", () => {
   assert.ok(dict.channels.some((c) => c.code === "weverse"));
+  assert.ok(dict.channels.some((c) => c.code === "album-inclusion"));
+  assert.ok(dict.channels.some((c) => c.code === "unknown"));
   assert.equal(normalizeChannelCode("Weverse", dict), "weverse");
   assert.equal(normalizeChannelCode("wv", dict), "weverse");
   assert.equal(normalizeChannelCode("薇谱", dict), "weverse");
   assert.equal(normalizeChannelCode("天猫", dict), "tmall-flagship");
   assert.equal(normalizeChannelCode("YES24", dict), "yes24");
+  assert.equal(normalizeChannelCode("album-inclusion", dict), "album-inclusion");
+  assert.equal(normalizeChannelCode("专辑内", dict), "album-inclusion");
+  assert.equal(normalizeChannelCode("Album Inclusion", dict), "album-inclusion");
+  assert.equal(normalizeChannelCode("专内", dict), "album-inclusion");
+  assert.equal(normalizeChannelCode("随机小卡", dict), "album-inclusion");
+  assert.equal(normalizeChannelCode("ALBUM", dict), "album-inclusion");
+  assert.equal(normalizeChannelCode("standard-inclusion", dict), "album-inclusion");
   assert.equal(normalizeChannelCode("not-a-channel", dict), null);
-  const copy = parseChannelDictionary(JSON.parse(readFileSync(path.resolve(here, "../fixtures/channel_dictionary.json"), "utf8")));
+  const fixturePath = path.resolve(here, "../fixtures/channel_dictionary.json");
+  const docsPath = path.resolve(here, "../../docs/ops/channel_dictionary.json");
+  const copy = parseChannelDictionary(JSON.parse(readFileSync(fixturePath, "utf8")));
   assert.equal(copy.channels.length, dict.channels.length);
+  assert.equal(readFileSync(fixturePath, "utf8"), readFileSync(docsPath, "utf8"));
 });
 
 test("sample CSV parses; slot split trims but does not invent spaces", () => {

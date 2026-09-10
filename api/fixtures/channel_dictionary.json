@@ -16,6 +16,7 @@
     { "code": "sm-store", "name_zh": "SM Store", "aliases": ["SM店"] },
     { "code": "yg-shop", "name_zh": "YG Select", "aliases": ["YG店"] },
     { "code": "offline-cnsign", "name_zh": "线下签售/场周", "aliases": ["面签", "场周特典"] },
+    { "code": "album-inclusion", "name_zh": "专辑内含", "aliases": ["专辑内", "album inclusion", "专内", "随机小卡", "album", "inclusion", "standard-inclusion"] },
     { "code": "unknown", "name_zh": "未知", "aliases": [] }
   ]
 }
