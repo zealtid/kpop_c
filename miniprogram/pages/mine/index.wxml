@@ -10,15 +10,17 @@
   <block wx:else>
     <view class="card profile">
       <view class="profile-row">
-        <button
-          class="avatar-btn"
-          hover-class="none"
-          open-type="chooseAvatar"
-          bindchooseavatar="onChooseAvatar"
-        >
-          <image wx:if="{{hasAvatar}}" class="avatar" src="{{avatarSrc}}" mode="aspectFill"/>
-          <view wx:else class="avatar-ph">星</view>
-        </button>
+        <view class="avatar-clip">
+          <button
+            class="avatar-btn"
+            hover-class="none"
+            open-type="chooseAvatar"
+            bindchooseavatar="onChooseAvatar"
+          >
+            <image wx:if="{{hasAvatar}}" class="avatar" src="{{avatarSrc}}" mode="aspectFill"/>
+            <view wx:else class="avatar-ph">星</view>
+          </button>
+        </view>
         <view class="profile-meta">
           <view class="profile-name {{nicknameUnset ? 'placeholder' : ''}}">{{displayName}}</view>
           <view wx:if="{{nicknameUnset}}" class="nickname-sync-wrap">

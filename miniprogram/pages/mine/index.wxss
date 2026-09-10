@@ -16,11 +16,28 @@
   align-items: center;
 }
 
-.avatar-btn {
+/* chooseAvatar 的 button 默认会撑满行宽；外层裁切 + 固定边长，避免 flex 拉成椭圆 */
+.avatar-clip {
   width: 104rpx;
   height: 104rpx;
   min-width: 104rpx;
   min-height: 104rpx;
+  max-width: 104rpx;
+  max-height: 104rpx;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--color-bg-muted);
+}
+
+button.avatar-btn {
+  width: 104rpx !important;
+  height: 104rpx !important;
+  min-width: 104rpx;
+  max-width: 104rpx;
+  min-height: 104rpx;
+  max-height: 104rpx;
   padding: 0;
   margin: 0;
   background: var(--color-bg-muted);
@@ -29,6 +46,9 @@
   overflow: hidden;
   line-height: 0;
   font-size: 0;
+  box-sizing: border-box;
+  display: block;
+  flex-shrink: 0;
 }
 
 .avatar-btn::after {
@@ -41,6 +61,7 @@
   height: 104rpx;
   border-radius: 50%;
   display: block;
+  box-sizing: border-box;
 }
 
 .avatar-ph {
