@@ -52,7 +52,19 @@ export function buildChannelAliasIndex(dict: ChannelDictionary): Map<string, str
 /** Load the static in-repo dictionary. Tests may pass a path or parsed object. */
 export function loadChannelDictionary(filePath = CHANNEL_DICTIONARY_PATH): ChannelDictionary {
   if (filePath === CHANNEL_DICTIONARY_PATH && cached) return cached;
-  const raw = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  let text: string;
+  try {
+    text = fs.readFileSync(filePath, "utf8");
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      throw new Error(
+        `channel_dictionary 未找到：${filePath}。生产镜像须 COPY fixtures（含 channel_dictionary.json，含 album-inclusion）到 WORKDIR。`,
+      );
+    }
+    throw err;
+  }
+  const raw = JSON.parse(text);
   const dict = parseChannelDictionary(raw);
   if (filePath === CHANNEL_DICTIONARY_PATH) {
     cached = dict;
