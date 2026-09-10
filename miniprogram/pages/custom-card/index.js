@@ -14,6 +14,7 @@ Page({
     saving: false,
     missing: false,
     canPreview: false,
+    showMeta: false,
   },
   onLoad(q) {
     this.setData({ id: q.id || "" });
@@ -34,6 +35,7 @@ Page({
           condition: card.condition || "",
           title: card.title || "",
           note: card.note || card.notes || "",
+          showMeta: customCard.hasCustomMeta(decorated),
           canPreview: customCard.canOpenFullscreen(decorated.moderationStatus),
         });
       })

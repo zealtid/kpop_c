@@ -86,6 +86,13 @@ beforeEach(() => {
         ],
       });
     }
+    if (String(opts.url).includes("/releases")) {
+      return Promise.resolve({
+        releases: [
+          { id: "r-arirang", group_id: "g-bts", title: "ARIRANG", title_zh: "ARIRANG" },
+        ],
+      });
+    }
     return Promise.resolve({ groups: [{ id: "g-bts", nameZh: "防弹少年团" }] });
   };
 });
@@ -107,7 +114,13 @@ test("wxml forces 2:3 crop, album+camera, optional member skip", () => {
   assert.match(wxml, /wx:if="\{\{showMembers\}\}"/);
   assert.match(wxml, /bindtap="pickMember"/);
   assert.match(wxml, />不指定</);
-  assert.doesNotMatch(wxml, /跳过裁剪|使用原图/);
+  assert.match(wxml, /bindtap="recrop"/);
+  assert.match(wxml, /专辑 \/ 特典（选填，可整步跳过）/);
+  assert.match(wxml, /bindtap="pickRelease"/);
+  assert.match(wxml, /bindinput="onBenefitName"/);
+  assert.match(wxml, /bindinput="onVersionLabel"/);
+  assert.match(wxml, /未选组合不会出现非法专辑列表/);
+  assert.doesNotMatch(wxml, /跳过裁剪|使用原图|自由比例/);
 });
 
 test("UX01 album pick navigates to crop and does not preview original", () => {
@@ -205,6 +218,95 @@ test("no group means no member step", () => {
   page.pickGroup({ currentTarget: { dataset: { id: "" } } });
   assert.equal(page.data.showMembers, false);
   assert.equal(page.data.memberId, "");
+});
+
+test("PCX02 recrop re-enters crop with original; changing image also re-enters", () => {
+  const page = pageWithData({ preview: "tmp://crop.jpg" });
+  page._origPath = "tmp://orig.jpg";
+  page._cropped = true;
+  page.recrop();
+  assert.equal(navigations[0].url, "/pages/image-crop/index");
+  assert.equal(crop.getSession().src, "tmp://orig.jpg");
+
+  page.pickAlbum();
+  assert.equal(navigations[1].url, "/pages/image-crop/index");
+  assert.equal(crop.getSession().src, "tmp://album.jpg");
+  assert.equal(page._origPath, "tmp://album.jpg");
+});
+
+test("PCX04/PCX05 empty metadata still posts; no group hides release list", async () => {
+  const requests = [];
+  api.request = (opts) => {
+    requests.push(opts);
+    return Promise.resolve({});
+  };
+  const page = pageWithData({
+    saving: false,
+    title: "",
+    note: "",
+    quantity: 1,
+    condition: "",
+    groupId: "",
+    memberId: "",
+    releaseId: "",
+    benefitName: "",
+    versionLabel: "",
+    showReleases: false,
+  });
+  page._cropped = true;
+  page._filePath = "tmp://crop.jpg";
+  page.save();
+  await Promise.resolve();
+  const body = requests.find((r) => r.method === "POST").data;
+  assert.equal(body.releaseId, null);
+  assert.equal(body.benefitName, null);
+  assert.equal(body.versionLabel, null);
+  assert.equal(page.data.showReleases, false);
+
+  page.pickGroup({ currentTarget: { dataset: { id: "" } } });
+  assert.equal(page.data.showReleases, false);
+  assert.equal(page.data.releaseId, "");
+});
+
+test("PCX05 selecting group loads releases; switch group clears release_id", async () => {
+  const page = pageWithData({
+    groupId: "g-bts",
+    releaseId: "r-arirang",
+    showReleases: true,
+    releases: [{ id: "r-arirang" }],
+  });
+  page.pickGroup({ currentTarget: { dataset: { id: "g-h2h" } } });
+  assert.equal(page.data.releaseId, "");
+  await Promise.resolve();
+  await Promise.resolve();
+});
+
+test("PCX06 filled metadata is posted on save", async () => {
+  const requests = [];
+  api.request = (opts) => {
+    requests.push(opts);
+    return Promise.resolve({});
+  };
+  const page = pageWithData({
+    saving: false,
+    title: "t",
+    note: "",
+    quantity: 1,
+    condition: "",
+    groupId: "g-bts",
+    memberId: "m-rm",
+    releaseId: "r-arirang",
+    benefitName: "Weverse POB",
+    versionLabel: "A ver.",
+  });
+  page._cropped = true;
+  page._filePath = "tmp://crop.jpg";
+  page.save();
+  await Promise.resolve();
+  const body = requests.find((r) => r.method === "POST").data;
+  assert.equal(body.releaseId, "r-arirang");
+  assert.equal(body.benefitName, "Weverse POB");
+  assert.equal(body.versionLabel, "A ver.");
 });
 
 after(() => {

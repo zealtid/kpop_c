@@ -17,11 +17,27 @@
   border-radius: 8rpx;
 }
 
+.presets {
+  display: flex;
+  justify-content: center;
+  margin: 8rpx 0 0;
+}
+
+.presets .chip {
+  pointer-events: none;
+}
+
+.hint {
+  text-align: center;
+  margin-bottom: 16rpx;
+}
+
 .img {
   position: absolute;
   left: 0;
   top: 0;
   transform-origin: 0 0;
+  will-change: transform;
 }
 
 .touch {

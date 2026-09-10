@@ -9,6 +9,7 @@
     <view class="row pick-row">
       <view class="btn ghost slim" bindtap="pickAlbum">相册</view>
       <view class="btn ghost slim" bindtap="pickCamera">相机</view>
+      <view wx:if="{{preview}}" class="btn ghost slim" bindtap="recrop">重新裁剪</view>
     </view>
   </view>
 
@@ -44,6 +45,36 @@
         data-id="{{item.id}}"
       >{{item.nameEn}}</view>
     </view>
+  </view>
+
+  <view class="card">
+    <view class="label">专辑 / 特典（选填，可整步跳过）</view>
+    <view class="muted">不填也可保存。专辑只能从已选组合里挑，不会写入公开图鉴。</view>
+    <block wx:if="{{showReleases}}">
+      <input
+        class="box input"
+        value="{{releaseQ}}"
+        bindinput="onReleaseSearch"
+        placeholder="搜索该组合专辑"
+        maxlength="40"
+      />
+      <view wx:if="{{releasesEmpty}}" class="muted">该组合暂无专辑，可跳过</view>
+      <view class="chips">
+        <view class="chip {{releaseId===''?'on':''}}" bindtap="pickRelease" data-id="">不指定</view>
+        <view
+          class="chip {{releaseId===item.id?'on':''}}"
+          wx:for="{{visibleReleases}}"
+          wx:key="id"
+          bindtap="pickRelease"
+          data-id="{{item.id}}"
+        >{{item.label}}</view>
+      </view>
+    </block>
+    <view wx:else class="muted">先选组合后才能列出专辑；未选组合不会出现非法专辑列表。</view>
+    <view class="label sub-label">特典名称（选填）</view>
+    <input class="box input" value="{{benefitName}}" bindinput="onBenefitName" placeholder="例如：Weverse POB" maxlength="80"/>
+    <view class="label sub-label">版本（选填）</view>
+    <input class="box input" value="{{versionLabel}}" bindinput="onVersionLabel" placeholder="例如：A ver." maxlength="40"/>
   </view>
 
   <view class="card">

@@ -17,6 +17,14 @@ Page({
     memberId: "",
     showMembers: false,
     membersEmpty: false,
+    releases: [],
+    visibleReleases: [],
+    releaseId: "",
+    releaseQ: "",
+    showReleases: false,
+    releasesEmpty: false,
+    benefitName: "",
+    versionLabel: "",
     saving: false,
     aspectLabel: crop.CROP_ASPECT_LABEL,
   },
@@ -32,6 +40,7 @@ Page({
     if (cropped) {
       this._filePath = cropped;
       this._cropped = true;
+      this._origPath = this._origPath || crop.peekOriginal();
       this.setData({ preview: cropped });
     }
   },
@@ -43,7 +52,18 @@ Page({
   },
   loadMembers(groupId) {
     if (!groupId) {
-      this.setData({ members: [], showMembers: false, membersEmpty: false, memberId: "" });
+      this.setData({
+        members: [],
+        showMembers: false,
+        membersEmpty: false,
+        memberId: "",
+        releases: [],
+        visibleReleases: [],
+        showReleases: false,
+        releasesEmpty: false,
+        releaseId: "",
+        releaseQ: "",
+      });
       return;
     }
     api
@@ -63,6 +83,44 @@ Page({
         if (this.data.groupId !== groupId) return;
         this.setData({ members: [], showMembers: true, membersEmpty: true, memberId: "" });
       });
+    this.loadReleases(groupId);
+  },
+  loadReleases(groupId) {
+    if (!groupId) {
+      this.setData({
+        releases: [],
+        visibleReleases: [],
+        showReleases: false,
+        releasesEmpty: false,
+        releaseId: "",
+        releaseQ: "",
+      });
+      return;
+    }
+    api
+      .request({ url: `/catalog/groups/${groupId}/releases`, auth: false })
+      .then((data) => {
+        if (this.data.groupId !== groupId) return;
+        const releases = (data.releases || []).map(customCard.mapCatalogRelease).filter(Boolean);
+        const releaseId = customCard.nextReleaseIdOnGroupChange(this.data.releaseId, releases);
+        this.setData({
+          releases,
+          visibleReleases: customCard.filterReleases(releases, this.data.releaseQ),
+          showReleases: true,
+          releasesEmpty: releases.length === 0,
+          releaseId,
+        });
+      })
+      .catch(() => {
+        if (this.data.groupId !== groupId) return;
+        this.setData({
+          releases: [],
+          visibleReleases: [],
+          showReleases: true,
+          releasesEmpty: true,
+          releaseId: "",
+        });
+      });
   },
   pickAlbum() {
     this.chooseAndCrop(["album"]);
@@ -76,6 +134,7 @@ Page({
   chooseAndCrop(sourceType) {
     const done = (filePath) => {
       if (!filePath) return;
+      this._origPath = filePath;
       crop.beginSession(filePath);
       wx.navigateTo({ url: "/pages/image-crop/index" });
     };
@@ -111,11 +170,36 @@ Page({
   pickGroup(e) {
     const groupId = e.currentTarget.dataset.id || "";
     if (groupId === this.data.groupId) return;
-    this.setData({ groupId, memberId: "" });
+    this.setData({ groupId, memberId: "", releaseId: "", releaseQ: "" });
     this.loadMembers(groupId);
   },
   pickMember(e) {
     this.setData({ memberId: e.currentTarget.dataset.id || "" });
+  },
+  pickRelease(e) {
+    this.setData({ releaseId: e.currentTarget.dataset.id || "" });
+  },
+  onReleaseSearch(e) {
+    const releaseQ = e.detail.value || "";
+    this.setData({
+      releaseQ,
+      visibleReleases: customCard.filterReleases(this.data.releases, releaseQ),
+    });
+  },
+  onBenefitName(e) {
+    this.setData({ benefitName: e.detail.value || "" });
+  },
+  onVersionLabel(e) {
+    this.setData({ versionLabel: e.detail.value || "" });
+  },
+  recrop() {
+    const orig = this._origPath || crop.peekOriginal();
+    if (!orig) {
+      wx.showToast({ title: "请先选择照片", icon: "none" });
+      return;
+    }
+    crop.beginSession(orig);
+    wx.navigateTo({ url: "/pages/image-crop/index" });
   },
   pickCondition(e) {
     this.setData({ condition: e.currentTarget.dataset.value || "" });
@@ -151,6 +235,9 @@ Page({
               condition: this.data.condition || null,
               groupId: this.data.groupId || null,
               memberId: this.data.memberId || null,
+              releaseId: this.data.releaseId || null,
+              benefitName: this.data.benefitName || null,
+              versionLabel: this.data.versionLabel || null,
             },
           })
           .then(() => {

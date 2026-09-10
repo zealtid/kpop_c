@@ -12,6 +12,11 @@
         <view wx:if="{{card.moderationLabel}}" class="tag warn">{{card.moderationLabel}}</view>
         <view wx:if="{{card.groupNameZh}}" class="sub">{{card.groupNameZh}}</view>
         <view wx:if="{{card.memberNameEn || card.memberNameZh}}" class="sub">{{card.memberNameEn || card.memberNameZh}}</view>
+        <view wx:if="{{showMeta}}" class="meta-extra">
+          <view wx:if="{{card.releaseTitle || card.releaseTitleZh}}" class="sub">专辑 {{card.releaseTitleZh || card.releaseTitle}}</view>
+          <view wx:if="{{card.benefitName}}" class="sub">特典 {{card.benefitName}}</view>
+          <view wx:if="{{card.versionLabel}}" class="sub">版本 {{card.versionLabel}}</view>
+        </view>
         <view wx:if="{{card.moderationStatus==='rejected'}}" class="muted">未通过审核，不进入常规卡册收藏，也不会出现在分享长图。</view>
         <view wx:else class="muted">审核未通过的卡不进入常规卡册，也不会出现在分享长图。</view>
       </view>

@@ -8,6 +8,8 @@ import { absoluteMediaUrl, deleteCustomImage, parseImagePayload, saveCustomImage
 const CARD_CONDITIONS = ["mint", "near_mint", "excellent", "good", "poor"] as const;
 type CardCondition = (typeof CARD_CONDITIONS)[number];
 const NOTES_MAX_LENGTH = 500;
+const BENEFIT_NAME_MAX = 80;
+const VERSION_LABEL_MAX = 40;
 import { submitMediaCheckAsync } from "./moderation.js";
 
 export const CUSTOM_BADGE = "自定义";
@@ -18,13 +20,16 @@ type CustomRow = Record<string, unknown>;
 
 const SELECT_SQL = `
   SELECT c.id, c.user_id, c.image_front, c.image_back, c.group_id, c.member_id,
+         c.release_id, c.benefit_name, c.version_label,
          c.title, c.note, c.quantity, c.condition, c.moderation_status, c.moderation_trace_id,
          c.created_at, c.updated_at,
          g.slug AS group_slug, g.name_zh AS group_name_zh, g.logo_color AS group_logo_color,
-         m.name_en AS member_name_en, m.name_zh AS member_name_zh, m.color AS member_color
+         m.name_en AS member_name_en, m.name_zh AS member_name_zh, m.color AS member_color,
+         rel.title AS release_title, rel.title_zh AS release_title_zh
   FROM user_custom_cards c
   LEFT JOIN idol_groups g ON g.id = c.group_id
   LEFT JOIN members m ON m.id = c.member_id
+  LEFT JOIN releases rel ON rel.id = c.release_id
 `;
 
 export function mapCustomCard(row: CustomRow) {
@@ -59,6 +64,11 @@ export function mapCustomCard(row: CustomRow) {
     title,
     note,
     notes: note,
+    releaseId: row.release_id ? String(row.release_id) : null,
+    releaseTitle: row.release_title == null ? null : String(row.release_title),
+    releaseTitleZh: row.release_title_zh == null ? null : String(row.release_title_zh),
+    benefitName: row.benefit_name == null ? null : String(row.benefit_name),
+    versionLabel: row.version_label == null ? null : String(row.version_label),
     quantity: row.quantity as number,
     condition: (row.condition as string | null) || null,
     moderationStatus: status,
@@ -94,6 +104,29 @@ function parseNote(value: unknown) {
   const note = value.trim();
   if (note.length > NOTES_MAX_LENGTH) throw badRequest(`备注最多 ${NOTES_MAX_LENGTH} 字`);
   return note || null;
+}
+
+function parseShortText(value: unknown, label: string, max: number) {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string") throw badRequest(`${label} 必须是文本`);
+  const text = value.trim();
+  if (text.length > max) throw badRequest(`${label}最多 ${max} 字`);
+  return text || null;
+}
+
+async function releaseBelongsToGroup(releaseId: string, groupId: string) {
+  const r = await query("SELECT 1 FROM releases WHERE id = $1 AND group_id = $2", [releaseId, groupId]);
+  return !!r.rowCount;
+}
+
+async function assertRelease(releaseId: string | null, groupId: string | null) {
+  if (!releaseId) return;
+  if (!groupId) throw badRequest("指定专辑时必须选择组合");
+  const r = await query("SELECT id, group_id, status FROM releases WHERE id = $1", [releaseId]);
+  if (!r.rowCount) throw badRequest("专辑不存在");
+  if (String(r.rows[0].group_id) !== groupId) throw badRequest("专辑不属于该组合");
+  const status = String(r.rows[0].status || "published");
+  if (status === "draft" || status === "deprecated") throw badRequest("专辑不可选");
 }
 
 async function assertGroup(groupId: string | null) {
@@ -212,6 +245,9 @@ export async function createCustomCard(
     mimeType?: string;
     groupId?: string | null;
     memberId?: string | null;
+    releaseId?: string | null;
+    benefitName?: string | null;
+    versionLabel?: string | null;
     title?: string | null;
     note?: string | null;
     quantity?: unknown;
@@ -222,8 +258,10 @@ export async function createCustomCard(
   const id = randomUUID();
   const groupId = body.groupId || null;
   const memberId = body.memberId || null;
+  const releaseId = body.releaseId || null;
   await assertGroup(groupId);
   await assertMember(memberId, groupId);
+  await assertRelease(releaseId, groupId);
 
   let imageFront = body.imageFront || null;
   if (body.imageFrontBase64) {
@@ -251,13 +289,30 @@ export async function createCustomCard(
   const note = parseNote(body.note);
   const quantity = parseQuantity(body.quantity, 1);
   const condition = parseCondition(body.condition);
+  const benefitName = parseShortText(body.benefitName, "特典名称", BENEFIT_NAME_MAX);
+  const versionLabel = parseShortText(body.versionLabel, "版本", VERSION_LABEL_MAX);
 
   const inserted = await query(
     `INSERT INTO user_custom_cards
-       (id, user_id, image_front, image_back, group_id, member_id, title, note, quantity, condition, moderation_status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending')
+       (id, user_id, image_front, image_back, group_id, member_id, release_id, benefit_name, version_label,
+        title, note, quantity, condition, moderation_status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending')
      RETURNING id`,
-    [id, userId, imageFront, imageBack, groupId, memberId, title, note, quantity, condition],
+    [
+      id,
+      userId,
+      imageFront,
+      imageBack,
+      groupId,
+      memberId,
+      releaseId,
+      benefitName,
+      versionLabel,
+      title,
+      note,
+      quantity,
+      condition,
+    ],
   );
 
   const mediaUrl = absoluteMediaUrl(imageFront);
@@ -340,6 +395,24 @@ export async function updateCustomCard(
     if (existingMember && !(nextGroupId && (await memberBelongsToGroup(existingMember, nextGroupId)))) {
       add("member_id", null);
     }
+  }
+  if (hasOwn(patch, "releaseId")) {
+    const releaseId = patch.releaseId ? String(patch.releaseId) : null;
+    await assertRelease(releaseId, nextGroupId);
+    add("release_id", releaseId);
+  } else if (hasOwn(patch, "groupId")) {
+    const existingRelease = existing.rows[0].release_id
+      ? String(existing.rows[0].release_id)
+      : null;
+    if (existingRelease && !(nextGroupId && (await releaseBelongsToGroup(existingRelease, nextGroupId)))) {
+      add("release_id", null);
+    }
+  }
+  if (hasOwn(patch, "benefitName")) {
+    add("benefit_name", parseShortText(patch.benefitName, "特典名称", BENEFIT_NAME_MAX));
+  }
+  if (hasOwn(patch, "versionLabel")) {
+    add("version_label", parseShortText(patch.versionLabel, "版本", VERSION_LABEL_MAX));
   }
   if (hasOwn(patch, "imageBackBase64") && patch.imageBackBase64) {
     const path = await storeSide({

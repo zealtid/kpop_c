@@ -97,3 +97,26 @@ test("mapCatalogMember accepts camelCase or snake_case", () => {
   assert.equal(m.nameEn, "RM");
   assert.equal(m.groupId, "g");
 });
+
+test("PCX05 map/filter releases; no query returns the full list", () => {
+  const mapped = customCard.mapCatalogRelease({
+    id: "r1",
+    group_id: "g-h2h",
+    title: "The Chase",
+    title_zh: "追逐",
+    aliases: "chase",
+  });
+  assert.equal(mapped.label, "追逐");
+  assert.equal(mapped.groupId, "g-h2h");
+  const list = [
+    mapped,
+    customCard.mapCatalogRelease({ id: "r2", title: "FOCUS", title_zh: "FOCUS" }),
+  ];
+  assert.equal(customCard.filterReleases(list, "").length, 2);
+  assert.equal(customCard.filterReleases(list, "chase")[0].id, "r1");
+  assert.equal(customCard.filterReleases(list, "focus")[0].id, "r2");
+  assert.equal(customCard.nextReleaseIdOnGroupChange("r1", list), "r1");
+  assert.equal(customCard.nextReleaseIdOnGroupChange("r1", [list[1]]), "");
+  assert.equal(customCard.hasCustomMeta({ releaseId: "r1" }), true);
+  assert.equal(customCard.hasCustomMeta({ title: "x" }), false);
+});
