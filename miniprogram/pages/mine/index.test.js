@@ -80,8 +80,10 @@ test("UX-A3 wxml: avatar+nickname row; nickname fill only; no getUserProfile; ac
   const js = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
   assert.match(wxml, /class="profile-row"/);
+  assert.match(wxml, /class="avatar-clip"/);
   assert.match(wxml, /open-type="chooseAvatar"/);
   assert.match(wxml, /bindchooseavatar="onChooseAvatar"/);
+  assert.match(wxml, /mode="aspectFill"/);
   assert.match(js, /\/me\/avatar/);
   assert.match(js, /persistChosenAvatar/);
   assert.doesNotMatch(js, /PATCH.*avatarUrl: next/);
@@ -90,6 +92,12 @@ test("UX-A3 wxml: avatar+nickname row; nickname fill only; no getUserProfile; ac
   assert.match(wxml, /class="profile-name/);
   assert.match(wxss, /\.profile-row/);
   assert.match(wxss, /align-items:\s*center/);
+  assert.match(wxss, /\.avatar-clip\s*\{[^}]*flex-shrink:\s*0/s);
+  assert.match(wxss, /\.avatar-clip\s*\{[^}]*box-sizing:\s*border-box/s);
+  assert.match(wxss, /\.avatar-clip\s*\{[^}]*overflow:\s*hidden/s);
+  assert.match(wxss, /\.avatar-clip\s*\{[^}]*border-radius:\s*50%/s);
+  assert.match(wxss, /button\.avatar-btn\s*\{[^}]*width:\s*104rpx\s*!important/s);
+  assert.match(wxss, /button\.avatar-btn\s*\{[^}]*height:\s*104rpx\s*!important/s);
   assert.match(wxml, /type="nickname"/);
   assert.match(wxml, /同步微信昵称/);
   assert.match(wxml, /wx:if="\{\{nicknameUnset\}\}"/);
