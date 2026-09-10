@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
 const catalogSelect = require("../../utils/catalogSelect");
+const releaseDate = require("../../utils/releaseDate");
 
 Page({
   data: { id: "", group: {}, releases: [], selected: [] },
@@ -13,10 +14,12 @@ Page({
       const releases = d.releases || [];
       Promise.all(
         releases.map((r) =>
-          api.request({ url: `/catalog/releases/${r.id}/templates`, auth: false }).then((t) => ({
-            ...r,
-            templates: catalogSelect.mapTemplatesForGrid(t.templates, (url) => api.mediaUrl(url)),
-          })),
+          api.request({ url: `/catalog/releases/${r.id}/templates`, auth: false }).then((t) =>
+            releaseDate.decorateRelease({
+              ...r,
+              templates: catalogSelect.mapTemplatesForGrid(t.templates, (url) => api.mediaUrl(url)),
+            }),
+          ),
         ),
       ).then((full) => this.setData({ releases: full, selected: [] }));
     });

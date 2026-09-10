@@ -83,6 +83,8 @@ test("ME01–ME03 wxml: nickname fill, placeholder, no 收藏家 default, no get
   assert.doesNotMatch(wxml, /setPrivacy|data-v="private"|data-v="public"/);
   assert.doesNotMatch(js, /getUserProfile/);
   assert.doesNotMatch(wxml, /getUserProfile/);
+  assert.doesNotMatch(wxml, /情报|pages\/feed\/|实验室/);
+  assert.doesNotMatch(js, /pages\/feed\/|pages\/schedule\//);
 });
 
 test("ME01 load shows real nickname; ME05 follow summary + strip", async () => {

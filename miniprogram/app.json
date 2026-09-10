@@ -36,12 +36,6 @@
     "borderStyle": "black",
     "list": [
       {
-        "pagePath": "pages/feed/index",
-        "text": "情报",
-        "iconPath": "assets/tab-feed.png",
-        "selectedIconPath": "assets/tab-feed-on.png"
-      },
-      {
         "pagePath": "pages/cardbook/index",
         "text": "卡册",
         "iconPath": "assets/tab-book.png",

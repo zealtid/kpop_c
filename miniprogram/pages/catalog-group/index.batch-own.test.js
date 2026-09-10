@@ -69,6 +69,8 @@ test("wxml shows 特典 badge, multi-select toggle, and 批量拥有", () => {
   assert.match(wxml, /bindtap="batchOwn">批量拥有</);
   assert.match(wxml, /catchtap="ownOne"/);
   assert.match(wxml, /catchtap="wantOne"/);
+  assert.match(wxml, /item\.releasedOnLabel/);
+  assert.doesNotMatch(wxml, /item\.released_on/);
 });
 
 test("wxss has Scheme A benefit corner badge and selected outline", () => {
@@ -137,6 +139,35 @@ test("app.json keeps pages[0]=cardbook and 星卡 branding", () => {
   assert.equal(appJson.pages[0], "pages/cardbook/index");
   assert.ok(appJson.pages.includes("pages/catalog-group/index"));
   assert.equal(appJson.window.navigationBarTitleText, "星卡");
+});
+
+test("ME08–ME09 load maps released_on to Shanghai calendar label", async () => {
+  api.request = (opts) => {
+    requests.push(opts);
+    if (opts.url === "/catalog/groups/g1") {
+      return Promise.resolve({
+        group: { nameZh: "H2H" },
+        releases: [
+          { id: "r1", title: "A", released_on: "2025-02-23T16:00:00.000Z", kind: "album" },
+          { id: "r2", title: "B", releasedOn: "2026-03-20", kind: "single" },
+          { id: "r3", title: "C", released_on: null, kind: "album" },
+        ],
+      });
+    }
+    if (String(opts.url).includes("/templates")) {
+      return Promise.resolve({ templates: [] });
+    }
+    return Promise.resolve({});
+  };
+  const page = pageWithData({ id: "g1" });
+  page.load();
+  for (let i = 0; i < 20 && page.data.releases.length !== 3; i++) {
+    await new Promise((r) => setImmediate(r));
+  }
+  assert.equal(page.data.releases.length, 3);
+  assert.equal(page.data.releases[0].releasedOnLabel, "2025-02-24");
+  assert.equal(page.data.releases[1].releasedOnLabel, "2026-03-20");
+  assert.equal(page.data.releases[2].releasedOnLabel, "—");
 });
 
 after(() => {

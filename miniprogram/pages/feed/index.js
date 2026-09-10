@@ -1,5 +1,4 @@
 const api = require("../../utils/api");
-const analytics = require("../../utils/analytics");
 const intel = require("../../utils/intel");
 
 function hasToken() {
@@ -24,8 +23,8 @@ Page({
   },
 
   onShow() {
-    analytics.tabView("情报");
-    this.load();
+    // ME10：情报底栏已下线；深链 / 旧入口落到卡册，不闪情报内容
+    wx.switchTab({ url: "/pages/cardbook/index" });
   },
 
   onHide() {
