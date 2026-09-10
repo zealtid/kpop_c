@@ -9,6 +9,7 @@ const path = require("node:path");
 
 const navigations = [];
 const toasts = [];
+const readFiles = [];
 
 global.wx = {
   getStorageSync() {
@@ -21,6 +22,14 @@ global.wx = {
   request() {},
   navigateTo(opts) {
     navigations.push(opts);
+  },
+  getFileSystemManager() {
+    return {
+      readFile(opts) {
+        readFiles.push(opts);
+        if (opts.success) opts.success({ data: "base64-avatar" });
+      },
+    };
   },
 };
 
@@ -61,6 +70,7 @@ function flush() {
 beforeEach(() => {
   navigations.length = 0;
   toasts.length = 0;
+  readFiles.length = 0;
   token = "t";
   api.request = origRequest;
 });
@@ -72,6 +82,9 @@ test("UX-A3 wxml: avatar+nickname row; nickname fill only; no getUserProfile; ac
   assert.match(wxml, /class="profile-row"/);
   assert.match(wxml, /open-type="chooseAvatar"/);
   assert.match(wxml, /bindchooseavatar="onChooseAvatar"/);
+  assert.match(js, /\/me\/avatar/);
+  assert.match(js, /persistChosenAvatar/);
+  assert.doesNotMatch(js, /PATCH.*avatarUrl: next/);
   assert.match(wxml, /wx:if="\{\{hasAvatar\}\}"/);
   assert.match(wxml, /class="avatar-ph"/);
   assert.match(wxml, /class="profile-name/);
@@ -209,10 +222,13 @@ test("UX-A2 WeChat nickname fill PATCHes /me; existing name is display-only", as
   assert.equal(typeof pageDef.openNicknameEditor, "undefined");
 });
 
-test("UX-A3 chooseAvatar PATCHes /me avatarUrl; empty event is ignored", async () => {
+test("UX-A3 chooseAvatar uploads then PATCHes persistable URL; temp path is not PATCHed", async () => {
   const calls = [];
   api.request = (opts) => {
     calls.push(opts);
+    if (opts.url === "/me/avatar" && opts.method === "POST") {
+      return Promise.resolve({ avatarUrl: "/media/custom/u1/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa-front.jpg" });
+    }
     if (opts.method === "PATCH") {
       return Promise.resolve({
         id: "u1",
@@ -231,30 +247,42 @@ test("UX-A3 chooseAvatar PATCHes /me avatarUrl; empty event is ignored", async (
     avatarSrc: "",
   });
   page.onChooseAvatar({ detail: { avatarUrl: "  wxfile://tmp_avatar.jpg  " } });
-  await flush();
-  assert.ok(
-    calls.some(
-      (c) => c.url === "/me" && c.method === "PATCH" && c.data.avatarUrl === "wxfile://tmp_avatar.jpg",
-    ),
-  );
   assert.equal(page.data.avatarSrc, "wxfile://tmp_avatar.jpg");
+  assert.equal(page.data.hasAvatar, true);
+  await flush();
+  await flush();
+  assert.equal(readFiles[0].filePath, "wxfile://tmp_avatar.jpg");
+  const upload = calls.find((c) => c.url === "/me/avatar" && c.method === "POST");
+  assert.ok(upload);
+  assert.equal(upload.data.imageBase64, "base64-avatar");
+  const patch = calls.find((c) => c.url === "/me" && c.method === "PATCH");
+  assert.ok(patch);
+  assert.equal(patch.data.avatarUrl, "/media/custom/u1/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa-front.jpg");
+  assert.equal(
+    calls.filter((c) => c.method === "PATCH" && c.data && /wxfile:|https?:\/\/tmp/.test(c.data.avatarUrl || "")).length,
+    0,
+  );
+  assert.match(page.data.avatarSrc, /\/media\/custom\/u1\/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa-front\.jpg$/);
   assert.equal(page.data.hasAvatar, true);
   assert.equal(page.data.displayName, "星卡用户");
 
   calls.length = 0;
+  readFiles.length = 0;
   page.onChooseAvatar({ detail: { avatarUrl: "   " } });
   page.onChooseAvatar({ detail: {} });
   await flush();
+  assert.equal(readFiles.length, 0);
   assert.equal(
-    calls.filter((c) => c.method === "PATCH").length,
+    calls.filter((c) => c.method === "PATCH" || (c.url === "/me/avatar" && c.method === "POST")).length,
     0,
   );
 
   const guest = pageWithData({ needsLogin: true, hasAvatar: false });
-  guest.onChooseAvatar({ detail: { avatarUrl: "https://wx.example/b.png" } });
+  guest.onChooseAvatar({ detail: { avatarUrl: "wxfile://tmp_guest.jpg" } });
   await flush();
+  assert.equal(readFiles.length, 0);
   assert.equal(
-    calls.filter((c) => c.method === "PATCH").length,
+    calls.filter((c) => c.method === "PATCH" || (c.url === "/me/avatar" && c.method === "POST")).length,
     0,
   );
 

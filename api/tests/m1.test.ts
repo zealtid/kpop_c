@@ -541,6 +541,44 @@ test("no friends API surface", async () => {
 const TINY_PNG =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
+test("UX-A3 POST /me/avatar then PATCH persistable URL; reject temp path", async () => {
+  const prev = token;
+  token = "";
+  const unauth = await api("/me/avatar", {
+    method: "POST",
+    body: JSON.stringify({ imageBase64: TINY_PNG, mimeType: "image/png" }),
+  });
+  token = prev;
+  assert.equal(unauth.status, 401);
+
+  const uploaded = await api("/me/avatar", {
+    method: "POST",
+    body: JSON.stringify({ imageBase64: TINY_PNG, mimeType: "image/png" }),
+  });
+  assert.equal(uploaded.status, 200);
+  const avatarUrl = (uploaded.body as { avatarUrl: string }).avatarUrl;
+  assert.match(avatarUrl, /^\/media\/custom\/[0-9a-f-]{36}\/[0-9a-f-]{36}-front\.png$/);
+
+  const media = await api(avatarUrl);
+  assert.equal(media.status, 200);
+
+  const tmp = await api("/me", {
+    method: "PATCH",
+    body: JSON.stringify({ avatarUrl: "wxfile://tmp_avatar.jpg" }),
+  });
+  assert.equal(tmp.status, 400);
+
+  const patched = await api("/me", {
+    method: "PATCH",
+    body: JSON.stringify({ avatarUrl }),
+  });
+  assert.equal(patched.status, 200);
+  assert.equal((patched.body as { avatarUrl: string }).avatarUrl, avatarUrl);
+
+  const me = await api("/me");
+  assert.equal((me.body as { avatarUrl: string }).avatarUrl, avatarUrl);
+});
+
 test("PC07 custom card write without auth is 401", async () => {
   const prev = token;
   token = "";

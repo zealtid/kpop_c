@@ -10,6 +10,28 @@ function resolveAvatarSrc(user) {
   return api.mediaUrl(String(raw).trim());
 }
 
+function isTransientAvatarUrl(url) {
+  if (!url) return true;
+  const raw = String(url).trim();
+  if (!raw) return true;
+  return /^wxfile:\/\//i.test(raw) || /^https?:\/\/tmp\b/i.test(raw);
+}
+
+function readLocalFileBase64(filePath) {
+  return new Promise((resolve, reject) => {
+    wx.getFileSystemManager().readFile({
+      filePath,
+      encoding: "base64",
+      success(res) {
+        resolve(res.data);
+      },
+      fail() {
+        reject({ message: "读取图片失败" });
+      },
+    });
+  });
+}
+
 Page({
   data: {
     user: {},
@@ -112,15 +134,35 @@ Page({
       .catch(api.handleWriteError);
   },
 
-  // 微信头像选择（button open-type=chooseAvatar）；写入 PATCH /me avatarUrl。
+  // 微信头像：临时路径仅预览，先 POST /me/avatar 再 PATCH 持久 URL。
   onChooseAvatar(e) {
     if (this.data.needsLogin) return;
-    const avatarUrl = e && e.detail && e.detail.avatarUrl;
-    if (!avatarUrl || typeof avatarUrl !== "string") return;
-    const next = avatarUrl.trim();
+    const tempPath = e && e.detail && e.detail.avatarUrl;
+    if (!tempPath || typeof tempPath !== "string") return;
+    const next = tempPath.trim();
     if (!next) return;
-    api
-      .request({ url: "/me", method: "PATCH", data: { avatarUrl: next } })
+    const prevSrc = this.data.avatarSrc;
+    const prevHas = this.data.hasAvatar;
+    this.setData({ avatarSrc: next, hasAvatar: true });
+    this.persistChosenAvatar(next, prevSrc, prevHas);
+  },
+
+  persistChosenAvatar(tempPath, prevSrc, prevHas) {
+    readLocalFileBase64(tempPath)
+      .then((imageBase64) =>
+        api.request({
+          url: "/me/avatar",
+          method: "POST",
+          data: { imageBase64, mimeType: "image/jpeg" },
+        }),
+      )
+      .then((uploaded) => {
+        const avatarUrl = uploaded && uploaded.avatarUrl;
+        if (!avatarUrl || isTransientAvatarUrl(avatarUrl)) {
+          throw { message: "上传失败" };
+        }
+        return api.request({ url: "/me", method: "PATCH", data: { avatarUrl } });
+      })
       .then((user) => {
         session.persistUser(user);
         const app = getApp();
@@ -128,7 +170,10 @@ Page({
         this.applyProfile(user, { groups: this.data.follows });
         wx.showToast({ title: "已更新", icon: "none" });
       })
-      .catch(api.handleWriteError);
+      .catch((err) => {
+        this.setData({ avatarSrc: prevSrc || "", hasAvatar: !!prevHas });
+        api.handleWriteError(err);
+      });
   },
 
   doLogin() {
