@@ -11,7 +11,7 @@ import { NAlert, NCard } from "naive-ui";
 
 <style scoped>
 .muted {
-  color: #6b625c;
+  color: #667085;
   margin-top: 12px;
 }
 </style>

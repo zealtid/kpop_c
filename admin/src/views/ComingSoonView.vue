@@ -17,7 +17,7 @@ const hint = computed(() => (typeof route.meta.hint === "string" ? route.meta.hi
 
 <style scoped>
 .muted {
-  color: #6b625c;
+  color: #667085;
   margin-top: 12px;
 }
 </style>

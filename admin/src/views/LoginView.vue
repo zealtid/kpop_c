@@ -79,12 +79,12 @@ async function onSubmit() {
 
 .muted {
   margin: 0 0 16px;
-  color: #6b625c;
+  color: #667085;
   font-size: 13px;
 }
 
 .err {
-  color: #b42318;
+  color: #f04438;
   font-size: 13px;
   min-height: 18px;
   margin: 12px 0 0;

@@ -146,15 +146,15 @@ async function onLogout() {
 .nav-item {
   display: block;
   text-decoration: none;
-  color: #1f1a17;
+  color: #1a1b1f;
   padding: 10px 12px;
   border-radius: 8px;
 }
 
 .nav-item.active,
 .nav-item:hover {
-  background: #f3e6ea;
-  color: #c45c7a;
+  background: #ede9ff;
+  color: #6b5cff;
 }
 
 .topbar {
@@ -175,11 +175,11 @@ async function onLogout() {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #6b625c;
+  color: #667085;
   font-size: 13px;
 }
 
 .content {
-  background: #f6f3ef;
+  background: #f4f5f9;
 }
 </style>

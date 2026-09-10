@@ -21,6 +21,6 @@ const greeting = computed(() => {
 
 <style scoped>
 .muted {
-  color: #6b625c;
+  color: #667085;
 }
 </style>
