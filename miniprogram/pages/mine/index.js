@@ -4,11 +4,41 @@ const session = require("../../utils/session");
 const displayName = require("../../utils/displayName");
 const followPicker = require("../../utils/followPicker");
 
+function resolveAvatarSrc(user) {
+  const raw = user && (user.avatarUrl || user.avatar_url);
+  if (!raw) return "";
+  return api.mediaUrl(String(raw).trim());
+}
+
+function isTransientAvatarUrl(url) {
+  if (!url) return true;
+  const raw = String(url).trim();
+  if (!raw) return true;
+  return /^wxfile:\/\//i.test(raw) || /^https?:\/\/tmp\b/i.test(raw);
+}
+
+function readLocalFileBase64(filePath) {
+  return new Promise((resolve, reject) => {
+    wx.getFileSystemManager().readFile({
+      filePath,
+      encoding: "base64",
+      success(res) {
+        resolve(res.data);
+      },
+      fail() {
+        reject({ message: "读取图片失败" });
+      },
+    });
+  });
+}
+
 Page({
   data: {
     user: {},
     displayName: displayName.UNSET_PLACEHOLDER,
     nicknameUnset: true,
+    avatarSrc: "",
+    hasAvatar: false,
     follows: [],
     followCount: 0,
     followLabel: "",
@@ -27,6 +57,7 @@ Page({
     const followed = (follows && follows.groups) || this.data.follows || [];
     const summary = followPicker.followSummary(followed, 5);
     const nicknameUnset = displayName.isUnsetNickname(user && user.nickname);
+    const avatarSrc = resolveAvatarSrc(user);
     this.setData({
       needsLogin: false,
       loginFailed: false,
@@ -34,6 +65,8 @@ Page({
       user: user || {},
       displayName: displayName.displayNickname(user && user.nickname),
       nicknameUnset,
+      avatarSrc,
+      hasAvatar: !!avatarSrc,
       follows: followed,
       followCount: summary.count,
       followLabel: summary.label,
@@ -60,6 +93,8 @@ Page({
           user: {},
           displayName: displayName.UNSET_PLACEHOLDER,
           nicknameUnset: true,
+          avatarSrc: "",
+          hasAvatar: false,
           follows: [],
           followCount: 0,
           followLabel: "",
@@ -97,6 +132,48 @@ Page({
         wx.showToast({ title: "已更新", icon: "none" });
       })
       .catch(api.handleWriteError);
+  },
+
+  // 微信头像：临时路径仅预览，先 POST /me/avatar 再 PATCH 持久 URL。
+  onChooseAvatar(e) {
+    if (this.data.needsLogin) return;
+    const tempPath = e && e.detail && e.detail.avatarUrl;
+    if (!tempPath || typeof tempPath !== "string") return;
+    const next = tempPath.trim();
+    if (!next) return;
+    const prevSrc = this.data.avatarSrc;
+    const prevHas = this.data.hasAvatar;
+    this.setData({ avatarSrc: next, hasAvatar: true });
+    this.persistChosenAvatar(next, prevSrc, prevHas);
+  },
+
+  persistChosenAvatar(tempPath, prevSrc, prevHas) {
+    readLocalFileBase64(tempPath)
+      .then((imageBase64) =>
+        api.request({
+          url: "/me/avatar",
+          method: "POST",
+          data: { imageBase64, mimeType: "image/jpeg" },
+        }),
+      )
+      .then((uploaded) => {
+        const avatarUrl = uploaded && uploaded.avatarUrl;
+        if (!avatarUrl || isTransientAvatarUrl(avatarUrl)) {
+          throw { message: "上传失败" };
+        }
+        return api.request({ url: "/me", method: "PATCH", data: { avatarUrl } });
+      })
+      .then((user) => {
+        session.persistUser(user);
+        const app = getApp();
+        if (app && app.globalData) app.globalData.user = user;
+        this.applyProfile(user, { groups: this.data.follows });
+        wx.showToast({ title: "已更新", icon: "none" });
+      })
+      .catch((err) => {
+        this.setData({ avatarSrc: prevSrc || "", hasAvatar: !!prevHas });
+        api.handleWriteError(err);
+      });
   },
 
   doLogin() {

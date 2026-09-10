@@ -6,7 +6,7 @@ import path from "node:path";
 import { config } from "./config.js";
 import { isAllowedCorsOrigin } from "./cors.js";
 import { AppError } from "./errors.js";
-import { optionalAuth, requireAuth, wxLogin, getUser, publicUser, updateUser } from "./auth.js";
+import { optionalAuth, requireAuth, wxLogin, getUser, publicUser, updateUser, saveUserAvatar } from "./auth.js";
 import { requireAdmin, requireOpsSession, loginOps, getOpsMe, clearOpsCookie, setOpsCookie } from "./opsAuth.js";
 import { listAuditLogs, writeAuditLog } from "./audit.js";
 import * as catalog from "./catalog.js";
@@ -77,6 +77,15 @@ export function createApp() {
         avatarUrl: req.body?.avatarUrl,
       });
       res.json(publicUser(user));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/me/avatar", requireAuth, async (req, res, next) => {
+    try {
+      const avatarUrl = await saveUserAvatar(req.user!.id, req.body?.imageBase64, req.body?.mimeType);
+      res.json({ avatarUrl });
     } catch (e) {
       next(e);
     }

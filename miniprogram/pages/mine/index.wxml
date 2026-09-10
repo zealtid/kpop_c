@@ -9,16 +9,29 @@
 
   <block wx:else>
     <view class="card profile">
-      <view class="h1 {{nicknameUnset ? 'placeholder' : ''}}">{{displayName}}</view>
-      <view wx:if="{{nicknameUnset}}" class="nickname-sync-wrap">
-        <view class="btn nickname-sync-btn">同步微信昵称</view>
-        <input
-          class="nickname-fill"
-          type="nickname"
-          maxlength="32"
-          bindblur="onWxNicknameFill"
-          bindnicknamereview="onNicknameReview"
-        />
+      <view class="profile-row">
+        <button
+          class="avatar-btn"
+          hover-class="none"
+          open-type="chooseAvatar"
+          bindchooseavatar="onChooseAvatar"
+        >
+          <image wx:if="{{hasAvatar}}" class="avatar" src="{{avatarSrc}}" mode="aspectFill"/>
+          <view wx:else class="avatar-ph">星</view>
+        </button>
+        <view class="profile-meta">
+          <view class="profile-name {{nicknameUnset ? 'placeholder' : ''}}">{{displayName}}</view>
+          <view wx:if="{{nicknameUnset}}" class="nickname-sync-wrap">
+            <view class="btn nickname-sync-btn">同步微信昵称</view>
+            <input
+              class="nickname-fill"
+              type="nickname"
+              maxlength="32"
+              bindblur="onWxNicknameFill"
+              bindnicknamereview="onNicknameReview"
+            />
+          </view>
+        </view>
       </view>
     </view>
 

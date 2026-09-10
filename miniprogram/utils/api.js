@@ -52,7 +52,8 @@ function handleWriteError(err) {
 
 function mediaUrl(path) {
   if (!path) return "";
-  if (/^https?:\/\//.test(path)) return path;
+  // 微信 chooseAvatar 临时路径（http(s) / wxfile）原样用于 <image>，其余相对路径拼 API_BASE。
+  if (/^https?:\/\//.test(path) || /^wxfile:\/\//.test(path)) return path;
   return API_BASE + path;
 }
 

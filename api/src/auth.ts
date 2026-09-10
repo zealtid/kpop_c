@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { config, mockWxLoginEnabled } from "./config.js";
 import { query } from "./db.js";
-import { AppError, unauthorized } from "./errors.js";
+import { AppError, badRequest, unauthorized } from "./errors.js";
 import { track } from "./analytics.js";
+import { parseImagePayload, saveCustomImage } from "./storage.js";
 
 declare global {
   namespace Express {
@@ -162,6 +164,31 @@ export async function getUser(id: string) {
   return r.rows[0];
 }
 
+/** 拒绝微信临时路径入库；仅接受 /media/... 或 http(s) 持久地址。 */
+export function assertPersistableAvatarUrl(url: string) {
+  const raw = String(url).trim();
+  if (!raw) throw badRequest("头像地址无效");
+  if (/^wxfile:\/\//i.test(raw) || /^https?:\/\/tmp\b/i.test(raw)) {
+    throw badRequest("头像需先上传");
+  }
+  if (raw.startsWith("/media/") || /^https?:\/\//i.test(raw)) return raw;
+  throw badRequest("头像地址无效");
+}
+
+/** 复用自定义卡图片落盘（S3 / 本地 /media/custom），返回公开相对路径。 */
+export async function saveUserAvatar(userId: string, base64?: string, mimeType?: string) {
+  if (!base64 || !String(base64).trim()) throw badRequest("请上传头像");
+  const parsed = parseImagePayload({ base64: String(base64), mimeType });
+  const saved = await saveCustomImage({
+    userId,
+    id: randomUUID(),
+    buffer: parsed.buffer,
+    mimeType: parsed.mimeType,
+    side: "front",
+  });
+  return saved.publicPath;
+}
+
 export async function updateUser(
   id: string,
   patch: { nickname?: string; privacy?: string; avatarUrl?: string | null },
@@ -169,6 +196,7 @@ export async function updateUser(
   if (patch.privacy && patch.privacy !== "private" && patch.privacy !== "public") {
     throw new AppError(400, "BAD_REQUEST", "可见性仅支持 private 或 public");
   }
+  const avatarUrl = patch.avatarUrl ? assertPersistableAvatarUrl(patch.avatarUrl) : null;
   const r = await query<{
     id: string;
     wx_openid: string;
@@ -183,7 +211,7 @@ export async function updateUser(
        updated_at = now()
      WHERE id = $1
      RETURNING id, wx_openid, nickname, avatar_url, privacy`,
-    [id, patch.nickname ?? null, patch.privacy ?? null, patch.avatarUrl ?? null],
+    [id, patch.nickname ?? null, patch.privacy ?? null, avatarUrl],
   );
   return r.rows[0];
 }

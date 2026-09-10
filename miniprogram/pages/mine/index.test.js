@@ -1,5 +1,5 @@
 /**
- * UX-A / UX-A2 我的页：昵称仅同步微信 + 底部入口统一
+ * UX-A / UX-A2 / UX-A3 我的页：资料卡头像+昵称同排，昵称仅同步微信
  * run: node --test miniprogram/pages/mine/index.test.js
  */
 const { test, beforeEach, after } = require("node:test");
@@ -9,6 +9,7 @@ const path = require("node:path");
 
 const navigations = [];
 const toasts = [];
+const readFiles = [];
 
 global.wx = {
   getStorageSync() {
@@ -21,6 +22,14 @@ global.wx = {
   request() {},
   navigateTo(opts) {
     navigations.push(opts);
+  },
+  getFileSystemManager() {
+    return {
+      readFile(opts) {
+        readFiles.push(opts);
+        if (opts.success) opts.success({ data: "base64-avatar" });
+      },
+    };
   },
 };
 
@@ -61,14 +70,26 @@ function flush() {
 beforeEach(() => {
   navigations.length = 0;
   toasts.length = 0;
+  readFiles.length = 0;
   token = "t";
   api.request = origRequest;
 });
 
-test("UX-A2 wxml: nickname fill only, no free-text edit, no getUserProfile, no privacy switch", () => {
+test("UX-A3 wxml: avatar+nickname row; nickname fill only; no getUserProfile; action list kept", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   const js = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
+  assert.match(wxml, /class="profile-row"/);
+  assert.match(wxml, /open-type="chooseAvatar"/);
+  assert.match(wxml, /bindchooseavatar="onChooseAvatar"/);
+  assert.match(js, /\/me\/avatar/);
+  assert.match(js, /persistChosenAvatar/);
+  assert.doesNotMatch(js, /PATCH.*avatarUrl: next/);
+  assert.match(wxml, /wx:if="\{\{hasAvatar\}\}"/);
+  assert.match(wxml, /class="avatar-ph"/);
+  assert.match(wxml, /class="profile-name/);
+  assert.match(wxss, /\.profile-row/);
+  assert.match(wxss, /align-items:\s*center/);
   assert.match(wxml, /type="nickname"/);
   assert.match(wxml, /同步微信昵称/);
   assert.match(wxml, /wx:if="\{\{nicknameUnset\}\}"/);
@@ -98,7 +119,14 @@ test("UX-A2 wxml: nickname fill only, no free-text edit, no getUserProfile, no p
 
 test("ME01 load shows real nickname (display-only); ME05 follow summary + strip", async () => {
   api.request = (opts) => {
-    if (opts.url === "/me") return Promise.resolve({ id: "u1", nickname: "星卡用户", privacy: "private" });
+    if (opts.url === "/me") {
+      return Promise.resolve({
+        id: "u1",
+        nickname: "星卡用户",
+        avatarUrl: "https://wx.example/a.png",
+        privacy: "private",
+      });
+    }
     if (opts.url === "/me/follows") {
       return Promise.resolve({
         groups: [
@@ -114,6 +142,8 @@ test("ME01 load shows real nickname (display-only); ME05 follow summary + strip"
   await flush();
   assert.equal(page.data.displayName, "星卡用户");
   assert.equal(page.data.nicknameUnset, false);
+  assert.equal(page.data.avatarSrc, "https://wx.example/a.png");
+  assert.equal(page.data.hasAvatar, true);
   assert.equal(page.data.followCount, 2);
   assert.equal(page.data.followLabel, "已关注 2 个团体");
   assert.equal(page.data.followPreview.length, 2);
@@ -133,6 +163,8 @@ test("ME03 empty/收藏家 and unauthorized use 未设置昵称", async () => {
   await flush();
   assert.equal(page.data.displayName, "未设置昵称");
   assert.equal(page.data.nicknameUnset, true);
+  assert.equal(page.data.hasAvatar, false);
+  assert.equal(page.data.avatarSrc, "");
   assert.equal(page.data.followCount, 0);
 
   api.request = () => {
@@ -144,6 +176,7 @@ test("ME03 empty/收藏家 and unauthorized use 未设置昵称", async () => {
   await flush();
   assert.equal(guest.data.needsLogin, true);
   assert.equal(guest.data.displayName, "未设置昵称");
+  assert.equal(guest.data.hasAvatar, false);
 });
 
 test("UX-A2 WeChat nickname fill PATCHes /me; existing name is display-only", async () => {
@@ -187,6 +220,89 @@ test("UX-A2 WeChat nickname fill PATCHes /me; existing name is display-only", as
   await flush();
   assert.equal(typeof pageDef.saveNickname, "undefined");
   assert.equal(typeof pageDef.openNicknameEditor, "undefined");
+});
+
+test("UX-A3 chooseAvatar uploads then PATCHes persistable URL; temp path is not PATCHed", async () => {
+  const calls = [];
+  api.request = (opts) => {
+    calls.push(opts);
+    if (opts.url === "/me/avatar" && opts.method === "POST") {
+      return Promise.resolve({ avatarUrl: "/media/custom/u1/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa-front.jpg" });
+    }
+    if (opts.method === "PATCH") {
+      return Promise.resolve({
+        id: "u1",
+        nickname: "星卡用户",
+        avatarUrl: opts.data.avatarUrl,
+        privacy: "private",
+      });
+    }
+    return Promise.resolve({ id: "u1", nickname: "星卡用户", privacy: "private" });
+  };
+  const page = pageWithData({
+    user: { id: "u1", nickname: "星卡用户" },
+    nicknameUnset: false,
+    displayName: "星卡用户",
+    hasAvatar: false,
+    avatarSrc: "",
+  });
+  page.onChooseAvatar({ detail: { avatarUrl: "  wxfile://tmp_avatar.jpg  " } });
+  assert.equal(page.data.avatarSrc, "wxfile://tmp_avatar.jpg");
+  assert.equal(page.data.hasAvatar, true);
+  await flush();
+  await flush();
+  assert.equal(readFiles[0].filePath, "wxfile://tmp_avatar.jpg");
+  const upload = calls.find((c) => c.url === "/me/avatar" && c.method === "POST");
+  assert.ok(upload);
+  assert.equal(upload.data.imageBase64, "base64-avatar");
+  const patch = calls.find((c) => c.url === "/me" && c.method === "PATCH");
+  assert.ok(patch);
+  assert.equal(patch.data.avatarUrl, "/media/custom/u1/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa-front.jpg");
+  assert.equal(
+    calls.filter((c) => c.method === "PATCH" && c.data && /wxfile:|https?:\/\/tmp/.test(c.data.avatarUrl || "")).length,
+    0,
+  );
+  assert.match(page.data.avatarSrc, /\/media\/custom\/u1\/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa-front\.jpg$/);
+  assert.equal(page.data.hasAvatar, true);
+  assert.equal(page.data.displayName, "星卡用户");
+
+  calls.length = 0;
+  readFiles.length = 0;
+  page.onChooseAvatar({ detail: { avatarUrl: "   " } });
+  page.onChooseAvatar({ detail: {} });
+  await flush();
+  assert.equal(readFiles.length, 0);
+  assert.equal(
+    calls.filter((c) => c.method === "PATCH" || (c.url === "/me/avatar" && c.method === "POST")).length,
+    0,
+  );
+
+  const guest = pageWithData({ needsLogin: true, hasAvatar: false });
+  guest.onChooseAvatar({ detail: { avatarUrl: "wxfile://tmp_guest.jpg" } });
+  await flush();
+  assert.equal(readFiles.length, 0);
+  assert.equal(
+    calls.filter((c) => c.method === "PATCH" || (c.url === "/me/avatar" && c.method === "POST")).length,
+    0,
+  );
+
+  api.request = (opts) => {
+    if (opts.url === "/me") {
+      return Promise.resolve({
+        id: "u1",
+        nickname: "星卡用户",
+        avatarUrl: "/media/custom/u1/a.jpg",
+        privacy: "private",
+      });
+    }
+    if (opts.url === "/me/follows") return Promise.resolve({ groups: [] });
+    return Promise.reject(new Error(opts.url));
+  };
+  const hosted = pageWithData({});
+  hosted.load();
+  await flush();
+  assert.match(hosted.data.avatarSrc, /\/media\/custom\/u1\/a\.jpg$/);
+  assert.equal(hosted.data.hasAvatar, true);
 });
 
 test("ME05 empty follows nudges to 管理关注; unified entries navigate", () => {

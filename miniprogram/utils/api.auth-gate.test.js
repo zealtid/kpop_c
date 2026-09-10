@@ -31,6 +31,12 @@ beforeEach(() => {
   loginCalls = 0;
 });
 
+test("mediaUrl keeps WeChat temp avatar paths and prefixes relative media", () => {
+  assert.equal(api.mediaUrl("wxfile://tmp_avatar.jpg"), "wxfile://tmp_avatar.jpg");
+  assert.equal(api.mediaUrl("https://wx.example/a.png"), "https://wx.example/a.png");
+  assert.equal(api.mediaUrl("/media/custom/u1/a.jpg"), api.API_BASE + "/media/custom/u1/a.jpg");
+});
+
 test("isUnauthorized detects HTTP 401", () => {
   assert.equal(api.isUnauthorized({ status: 401, message: "请先登录" }), true);
   assert.equal(api.isUnauthorized({ status: 403 }), false);
