@@ -146,15 +146,15 @@ async function onLogout() {
 .nav-item {
   display: block;
   text-decoration: none;
-  color: #1a1b1f;
+  color: var(--color-text-primary);
   padding: 10px 12px;
   border-radius: 8px;
 }
 
 .nav-item.active,
 .nav-item:hover {
-  background: #ede9ff;
-  color: #6b5cff;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 
 .topbar {
@@ -175,11 +175,11 @@ async function onLogout() {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #667085;
+  color: var(--color-text-secondary);
   font-size: 13px;
 }
 
 .content {
-  background: #f4f5f9;
+  background: var(--color-bg-page);
 }
 </style>

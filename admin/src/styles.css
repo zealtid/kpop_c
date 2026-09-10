@@ -1,3 +1,15 @@
+/* 与 miniprogram/styles/theme.wxss Scheme A 同源 */
+:root {
+  --color-bg-page: #f4f5f9;
+  --color-bg-elevated: #ffffff;
+  --color-text-primary: #1a1b1f;
+  --color-text-secondary: #667085;
+  --color-brand: #6b5cff;
+  --color-brand-soft: #ede9ff;
+  --color-brand-pressed: #5a4be0;
+  --color-danger: #f04438;
+}
+
 html,
 body,
 #app {
@@ -6,10 +18,10 @@ body,
 }
 
 body {
-  background: #f4f5f9;
-  color: #1a1b1f;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
 }
 
 a {
-  color: #6b5cff;
+  color: var(--color-brand);
 }
