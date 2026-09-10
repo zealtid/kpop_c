@@ -99,8 +99,14 @@ const mapColumns: DataTableColumns<BenefitMapRow> = [
   { title: "特典", key: "benefitNameZh", minWidth: 140 },
   { title: "卡槽", key: "mapsToSlotLabels", minWidth: 120, render: (row) => row.mapsToSlotLabels || "" },
   { title: "模式", key: "mapMode", width: 100 },
-  { title: "状态", key: "status", width: 88 },
+  { title: "状态", key: "status", width: 110, ellipsis: { tooltip: true } },
 ];
+
+const fileInput = ref<HTMLInputElement | null>(null);
+
+function pickFile() {
+  fileInput.value?.click();
+}
 
 function applyReport(res: { status: number; body: Parameters<typeof benefitReportFrom>[0]["body"] }, okFallback: string) {
   const next = benefitReportFrom(res);
@@ -210,7 +216,15 @@ onMounted(() => {
   <div class="benefit-form">
     <label class="label">CSV 文件</label>
     <div class="file-row">
-      <input id="benefit-file" type="file" accept=".csv,text/csv,text/plain" @change="onFile" />
+      <input
+        ref="fileInput"
+        id="benefit-file"
+        class="file-hidden"
+        type="file"
+        accept=".csv,text/csv,text/plain"
+        @change="onFile"
+      />
+      <n-button block @click="pickFile">选择 CSV</n-button>
       <span v-if="fileName" class="file-name">{{ fileName }}</span>
     </div>
     <label class="label">内容</label>
@@ -225,7 +239,13 @@ onMounted(() => {
     </n-checkbox>
     <n-space class="toolbar" :vertical="isNarrow" :wrap="true">
       <n-button type="primary" block :loading="busy" @click="onValidate">校验（不写库）</n-button>
-      <n-button type="success" block :disabled="!canCommit" :loading="busy" @click="onCommit">
+      <n-button
+        :type="canCommit ? 'success' : 'default'"
+        block
+        :disabled="!canCommit"
+        :loading="busy"
+        @click="onCommit"
+      >
         写入通过的 confirmed 行
       </n-button>
     </n-space>
@@ -248,7 +268,7 @@ onMounted(() => {
       · {{ report.rowCount }} 行 · {{ report.errorCount }} 个错误 · {{ report.warningCount }} 个警告
       <span v-if="written"> · 已写入 {{ written }}</span>
     </p>
-    <div v-if="report.issues.length && isNarrow" class="issue-cards">
+    <div v-if="report.issues.length" class="issue-cards narrow-only">
       <n-card v-for="(issue, idx) in report.issues" :key="`${issue.code}-${idx}`" size="small" class="issue-card">
         <div class="issue-head">
           <n-tag size="small" :type="issue.level === 'error' ? 'error' : 'warning'" :bordered="false">
@@ -260,7 +280,7 @@ onMounted(() => {
         <p class="issue-msg">{{ issue.field ? `${issue.field} · ` : "" }}{{ issue.message }}</p>
       </n-card>
     </div>
-    <div v-else-if="report.issues.length" class="table-wrap">
+    <div v-if="report.issues.length" class="table-wrap wide-only">
       <n-data-table :columns="issueColumns" :data="report.issues" :pagination="false" :scroll-x="720" />
     </div>
     <p v-else class="muted">没有问题项</p>
@@ -279,7 +299,7 @@ onMounted(() => {
     </div>
     <n-alert v-if="mapsDeny" type="error" :show-icon="false" class="block">{{ mapsDeny }}</n-alert>
     <p v-else-if="mapsLoading" class="muted">加载对照表…</p>
-    <div v-else-if="maps.length && isNarrow" class="map-cards">
+    <div v-if="maps.length" class="map-cards narrow-only">
       <n-card v-for="row in maps" :key="row.id" size="small" class="map-card">
         <p class="map-title">{{ row.benefitNameZh }}</p>
         <p class="card-meta">{{ row.groupSlug }} · {{ row.releaseTitle }} · {{ row.versionLabel }}</p>
@@ -287,10 +307,10 @@ onMounted(() => {
         <p v-if="row.mapsToSlotLabels" class="card-meta">卡槽 {{ row.mapsToSlotLabels }}</p>
       </n-card>
     </div>
-    <div v-else-if="maps.length" class="table-wrap">
+    <div v-if="maps.length" class="table-wrap wide-only">
       <n-data-table :columns="mapColumns" :data="maps" :pagination="false" :scroll-x="960" :row-key="(row: BenefitMapRow) => row.id" />
     </div>
-    <p v-else class="muted">还没有 confirmed 对照。校验通过后可写入。</p>
+    <p v-if="!mapsDeny && !mapsLoading && !maps.length" class="muted">还没有 confirmed 对照。校验通过后可写入。</p>
   </n-card>
 </template>
 
@@ -331,9 +351,12 @@ onMounted(() => {
   flex-direction: column;
   gap: 6px;
 }
-.file-row input[type="file"] {
-  max-width: 100%;
-  font-size: 14px;
+.file-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 .file-name {
   font-size: 12px;
@@ -387,5 +410,30 @@ onMounted(() => {
   margin: 4px 0 0;
   color: var(--color-text-secondary);
   font-size: 12px;
+}
+.narrow-only {
+  display: none;
+}
+.wide-only {
+  display: block;
+}
+@media (max-width: 390px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+  .toolbar :deep(.n-space) {
+    flex-direction: column;
+  }
+  .narrow-only {
+    display: flex;
+  }
+  .wide-only {
+    display: none;
+  }
+  .issue-msg,
+  .map-title,
+  .card-meta {
+    overflow-wrap: anywhere;
+  }
 }
 </style>

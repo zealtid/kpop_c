@@ -144,7 +144,7 @@ onMounted(() => {
     </ul>
     <p v-else class="muted-inline">无拦截</p>
 
-    <div v-if="group.releases.length && isNarrow" class="rel-cards">
+    <div v-if="group.releases.length" class="rel-cards narrow-only">
       <n-card v-for="rel in group.releases" :key="rel.id" size="small" class="rel-card">
         <div class="rel-head">
           <strong>{{ rel.title }}</strong>
@@ -172,7 +172,7 @@ onMounted(() => {
         </ul>
       </n-card>
     </div>
-    <div v-else-if="group.releases.length" class="table-wrap">
+    <div v-if="group.releases.length" class="table-wrap wide-only">
       <n-data-table
         :columns="releaseColumns"
         :data="group.releases"
@@ -181,7 +181,7 @@ onMounted(() => {
         :row-key="(row: CompletenessRelease) => row.id"
       />
     </div>
-    <p v-else class="muted">该组合暂无发行</p>
+    <p v-if="!group.releases.length" class="muted">该组合暂无发行</p>
   </n-card>
 </template>
 
@@ -252,6 +252,25 @@ onMounted(() => {
 }
 .warn {
   color: var(--color-warning);
+}
+.narrow-only {
+  display: none;
+}
+.wide-only {
+  display: block;
+}
+@media (max-width: 390px) {
+  .narrow-only {
+    display: flex;
+  }
+  .wide-only {
+    display: none;
+  }
+  .card-meta,
+  .stats,
+  .note {
+    overflow-wrap: anywhere;
+  }
 }
 </style>
 
