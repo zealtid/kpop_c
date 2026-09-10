@@ -872,3 +872,127 @@ test("UX03-UX05 custom card optional member_id and group membership", async () =
   await api(`/collection/custom-cards/${skipped.id}`, { method: "DELETE" });
   await api(`/collection/custom-cards/${picked.id}`, { method: "DELETE" });
 });
+
+test("PCX04-PCX07 optional custom-card album/benefit metadata stays private", async () => {
+  const arirang = sid("release:bts:arirang");
+  const chase = sid("release:h2h:the-chase");
+  const templatesBefore = await query("SELECT COUNT(*)::int AS n FROM templates");
+
+  const emptyMeta = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({
+      imageFrontBase64: TINY_PNG,
+      mimeType: "image/png",
+      title: "PCX04_EMPTY_META",
+      groupId: GROUP_BTS,
+    }),
+  });
+  assert.equal(emptyMeta.status, 200);
+  const emptyCard = emptyMeta.body as {
+    id: string;
+    releaseId: string | null;
+    benefitName: string | null;
+    versionLabel: string | null;
+  };
+  assert.equal(emptyCard.releaseId, null);
+  assert.equal(emptyCard.benefitName, null);
+  assert.equal(emptyCard.versionLabel, null);
+
+  const filled = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({
+      imageFrontBase64: TINY_PNG,
+      mimeType: "image/png",
+      title: "PCX06_META_TOKEN",
+      groupId: GROUP_BTS,
+      releaseId: arirang,
+      benefitName: "Weverse POB",
+      versionLabel: "A ver.",
+    }),
+  });
+  assert.equal(filled.status, 200, JSON.stringify(filled.body));
+  const card = filled.body as {
+    id: string;
+    releaseId: string;
+    releaseTitle: string;
+    benefitName: string;
+    versionLabel: string;
+  };
+  assert.equal(card.releaseId, arirang);
+  assert.equal(card.releaseTitle, "ARIRANG");
+  assert.equal(card.benefitName, "Weverse POB");
+  assert.equal(card.versionLabel, "A ver.");
+
+  const row = await query(
+    "SELECT release_id, benefit_name, version_label FROM user_custom_cards WHERE id = $1",
+    [card.id],
+  );
+  assert.equal(String(row.rows[0].release_id), arirang);
+  assert.equal(row.rows[0].benefit_name, "Weverse POB");
+  assert.equal(row.rows[0].version_label, "A ver.");
+
+  const detail = await api(`/collection/custom-cards/${card.id}`);
+  const shown = detail.body as {
+    releaseId: string;
+    releaseTitle: string;
+    benefitName: string;
+    versionLabel: string;
+  };
+  assert.equal(shown.releaseId, arirang);
+  assert.equal(shown.benefitName, "Weverse POB");
+  assert.equal(shown.versionLabel, "A ver.");
+
+  const noGroupRelease = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({
+      imageFrontBase64: TINY_PNG,
+      mimeType: "image/png",
+      releaseId: arirang,
+    }),
+  });
+  assert.equal(noGroupRelease.status, 400);
+
+  const wrongGroup = await api("/collection/custom-cards", {
+    method: "POST",
+    body: JSON.stringify({
+      imageFrontBase64: TINY_PNG,
+      mimeType: "image/png",
+      groupId: GROUP_BTS,
+      releaseId: chase,
+    }),
+  });
+  assert.equal(wrongGroup.status, 400);
+
+  const patched = await api(`/collection/custom-cards/${card.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ groupId: GROUP_H2H }),
+  });
+  assert.equal(patched.status, 200);
+  const afterSwitch = patched.body as { groupId: string; releaseId: string | null };
+  assert.equal(afterSwitch.groupId, GROUP_H2H);
+  assert.equal(afterSwitch.releaseId, null);
+
+  const restored = await api(`/collection/custom-cards/${card.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      groupId: GROUP_BTS,
+      releaseId: arirang,
+      benefitName: "KMS",
+      versionLabel: "B",
+    }),
+  });
+  assert.equal((restored.body as { benefitName: string; versionLabel: string }).benefitName, "KMS");
+  assert.equal((restored.body as { versionLabel: string }).versionLabel, "B");
+  assert.equal((restored.body as { releaseId: string }).releaseId, arirang);
+
+  const templatesAfter = await query("SELECT COUNT(*)::int AS n FROM templates");
+  assert.equal(templatesAfter.rows[0].n, templatesBefore.rows[0].n);
+  const search = await api("/catalog/search?q=PCX06_META_TOKEN");
+  assert.equal((search.body as { templates: unknown[] }).templates.length, 0);
+  const catalog = await api("/catalog/templates");
+  const catalogIds = (catalog.body as { templates: { id: string }[] }).templates.map((t) => t.id);
+  assert.ok(!catalogIds.includes(card.id));
+
+  await api(`/collection/custom-cards/${emptyCard.id}`, { method: "DELETE" });
+  await api(`/collection/custom-cards/${card.id}`, { method: "DELETE" });
+});

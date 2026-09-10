@@ -69,6 +69,14 @@ test("wxml has 查看大图 only when canPreview; rejected copy is not 收藏大
   assert.doesNotMatch(wxml, /收藏大图/);
 });
 
+test("PCX07 detail shows optional album/benefit/version only when present", () => {
+  const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
+  assert.match(wxml, /wx:if="\{\{showMeta\}\}"/);
+  assert.match(wxml, /专辑 \{\{card\.releaseTitleZh \|\| card\.releaseTitle\}\}/);
+  assert.match(wxml, /特典 \{\{card\.benefitName\}\}/);
+  assert.match(wxml, /版本 \{\{card\.versionLabel\}\}/);
+});
+
 test("pending owner can open fullscreen and close path is registered", () => {
   const page = pageWithData({
     canPreview: true,

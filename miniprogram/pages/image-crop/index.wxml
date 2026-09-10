@@ -1,6 +1,10 @@
 <view class="page crop-page">
   <view class="h1">裁剪卡面</view>
-  <view class="sub">固定 {{aspectLabel}} 竖图，不可跳过。可拖动、双指缩放。</view>
+  <view class="sub">固定 {{aspectLabel}} 竖图，不可跳过。双指缩放、拖动时边缘带阻尼。</view>
+
+  <view class="presets">
+    <view class="chip {{aspectLocked ? 'on' : ''}}">{{aspectLabel}}</view>
+  </view>
 
   <view class="stage">
     <view class="frame" style="width: {{frameW}}px; height: {{frameH}}px;">
@@ -9,7 +13,7 @@
         class="img"
         src="{{src}}"
         mode="scaleToFill"
-        style="width: {{imgDrawW}}px; height: {{imgDrawH}}px; transform: translate({{tx}}px, {{ty}}px);"
+        style="width: {{imgNatW}}px; height: {{imgNatH}}px; transform: translate3d({{tx}}px, {{ty}}px, 0) scale({{scale}});"
       />
       <view
         class="touch"
@@ -28,5 +32,6 @@
     disable-scroll="true"
   />
 
-  <view class="btn {{busy ? 'off' : ''}}" bindtap="confirm">确认裁剪</view>
+  <view class="muted hint" wx:if="{{preparing}}">正在准备预览…</view>
+  <view class="btn {{busy || preparing ? 'off' : ''}}" bindtap="confirm">确认裁剪</view>
 </view>

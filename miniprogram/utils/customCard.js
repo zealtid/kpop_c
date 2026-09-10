@@ -59,6 +59,43 @@ function nextMemberIdOnGroupChange(prevMemberId, nextMembers) {
   return ok ? String(prevMemberId) : "";
 }
 
+function mapCatalogRelease(row) {
+  if (!row) return null;
+  const title = row.title || "";
+  const titleZh = row.titleZh || row.title_zh || "";
+  return {
+    id: String(row.id),
+    groupId: String(row.groupId || row.group_id || ""),
+    title,
+    titleZh,
+    aliases: row.aliases || "",
+    releasedOn: row.releasedOn || row.released_on || "",
+    kind: row.kind || "",
+    label: titleZh || title,
+  };
+}
+
+function releaseSearchHay(rel) {
+  return [rel.title, rel.titleZh, rel.aliases, rel.label].filter(Boolean).join(" ").toLowerCase();
+}
+
+function filterReleases(releases, q) {
+  const query = String(q || "").trim().toLowerCase();
+  if (!query) return releases || [];
+  return (releases || []).filter((r) => releaseSearchHay(r).includes(query));
+}
+
+function nextReleaseIdOnGroupChange(prevReleaseId, nextReleases) {
+  if (!prevReleaseId) return "";
+  const ok = (nextReleases || []).some((r) => String(r.id) === String(prevReleaseId));
+  return ok ? String(prevReleaseId) : "";
+}
+
+function hasCustomMeta(card) {
+  if (!card) return false;
+  return !!(card.releaseId || card.releaseTitle || card.releaseTitleZh || card.benefitName || card.versionLabel);
+}
+
 let previewSrc = "";
 
 function openFullscreen(src) {
@@ -120,6 +157,10 @@ module.exports = {
   canOpenFullscreen,
   mapCatalogMember,
   nextMemberIdOnGroupChange,
+  mapCatalogRelease,
+  filterReleases,
+  nextReleaseIdOnGroupChange,
+  hasCustomMeta,
   openFullscreen,
   takePreviewSrc,
   clearPreviewSrc,
