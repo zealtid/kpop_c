@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   NButton,
   NDrawer,
@@ -11,25 +11,13 @@ import {
 } from "naive-ui";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import { authUser, logout, userMenus } from "../auth";
+import { useNarrow } from "../narrow";
 
-const NARROW_MAX = 390;
-const isNarrow = ref(false);
+const { isNarrow } = useNarrow();
 const drawerOpen = ref(false);
 
-const mq = typeof window !== "undefined" ? window.matchMedia(`(max-width: ${NARROW_MAX}px)`) : null;
-
-function syncNarrow() {
-  isNarrow.value = !!mq?.matches;
-  if (!isNarrow.value) drawerOpen.value = false;
-}
-
-onMounted(() => {
-  syncNarrow();
-  mq?.addEventListener("change", syncNarrow);
-});
-
-onUnmounted(() => {
-  mq?.removeEventListener("change", syncNarrow);
+watch(isNarrow, (narrow) => {
+  if (!narrow) drawerOpen.value = false;
 });
 
 const route = useRoute();
@@ -44,7 +32,7 @@ const who = computed(() => {
 const menus = computed(() => userMenus());
 
 function menuTo(id: string) {
-  if (id === "catalog") return { name: "catalog" as const };
+  if (id === "catalog") return { name: "catalog" as const, params: { tab: "groups" } };
   if (id === "intel") return { name: "intel" as const };
   if (id === "tickets") return { name: "tickets" as const };
   return { path: `/${id}` };

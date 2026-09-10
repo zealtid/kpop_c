@@ -15,6 +15,9 @@ export const tokens = {
   colorDanger: "#F04438",
 } as const;
 
+/** B0/B1 窄屏抽屉与图鉴主路径断点（≤390px） */
+export const NARROW_MAX_PX = 390;
+
 export const naiveThemeOverrides: GlobalThemeOverrides = {
   common: {
     primaryColor: tokens.colorBrand,

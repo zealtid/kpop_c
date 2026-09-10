@@ -23,7 +23,7 @@ export const router = createRouter({
         {
           path: "catalog/:tab?",
           name: "catalog",
-          component: () => import("../views/CatalogPlaceholderView.vue"),
+          component: () => import("../views/CatalogView.vue"),
         },
         {
           path: "intel",
