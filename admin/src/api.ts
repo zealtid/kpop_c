@@ -1,3 +1,4 @@
+/** Must stay `xingka_ops_token` — same session key as 现网 vanilla Admin. */
 const TOKEN_KEY = "xingka_ops_token";
 
 function apiBase() {

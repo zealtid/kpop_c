@@ -1,4 +1,4 @@
-import { api, errorMessage } from "./api";
+import { api, errorMessage } from "../api";
 import { escapeHtml, option, statusBadge } from "./html";
 
 export type CatalogTab = "groups" | "members" | "releases" | "templates" | "completeness" | "import" | "benefits";
