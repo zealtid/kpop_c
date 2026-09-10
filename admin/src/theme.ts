@@ -12,6 +12,8 @@ export const tokens = {
   colorBrand: "#6B5CFF",
   colorBrandSoft: "#EDE9FF",
   colorBrandPressed: "#5A4BE0",
+  colorSuccess: "#12B76A",
+  colorWarning: "#F79009",
   colorDanger: "#F04438",
 } as const;
 

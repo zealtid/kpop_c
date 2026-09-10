@@ -17,6 +17,7 @@ import { loadCatalog, saveCatalog, setCatalogStatus } from "../catalog/api";
 import {
   CATALOG_TABS,
   isCrudTab,
+  isLaterTab,
   parseCatalogTab,
   rowStatus,
   statusLabel,
@@ -30,6 +31,7 @@ import {
 } from "../catalog/types";
 import CatalogFormModal from "../components/catalog/CatalogFormModal.vue";
 import StatusActions from "../components/catalog/StatusActions.vue";
+import CatalogImportView from "./CatalogImportView.vue";
 import { useNarrow } from "../narrow";
 
 type AnyRow = Group | Member | Release | Template;
@@ -41,7 +43,8 @@ const { isNarrow } = useNarrow();
 
 const tab = computed(() => parseCatalogTab(route.params.tab));
 const crudTab = computed<CatalogCrudTab>(() => (isCrudTab(tab.value) ? tab.value : "groups"));
-const isLater = computed(() => !isCrudTab(tab.value));
+const isLater = computed(() => isLaterTab(tab.value));
+const isImport = computed(() => tab.value === "import");
 
 const loading = ref(true);
 const acting = ref(false);
@@ -54,17 +57,19 @@ const headings: Record<CatalogTab, { title: string; hint: string }> = {
   groups: { title: "图鉴 · 组合", hint: "ArtistGroup → idol_groups。新建为草稿；发布后才出现在小程序图鉴。" },
   members: { title: "图鉴 · 成员", hint: "Member。草稿成员不出现在小程序组合页。" },
   releases: { title: "图鉴 · 发行", hint: "Release。演唱会特典用 kind=concert_md，没有独立 Event 表。" },
-  templates: { title: "图鉴 · 小卡模板", hint: "PhotocardTemplate。无主图不能发布。去重键 = slug:发行标题:成员:version。" },
-  completeness: { title: "图鉴 · 完整度", hint: "切片后续" },
-  import: { title: "图鉴 · 导入", hint: "切片后续" },
-  benefits: { title: "图鉴 · 特典对照", hint: "切片后续" },
+  templates: { title: "图鉴 · 小卡模板", hint: "PhotocardTemplate。无主图不能发布（API 返回 4xx）。去重键 = slug:发行标题:成员:version。" },
+  completeness: { title: "图鉴 · 完整度", hint: "切片后续（B2）" },
+  import: { title: "图鉴 · 导入校验", hint: "" },
+  benefits: { title: "图鉴 · 特典对照", hint: "切片后续（B2）" },
 };
 
 const laterHint: Record<string, string> = {
-  completeness: "完整度看板在后续切片迁移。",
-  import: "批量导入在后续切片迁移。",
-  benefits: "特典对照在后续切片迁移（B2）。",
+  completeness: "完整度看板归 B2，本页仅占位。",
+  benefits: "特典对照归 B2，本页仅占位。",
 };
+
+const pageNotice = ref("");
+const pageNoticeOk = ref(false);
 
 const rows = computed<AnyRow[]>(() => {
   const data = bundle.value;
@@ -132,8 +137,11 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
       {
         title: "图",
         key: "mainImageUrl",
-        width: 72,
-        render: (row) => ((row as Template).mainImageUrl ? "有图" : "无主图"),
+        width: 88,
+        render: (row) =>
+          (row as Template).mainImageUrl
+            ? "有图"
+            : h("span", { style: "color: var(--color-warning)" }, "无主图"),
       },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
       { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
@@ -194,13 +202,18 @@ async function onSave(payload: Record<string, unknown>) {
   const res = await saveCatalog(tab.value, editingId, payload);
   acting.value = false;
   if (res.status !== 200) {
-    message.error(errorMessage(res.body));
+    const msg = errorMessage(res.body);
+    pageNotice.value = msg;
+    pageNoticeOk.value = false;
+    message.error(msg);
     return;
   }
+  pageNotice.value = editingId ? "已保存" : "已创建为草稿";
+  pageNoticeOk.value = true;
   formShow.value = false;
   editing.value = null;
   await nextTick();
-  message.success(editingId ? "已保存" : "已创建为草稿");
+  message.success(pageNotice.value);
   await refresh();
   formShow.value = false;
 }
@@ -211,16 +224,22 @@ async function onStatus(row: AnyRow, status: "published" | "draft" | "deprecated
   const res = await setCatalogStatus(tab.value, row.id, status);
   acting.value = false;
   if (res.status !== 200) {
-    message.error(errorMessage(res.body));
+    const msg = errorMessage(res.body);
+    pageNotice.value = msg;
+    pageNoticeOk.value = false;
+    message.error(msg);
     return;
   }
-  message.success(`已更新为 ${status}`);
+  pageNotice.value = `已更新为 ${status}`;
+  pageNoticeOk.value = true;
+  message.success(pageNotice.value);
   await refresh();
 }
 
 watch(tab, () => {
   formShow.value = false;
   editing.value = null;
+  pageNotice.value = "";
   message.destroyAll();
 });
 
@@ -257,6 +276,10 @@ onMounted(() => {
 
       <n-alert v-if="deny" type="error" :show-icon="false" class="block">{{ deny }}</n-alert>
 
+      <template v-else-if="isImport">
+        <CatalogImportView />
+      </template>
+
       <template v-else-if="isLater">
         <n-alert type="warning" :show-icon="false">{{ headings[tab].hint }}</n-alert>
         <p class="muted">{{ laterHint[tab] }}</p>
@@ -264,6 +287,7 @@ onMounted(() => {
 
       <template v-else>
         <p class="muted">{{ headings[tab].hint }}</p>
+        <n-alert v-if="pageNotice" :type="pageNoticeOk ? 'success' : 'error'" :show-icon="false" class="block">{{ pageNotice }}</n-alert>
         <n-space class="toolbar">
           <n-button type="primary" @click="openCreate">新建</n-button>
         </n-space>

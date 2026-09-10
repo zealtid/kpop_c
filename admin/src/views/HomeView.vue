@@ -12,7 +12,7 @@ const greeting = computed(() => {
 <template>
   <n-card title="首页">
     <p>已登录运营后台。{{ greeting }}</p>
-    <p class="muted">图鉴 CRUD 已接入；完整度 / 导入 / 特典对照仍在后续切片。</p>
+    <p class="muted">图鉴 CRUD 与导入已接入；完整度 / 特典对照在 B2。</p>
     <n-space>
       <n-button type="primary" @click="$router.push({ name: 'catalog', params: { tab: 'groups' } })">打开图鉴</n-button>
     </n-space>
