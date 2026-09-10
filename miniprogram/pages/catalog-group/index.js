@@ -24,6 +24,11 @@ Page({
       ).then((full) => this.setData({ releases: full, selected: [] }));
     });
   },
+  openRelease(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/catalog-release/index?id=${id}` });
+  },
   onSearch(e) {
     const q = e.detail.value || "";
     wx.navigateTo({

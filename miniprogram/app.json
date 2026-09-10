@@ -6,6 +6,7 @@
     "pages/mine/index",
     "pages/cardbook-group/index",
     "pages/catalog-group/index",
+    "pages/catalog-release/index",
     "pages/catalog-search/index",
     "pages/feedback/index",
     "pages/about/index",

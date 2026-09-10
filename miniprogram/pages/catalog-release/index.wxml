@@ -1,0 +1,48 @@
+<view class="page">
+  <view class="h1">{{release.title}}</view>
+  <view class="muted">{{release.releasedOnLabel}} · {{release.kind}}</view>
+
+  <scroll-view wx:if="{{versions.length}}" scroll-x class="ver-scroll" enable-flex>
+    <view
+      wx:for="{{versions}}"
+      wx:key="*this"
+      class="chip {{item === selectedVersion ? 'on' : ''}}"
+      bindtap="selectVersion"
+      data-version="{{item}}"
+    >{{item}}</view>
+  </scroll-view>
+
+  <view wx:if="{{empty || !visibleRows.length}}" class="empty-state">
+    <view class="empty-title">暂无特典对照，请稍后再看</view>
+  </view>
+
+  <view wx:for="{{visibleRows}}" wx:key="id" class="card">
+    <view>{{item.benefitNameZh}}</view>
+    <view class="muted">
+      {{item.channelNameZh}}
+      <text wx:if="{{item.benefitBatch}}"> · {{item.benefitBatch}}</text>
+    </view>
+    <view wx:if="{{item.slots.length}}" class="grid3" style="margin-top:16rpx">
+      <view
+        class="tile"
+        wx:for="{{item.slots}}"
+        wx:for-item="slot"
+        wx:for-index="si"
+        wx:key="si"
+        bindtap="openSlot"
+        data-navigable="{{slot.navigable}}"
+        data-q="{{slot.templateName || slot.label}}"
+      >
+        <view class="ph">
+          <image wx:if="{{slot.imageUrl}}" src="{{slot.imageUrl}}" mode="aspectFill"/>
+          <view wx:else class="pending-label">图鉴待补</view>
+        </view>
+        <view class="muted">{{slot.label}}</view>
+        <view wx:if="{{slot.pending}}" class="tag warn">图鉴待补</view>
+      </view>
+    </view>
+    <view wx:else class="muted" style="margin-top:12rpx">对照要点 · {{item.mapMode}}</view>
+  </view>
+
+  <view wx:if="{{footnote}}" class="footnote">{{footnote}}</view>
+</view>

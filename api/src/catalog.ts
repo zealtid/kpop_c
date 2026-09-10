@@ -85,6 +85,26 @@ export async function listReleases(groupId: string, includeDraft = false) {
   return r.rows;
 }
 
+/** Guest catalog: published release only. Draft / deprecated / unknown → 404. */
+export async function getRelease(id: string, opts?: { requirePublished?: boolean }) {
+  const r = await query(
+    `SELECT r.id, r.group_id, r.title, r.title_zh, r.aliases, r.released_on, r.kind, r.status,
+            g.slug AS group_slug, g.name_zh AS group_name_zh, g.status AS group_status
+     FROM releases r
+     JOIN idol_groups g ON g.id = r.group_id
+     WHERE r.id::text = $1`,
+    [id],
+  );
+  const row = r.rows[0];
+  if (!row) throw notFound("发行不存在");
+  if (opts?.requirePublished) {
+    if (row.status !== "published" || row.group_status !== "published") {
+      throw notFound("发行不存在");
+    }
+  }
+  return mapRelease(row);
+}
+
 type SearchOpts = {
   q?: string;
   groupId?: string;
