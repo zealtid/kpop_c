@@ -1,0 +1,21 @@
+{
+  "channels": [
+    { "code": "weverse", "name_zh": "Weverse Shop", "aliases": ["Weverse", "WV", "薇谱"] },
+    { "code": "ktown4u", "name_zh": "Ktown4u", "aliases": ["K4", "Ktown"] },
+    { "code": "soundwave", "name_zh": "Soundwave", "aliases": ["SW"] },
+    { "code": "withmuu", "name_zh": "Withmuu", "aliases": ["WM"] },
+    { "code": "makestar", "name_zh": "Makestar", "aliases": ["MS"] },
+    { "code": "apple-music-kr", "name_zh": "Apple Music 韩", "aliases": ["AM韩"] },
+    { "code": "aladin", "name_zh": "Aladin", "aliases": [] },
+    { "code": "yes24", "name_zh": "Yes24", "aliases": ["YES24"] },
+    { "code": "tmall-flagship", "name_zh": "天猫官旗", "aliases": ["天猫", "猫旗"] },
+    { "code": "jd-flagship", "name_zh": "京东官旗", "aliases": ["京东", "JD官旗"] },
+    { "code": "douyin-flagship", "name_zh": "抖音旗舰", "aliases": ["抖音小店"] },
+    { "code": "weibo-draw", "name_zh": "微博抽选", "aliases": ["微博活动"] },
+    { "code": "jyp-shop", "name_zh": "JYP Shop", "aliases": ["JYP店"] },
+    { "code": "sm-store", "name_zh": "SM Store", "aliases": ["SM店"] },
+    { "code": "yg-shop", "name_zh": "YG Select", "aliases": ["YG店"] },
+    { "code": "offline-cnsign", "name_zh": "线下签售/场周", "aliases": ["面签", "场周特典"] },
+    { "code": "unknown", "name_zh": "未知", "aliases": [] }
+  ]
+}

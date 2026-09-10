@@ -1,0 +1,4 @@
+group_id,release_id,version_label,channel_code,benefit_name_zh,maps_to_slot_labels,map_mode,evidence_url,status,benefit_batch,benefit_type,tags_hint
+bts,bts-arirang,standard,weverse,预购特典 Weverse,预购特典 Weverse,slots,https://example.invalid/weverse-arirang-pob,confirmed,1.0,pob,"特典,预购"
+bts,bts-arirang,standard,tmall-flagship,天猫官旗预购特典,预购特典 天猫,slots,https://example.invalid/tmall-arirang,drafting,1.0,pob,"特典,预购,店铺特典"
+stray-kids,skz-this-and-that,standard,ktown4u,Ktown4u 预购特典,预购特典 K4,slots,https://example.invalid/k4-skz-tnt,drafting,1.0,pob,"特典,预购"
