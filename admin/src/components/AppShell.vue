@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, h, ref, watch } from "vue";
 import {
   NButton,
   NDrawer,
@@ -8,6 +8,8 @@ import {
   NLayoutContent,
   NLayoutHeader,
   NLayoutSider,
+  NMenu,
+  type MenuOption,
 } from "naive-ui";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import { authUser, logout, userMenus } from "../auth";
@@ -38,14 +40,32 @@ function menuTo(id: string) {
   return { path: `/${id}` };
 }
 
-function isActive(id: string) {
-  if (id === "catalog") return route.name === "catalog" || route.path.startsWith("/catalog");
-  if (id === "tickets") return route.name === "tickets" || route.name === "ticket-detail";
-  return route.name === id || route.path === `/${id}` || route.path.startsWith(`/${id}/`);
-}
+const activeKey = computed(() => {
+  if (route.name === "catalog" || route.path.startsWith("/catalog")) return "catalog";
+  if (route.name === "tickets" || route.name === "ticket-detail") return "tickets";
+  if (route.name === "intel") return "intel";
+  return String(route.name || "");
+});
+
+const menuOptions = computed<MenuOption[]>(() =>
+  menus.value.map((item) => ({
+    key: item.id,
+    label: () =>
+      h(
+        RouterLink,
+        { to: menuTo(item.id), class: "menu-link", onClick: onMenuNavigate },
+        { default: () => item.label },
+      ),
+  })),
+);
 
 function onMenuNavigate() {
   drawerOpen.value = false;
+}
+
+function onMenuSelect(key: string) {
+  onMenuNavigate();
+  void router.push(menuTo(key));
 }
 
 async function onLogout() {
@@ -62,34 +82,13 @@ async function onLogout() {
       :width="220"
       content-style="padding: 12px 10px;"
     >
-      <div class="brand">星卡 Admin</div>
-      <nav class="side-nav" aria-label="主导航">
-        <RouterLink
-          v-for="item in menus"
-          :key="item.id"
-          :to="menuTo(item.id)"
-          class="nav-item"
-          :class="{ active: isActive(item.id) }"
-        >
-          {{ item.label }}
-        </RouterLink>
-      </nav>
+      <RouterLink class="brand" :to="{ name: 'home' }">星卡 Admin</RouterLink>
+      <n-menu :value="activeKey" :options="menuOptions" :indent="12" />
     </n-layout-sider>
 
     <n-drawer v-model:show="drawerOpen" :width="260" placement="left">
       <n-drawer-content title="星卡 Admin" closable>
-        <nav class="side-nav" aria-label="主导航">
-          <RouterLink
-            v-for="item in menus"
-            :key="item.id"
-            :to="menuTo(item.id)"
-            class="nav-item"
-            :class="{ active: isActive(item.id) }"
-            @click="onMenuNavigate"
-          >
-            {{ item.label }}
-          </RouterLink>
-        </nav>
+        <n-menu :value="activeKey" :options="menuOptions" :indent="12" @update:value="onMenuSelect" />
       </n-drawer-content>
     </n-drawer>
 
@@ -97,7 +96,7 @@ async function onLogout() {
       <n-layout-header bordered class="topbar">
         <div class="top-left">
           <n-button v-if="isNarrow" quaternary size="small" @click="drawerOpen = true">菜单</n-button>
-          <span v-if="isNarrow" class="brand-inline">星卡 Admin</span>
+          <RouterLink v-if="isNarrow" class="brand-inline" :to="{ name: 'home' }">星卡 Admin</RouterLink>
         </div>
         <div class="who">
           <span>{{ who }}</span>
@@ -117,33 +116,18 @@ async function onLogout() {
 }
 
 .brand {
+  display: block;
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 8px 10px 16px;
+  text-decoration: none;
+  color: var(--color-text-primary);
 }
 
 .brand-inline {
   font-weight: 700;
-}
-
-.side-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.nav-item {
-  display: block;
   text-decoration: none;
   color: var(--color-text-primary);
-  padding: 10px 12px;
-  border-radius: 8px;
-}
-
-.nav-item.active,
-.nav-item:hover {
-  background: var(--color-brand-soft);
-  color: var(--color-brand);
 }
 
 .topbar {
@@ -152,6 +136,7 @@ async function onLogout() {
   justify-content: space-between;
   padding: 0 16px;
   height: 56px;
+  background: var(--color-bg-elevated);
 }
 
 .top-left {
@@ -170,5 +155,11 @@ async function onLogout() {
 
 .content {
   background: var(--color-bg-page);
+}
+
+:deep(.menu-link) {
+  display: block;
+  color: inherit;
+  text-decoration: none;
 }
 </style>

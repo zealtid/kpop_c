@@ -2,6 +2,7 @@
 import { NAlert, NCard } from "naive-ui";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
+import PageHeader from "../components/PageHeader.vue";
 
 const route = useRoute();
 const title = computed(() => (typeof route.meta.title === "string" ? route.meta.title : "即将推出"));
@@ -9,7 +10,8 @@ const hint = computed(() => (typeof route.meta.hint === "string" ? route.meta.hi
 </script>
 
 <template>
-  <n-card :title="title">
+  <PageHeader :title="title" :hint="hint" :crumbs="[{ label: title }]" />
+  <n-card>
     <n-alert type="warning" :show-icon="false">{{ hint }}</n-alert>
     <p class="muted">菜单入口与现网对齐，业务页在后续切片实现。</p>
   </n-card>

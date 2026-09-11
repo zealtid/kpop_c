@@ -18,6 +18,7 @@ import { RouterLink, useRoute } from "vue-router";
 import { errorMessage } from "../api";
 import { authUser } from "../auth";
 import { loadCatalog } from "../catalog/api";
+import PageHeader from "../components/PageHeader.vue";
 import { statusLabel, type Member, type Release, type Template } from "../catalog/types";
 import {
   createDraftAndLink,
@@ -204,8 +205,15 @@ onMounted(() => {
 </script>
 
 <template>
+  <PageHeader
+    title="工单详情"
+    :crumbs="[
+      { label: '反馈 / 工单', to: { name: 'tickets' } },
+      { label: ticketId ? ticketId.slice(0, 8) : '详情' },
+    ]"
+  />
   <n-spin :show="loading">
-    <n-card title="工单">
+    <n-card :bordered="false">
       <p>
         <RouterLink :to="{ name: 'tickets' }">← 工单列表</RouterLink>
       </p>
