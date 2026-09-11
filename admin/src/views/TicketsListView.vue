@@ -1,7 +1,20 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from "vue";
-import { NAlert, NButton, NCard, NDataTable, NSpin, NTag, type DataTableColumns } from "naive-ui";
+import {
+  NAlert,
+  NButton,
+  NCard,
+  NDataTable,
+  NInput,
+  NSelect,
+  NSpin,
+  NTag,
+  type DataTableColumns,
+} from "naive-ui";
 import { RouterLink, useRoute, useRouter } from "vue-router";
+import AdminFilterBar from "../components/AdminFilterBar.vue";
+import PageHeader from "../components/PageHeader.vue";
+import { parsePage, parsePageSize, parseQueryText, patchListQuery } from "../listQuery";
 import { listTickets } from "../tickets/api";
 import {
   formatTicketTime,
@@ -22,8 +35,26 @@ const loading = ref(true);
 const deny = ref("");
 const tickets = ref<Ticket[]>([]);
 const total = ref(0);
+const keywordDraft = ref("");
 
 const statusFilter = computed(() => parseTicketStatusFilter(route.query.status));
+const page = computed(() => parsePage(route.query.page));
+const pageSize = computed(() => parsePageSize(route.query.pageSize));
+const keyword = computed(() => parseQueryText(route.query.q).trim());
+
+const statusOptions = TICKET_FILTERS.map((item) => ({
+  label: item.label,
+  value: item.id,
+}));
+
+const displayed = computed(() => {
+  const q = keyword.value.toLowerCase();
+  if (!q) return tickets.value;
+  return tickets.value.filter((row) => {
+    const hay = `${row.user.nickname} ${row.body} ${row.linkedTemplate?.name || ""}`.toLowerCase();
+    return hay.includes(q);
+  });
+});
 
 function statusTag(status: string) {
   return h(
@@ -54,10 +85,35 @@ const columns = computed<DataTableColumns<Ticket>>(() => [
   },
 ]);
 
+function setQuery(patch: Record<string, string | number | undefined | null>) {
+  void patchListQuery(router, route.query, patch);
+}
+
+function onStatus(value: string) {
+  setQuery({ status: value || undefined, page: 1 });
+}
+
+function onSearch() {
+  setQuery({ q: keywordDraft.value.trim() || undefined, page: page.value });
+}
+
+function onReset() {
+  keywordDraft.value = "";
+  setQuery({ status: undefined, q: undefined, page: 1, pageSize: undefined });
+}
+
+function goDetail(row: Ticket) {
+  void router.push({ name: "ticket-detail", params: { id: row.id } });
+}
+
 async function refresh() {
   loading.value = true;
   deny.value = "";
-  const result = await listTickets(statusFilter.value);
+  const result = await listTickets({
+    status: statusFilter.value || undefined,
+    limit: pageSize.value,
+    offset: (page.value - 1) * pageSize.value,
+  });
   loading.value = false;
   if (!result.ok) {
     deny.value = result.message;
@@ -70,9 +126,10 @@ async function refresh() {
 }
 
 watch(
-  () => route.query.status,
-  (raw) => {
-    if (raw && !parseTicketStatusFilter(raw)) {
+  () => [route.query.status, route.query.page, route.query.pageSize, route.query.q] as const,
+  ([rawStatus]) => {
+    keywordDraft.value = parseQueryText(route.query.q);
+    if (rawStatus && !parseTicketStatusFilter(rawStatus)) {
       void router.replace({ name: "tickets" });
       return;
     }
@@ -83,31 +140,43 @@ watch(
 </script>
 
 <template>
+  <PageHeader
+    title="反馈 / 工单"
+    hint="消费小程序空搜提交的文字缺卡反馈。进度不回写 C 端。关联模板仅为草稿，无申请入库。关键词仅筛选当前页。"
+    :crumbs="[{ label: '反馈 / 工单' }]"
+  />
   <n-spin :show="loading">
-    <n-card title="反馈 / 工单">
-      <p class="muted">
-        消费小程序空搜（C03）提交的文字缺卡反馈。进度<strong>不</strong>回写 C 端。关联模板仅为草稿，无申请入库。
-      </p>
-
-      <nav class="subnav" aria-label="工单状态筛选">
-        <RouterLink
-          v-for="item in TICKET_FILTERS"
-          :key="item.id || 'all'"
-          class="subnav-item"
-          :class="{ active: statusFilter === item.id }"
-          :to="item.id ? { name: 'tickets', query: { status: item.id } } : { name: 'tickets' }"
-        >
-          {{ item.label }}
-        </RouterLink>
-      </nav>
+    <n-card :bordered="false">
+      <AdminFilterBar
+        :page="page"
+        :page-size="pageSize"
+        :item-count="total"
+        :searching="loading"
+        @search="onSearch"
+        @reset="onReset"
+        @update:page="setQuery({ page: $event })"
+        @update:page-size="setQuery({ pageSize: $event, page: 1 })"
+      >
+        <n-select
+          :value="statusFilter"
+          :options="statusOptions"
+          style="width: 160px"
+          @update:value="onStatus"
+        />
+        <n-input
+          v-model:value="keywordDraft"
+          clearable
+          placeholder="本页：用户 / 内容 / 模板"
+          style="width: 240px"
+          @keyup.enter="onSearch"
+        />
+      </AdminFilterBar>
 
       <n-alert v-if="deny" type="error" :show-icon="false" class="block">{{ deny }}</n-alert>
 
       <template v-else>
-        <p class="stats">{{ total }} 条</p>
-
         <div v-if="isNarrow" class="cards">
-          <n-card v-for="row in tickets" :key="row.id" size="small" class="ticket-card">
+          <n-card v-for="row in displayed" :key="row.id" size="small" class="ticket-card" @click="goDetail(row)">
             <div class="card-head">
               <RouterLink class="body-link" :to="{ name: 'ticket-detail', params: { id: row.id } }">
                 {{ ticketSnippet(row.body) || "（空）" }}
@@ -120,20 +189,20 @@ watch(
             <p class="card-meta">
               关联 {{ row.linkedTemplate?.name || row.linkedTemplate?.id || "—" }}
             </p>
-            <n-button text type="primary" @click="$router.push({ name: 'ticket-detail', params: { id: row.id } })">
-              查看详情
-            </n-button>
+            <n-button text type="primary" @click.stop="goDetail(row)">查看详情</n-button>
           </n-card>
-          <p v-if="!tickets.length" class="muted">暂无工单</p>
+          <p v-if="!displayed.length" class="muted">暂无工单</p>
         </div>
 
         <n-data-table
-          v-else-if="tickets.length"
+          v-else-if="displayed.length"
           :columns="columns"
-          :data="tickets"
+          :data="displayed"
           :pagination="false"
+          striped
           :scroll-x="720"
           :row-key="(row: Ticket) => row.id"
+          :row-props="(row: Ticket) => ({ style: 'cursor: pointer', onClick: () => goDetail(row) })"
         />
         <p v-else class="muted empty">暂无工单</p>
       </template>
@@ -142,41 +211,13 @@ watch(
 </template>
 
 <style scoped>
-.muted {
-  color: var(--color-text-secondary);
-  margin: 0 0 12px;
-}
-
-.subnav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 14px;
-}
-
-.subnav-item {
-  text-decoration: none;
-  color: var(--color-text-primary);
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: var(--color-bg-page);
-  font-size: 13px;
-}
-
-.subnav-item.active,
-.subnav-item:hover {
-  background: var(--color-brand-soft);
-  color: var(--color-brand);
-}
-
-.stats {
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  margin: 0 0 12px;
-}
-
 .block {
   margin-bottom: 12px;
+}
+
+.muted {
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 
 .cards {

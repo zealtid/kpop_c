@@ -2,6 +2,7 @@
 import { NButton, NCard, NSpace } from "naive-ui";
 import { computed } from "vue";
 import { authUser } from "../auth";
+import PageHeader from "../components/PageHeader.vue";
 
 const greeting = computed(() => {
   const user = authUser.value;
@@ -10,17 +11,12 @@ const greeting = computed(() => {
 </script>
 
 <template>
-  <n-card title="首页">
-    <p>已登录运营后台。{{ greeting }}</p>
-    <p class="muted">图鉴 CRUD、图鉴导入、特典对照、完整度看板与反馈/工单已接入；情报仍为占位。</p>
+  <PageHeader title="首页" hint="已登录运营后台。图鉴 CRUD、导入、特典对照、完整度与反馈/工单已接入；情报仍为占位。" />
+  <n-card>
+    <p>当前账号 {{ greeting }}</p>
     <n-space>
       <n-button type="primary" @click="$router.push({ name: 'catalog', params: { tab: 'groups' } })">打开图鉴</n-button>
+      <n-button @click="$router.push({ name: 'tickets' })">查看工单</n-button>
     </n-space>
   </n-card>
 </template>
-
-<style scoped>
-.muted {
-  color: var(--color-text-secondary);
-}
-</style>

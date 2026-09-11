@@ -5,9 +5,17 @@ export type TicketListResult =
   | { ok: true; tickets: Ticket[]; total: number }
   | { ok: false; status: number; message: string };
 
-export async function listTickets(status?: string): Promise<TicketListResult> {
-  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
-  const res = await api<{ tickets: Ticket[]; total: number }>(`/admin/tickets${qs}`);
+export async function listTickets(opts?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TicketListResult> {
+  const qs = new URLSearchParams();
+  if (opts?.status) qs.set("status", opts.status);
+  if (opts?.limit != null) qs.set("limit", String(opts.limit));
+  if (opts?.offset != null) qs.set("offset", String(opts.offset));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  const res = await api<{ tickets: Ticket[]; total: number }>(`/admin/tickets${suffix}`);
   if (res.status !== 200) {
     return {
       ok: false,
