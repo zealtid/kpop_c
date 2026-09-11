@@ -14,7 +14,7 @@ import {
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import AdminFilterBar from "../components/AdminFilterBar.vue";
 import PageHeader from "../components/PageHeader.vue";
-import { parsePage, parsePageSize, parseQueryText, patchListQuery } from "../listQuery";
+import { maxPage, parsePage, parsePageSize, parseQueryText, patchListQuery } from "../listQuery";
 import { listTickets } from "../tickets/api";
 import {
   formatTicketTime,
@@ -123,6 +123,10 @@ async function refresh() {
   }
   tickets.value = result.tickets;
   total.value = result.total;
+  const last = maxPage(result.total, pageSize.value);
+  if (page.value > last) {
+    setQuery({ page: last });
+  }
 }
 
 watch(
