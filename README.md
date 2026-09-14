@@ -308,7 +308,7 @@ npm run dev:h5       # http://localhost:5174
 
 与 Admin 一样独立服务托管 `h5/` 的 Vite `dist/`，不要挂在 API 路径下。
 
-1. Railway 项目新增服务 **`h5`**，Root Directory：`/h5`，Builder：Dockerfile（`h5/Dockerfile`）。
+1. Railway 项目新增服务 **`h5`**，Root Directory：`/h5`，Builder：Dockerfile（`h5/Dockerfile`）。仓库内 `h5/railway.toml` 固定 Dockerfile builder，避免 Railpack 从 monorepo 根目录启动 API。
 2. 构建变量：`VITE_API_BASE=https://<api-host>`
 3. Generate Domain，得到 `https://<h5-service>.up.railway.app`
 4. API 变量：`H5_PUBLIC_URL=https://<h5-host>`（自动加入 CORS）；`PUBLIC_BASE_URL` 仍指向 API（二维码域名）
