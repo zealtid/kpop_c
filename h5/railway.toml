@@ -1,0 +1,5 @@
+# Railway `h5` service: root directory must be /h5.
+# Force Dockerfile so Railpack does not build the monorepo root and start the API.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
