@@ -18,7 +18,7 @@ C 端只有微信小程序；M2.5 OPS-0 起另有独立 **Web 运营后台**（`
 - 缺卡反馈 **仅文字**。
 - **P7**：卡册总览无搜索（搜索在图鉴）。
 - **P8**：分享长图必须拼完所有已拥有卡，禁止截成前 N 张。
-- 本阶段不做：订阅消息、交易开关、缺卡清单页、投稿审核、好友、AI。
+- 本阶段不做：订阅消息、交易开关、缺卡清单页、好友、AI。UGC-1 单卡投稿审核已开放（白名单团 + Admin 审核台）。
 
 ## 本地运行
 
@@ -95,13 +95,14 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 / 
 | --- | --- |
 | 登录 / 我 | `POST /auth/wx-login` `GET\|PATCH /me` |
 | 关注 | `GET\|PUT /me/follows` |
-| 图鉴 | `GET /catalog/groups` `.../members` `.../releases` `GET /catalog/releases/:id/templates` `GET /catalog/search` `GET /catalog/templates` |
+| 图鉴 | `GET /catalog/groups`（`?ugc_open=1` 仅白名单） `.../members` `.../releases` `GET /catalog/releases/:id/templates` `GET /catalog/search` `GET /catalog/templates` |
+| 投稿 | `POST /media/ugc-pending` `POST /catalog/submissions` `GET /me/catalog-submissions` `GET /me/catalog-submissions/:id` `POST /collection/custom-cards/:id/apply-catalog` `POST /catalog/templates/:id/report` |
 | 卡册 | `GET /collection/overview` `GET /collection/groups/:id` `.../progress` |
 | 拥有 | `POST /collection/cards` `POST /collection/cards/batch` `PATCH\|DELETE /collection/cards/:templateId` |
 | 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
 | 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }` |
 | 反馈 | `POST /feedback/missing` `{ text }`（仅文字；不返回工单进度） |
-| 管理 | `POST /admin/import` `POST /admin/import/validate` `GET /admin/completeness` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`；缺卡工单 `GET\|PATCH /admin/tickets` `POST /admin/tickets/:id/templates`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
+| 管理 | `POST /admin/import` `POST /admin/import/validate` `GET /admin/completeness` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`（组合含 `ugcOpen`）；UGC 审核 `GET /admin/catalog-submissions` `POST .../approve\|reject`；缺卡工单 `GET\|PATCH /admin/tickets` `POST /admin/tickets/:id/templates`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
 | OPS 登录 | `POST /admin/auth/login` `GET /admin/auth/me` `POST /admin/auth/logout` `GET /admin/audit` |
 | 情报 | `GET /feed` `GET /feed/featured` `GET /feed/:id` |
 | 日程 | `GET /schedule/today` `GET /schedule` `GET /schedule/:id`（`startAtShanghai` / Asia/Shanghai） |

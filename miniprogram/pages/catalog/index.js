@@ -14,4 +14,7 @@ Page({
   openGroup(e) {
     wx.navigateTo({ url: `/pages/catalog-group/index?id=${e.currentTarget.dataset.id}` });
   },
+  goSubmit() {
+    wx.navigateTo({ url: "/pages/catalog-submit/index" });
+  },
 });

@@ -256,4 +256,20 @@ Page({
       },
     });
   },
+  applyCatalog() {
+    if (!this.data.groupId) {
+      wx.showToast({ title: "申请入库请先选择已开放的组合", icon: "none" });
+      return;
+    }
+    wx.setStorageSync("ugc_submit_prefill", {
+      groupId: this.data.groupId,
+      memberId: this.data.memberId,
+      releaseId: this.data.releaseId,
+      versionLabel: this.data.versionLabel,
+      slotLabel: this.data.title,
+      frontPath: this._filePath || "",
+      frontPreview: this.data.preview || "",
+    });
+    wx.navigateTo({ url: "/pages/catalog-submit/index" });
+  },
 });

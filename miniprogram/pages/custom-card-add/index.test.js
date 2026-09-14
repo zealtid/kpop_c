@@ -16,6 +16,8 @@ global.wx = {
   getStorageSync() {
     return "";
   },
+  setStorageSync() {},
+  removeStorageSync() {},
   showToast(opts) {
     toasts.push(opts);
   },
@@ -120,6 +122,8 @@ test("wxml forces 2:3 crop, album+camera, optional member skip", () => {
   assert.match(wxml, /bindinput="onBenefitName"/);
   assert.match(wxml, /bindinput="onVersionLabel"/);
   assert.match(wxml, /未选组合不会出现非法专辑列表/);
+  assert.match(wxml, /申请入库/);
+  assert.match(wxml, /bindtap="applyCatalog"/);
   assert.doesNotMatch(wxml, /跳过裁剪|使用原图|自由比例/);
 });
 

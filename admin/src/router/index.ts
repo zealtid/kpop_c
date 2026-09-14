@@ -21,6 +21,16 @@ export const router = createRouter({
           component: () => import("../views/HomeView.vue"),
         },
         {
+          path: "submissions",
+          name: "submissions",
+          component: () => import("../views/SubmissionsListView.vue"),
+        },
+        {
+          path: "submissions/:id",
+          name: "submission-detail",
+          component: () => import("../views/SubmissionDetailView.vue"),
+        },
+        {
           path: "catalog/:tab?",
           name: "catalog",
           component: () => import("../views/CatalogView.vue"),

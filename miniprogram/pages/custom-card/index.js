@@ -91,6 +91,10 @@ Page({
         api.handleWriteError(err);
       });
   },
+  applyCatalog() {
+    if (!this.data.id) return;
+    wx.navigateTo({ url: `/pages/catalog-submit/index?customCardId=${this.data.id}` });
+  },
   remove() {
     if (this.data.missing || !this.data.id) return;
     customCard

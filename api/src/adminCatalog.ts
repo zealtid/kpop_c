@@ -64,7 +64,7 @@ async function loadReleaseRow(id: string) {
 
 export async function listAdminGroups() {
   const r = await query(
-    `SELECT id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, status
+    `SELECT id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, status, ugc_open
      FROM idol_groups ORDER BY slug`,
   );
   return r.rows.map(mapGroup);
@@ -80,8 +80,8 @@ export async function createGroup(body: Record<string, unknown>) {
   const id = randomUUID();
   try {
     await query(
-      `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'draft')`,
+      `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, status, ugc_open)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'draft',$10)`,
       [
         id,
         slug,
@@ -92,6 +92,7 @@ export async function createGroup(body: Record<string, unknown>) {
         text(body.logoColor, "logoColor") || "#ff6b9d",
         text(body.scopeNote, "scopeNote") || null,
         body.isPilot !== false,
+        !!body.ugcOpen,
       ],
     );
   } catch (err) {
@@ -108,7 +109,7 @@ export async function updateGroup(id: string, body: Record<string, unknown>) {
     await query(
       `UPDATE idol_groups SET
          slug = $2, name_zh = $3, name_en = $4, name_ko = $5, aliases = $6,
-         logo_color = $7, scope_note = $8, is_pilot = $9
+         logo_color = $7, scope_note = $8, is_pilot = $9, ugc_open = $10
        WHERE id = $1`,
       [
         id,
@@ -120,6 +121,7 @@ export async function updateGroup(id: string, body: Record<string, unknown>) {
         body.logoColor != null ? text(body.logoColor, "logoColor") : row.logo_color,
         body.scopeNote !== undefined ? text(body.scopeNote, "scopeNote") || null : row.scope_note,
         body.isPilot != null ? !!body.isPilot : row.is_pilot,
+        body.ugcOpen != null ? !!body.ugcOpen : !!row.ugc_open,
       ],
     );
   } catch (err) {

@@ -51,6 +51,7 @@ declare global {
 
 const ADMIN_MENUS = [
   { id: "catalog", label: "图鉴" },
+  { id: "submissions", label: "投稿审核" },
   { id: "intel", label: "情报" },
   { id: "tickets", label: "反馈/工单" },
 ] as const;

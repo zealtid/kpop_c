@@ -1,0 +1,15 @@
+<view class="page">
+  <view class="h1">我的投稿</view>
+  <view class="sub">审核进度仅在站内查看，不会推送订阅消息。</view>
+  <view wx:if="{{empty}}" class="muted" style="margin-top:24rpx">还没有投稿</view>
+  <view class="card" wx:for="{{items}}" wx:key="id" bindtap="open" data-id="{{item.id}}">
+    <view class="row">
+      <view>
+        <view class="h1" style="font-size:32rpx">{{item.slotLabel}}</view>
+        <view class="muted">{{item.groupNameZh}} · {{item.statusLabel}}</view>
+        <view wx:if="{{item.rejectReason}}" class="footnote">{{item.rejectReason}}</view>
+      </view>
+      <view class="muted">›</view>
+    </view>
+  </view>
+</view>

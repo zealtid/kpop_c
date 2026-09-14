@@ -59,6 +59,14 @@
   </block>
 
   <view class="card action-list">
+    <view class="action-row" bindtap="goSubmit">
+      <text class="action-label">投稿图鉴</text>
+      <text class="action-arrow">›</text>
+    </view>
+    <view class="action-row" bindtap="goMySubmissions">
+      <text class="action-label">我的投稿</text>
+      <text class="action-arrow">›</text>
+    </view>
     <view class="action-row" bindtap="goSettings">
       <text class="action-label">设置</text>
       <text class="action-arrow">›</text>

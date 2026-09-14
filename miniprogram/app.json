@@ -21,7 +21,10 @@
     "pages/schedule/index",
     "pages/schedule-detail/index",
     "pages/image-crop/index",
-    "pages/image-preview/index"
+    "pages/image-preview/index",
+    "pages/catalog-submit/index",
+    "pages/my-submissions/index",
+    "pages/my-submissions/detail"
   ],
   "window": {
     "navigationBarBackgroundColor": "#FFFFFF",

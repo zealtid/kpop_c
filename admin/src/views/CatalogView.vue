@@ -265,6 +265,12 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
   return [
     { title: "名称", key: "nameZh", render: (row) => nameButton((row as Group).nameZh, row) },
     { title: "slug", key: "slug", render: (row) => (row as Group).slug },
+    {
+      title: "UGC",
+      key: "ugcOpen",
+      width: 72,
+      render: (row) => ((row as Group).ugcOpen ? "开" : "关"),
+    },
     { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
     { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
   ];

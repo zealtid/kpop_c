@@ -92,21 +92,23 @@ export async function seed() {
   await runMigrations();
 
   await query(
-    `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot)
-     VALUES ($1,'h2h','Hearts2Hearts','Hearts2Hearts','하츠투하츠','H2H,心心','#ff6b9d',NULL,true)
+    `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, ugc_open)
+     VALUES ($1,'h2h','Hearts2Hearts','Hearts2Hearts','하츠투하츠','H2H,心心','#ff6b9d',NULL,true,true)
      ON CONFLICT (id) DO UPDATE SET
        name_zh = EXCLUDED.name_zh,
        name_ko = EXCLUDED.name_ko,
-       aliases = EXCLUDED.aliases`,
+       aliases = EXCLUDED.aliases,
+       ugc_open = EXCLUDED.ugc_open`,
     [GROUP_H2H],
   );
   await query(
-    `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot)
-     VALUES ($1,'bts','防弹少年团','BTS','방탄소년단','防弹,邦炭','#7c9cff','当前图鉴仅含《ARIRANG》切片',true)
+    `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, ugc_open)
+     VALUES ($1,'bts','防弹少年团','BTS','방탄소년단','防弹,邦炭','#7c9cff','当前图鉴仅含《ARIRANG》切片',true,true)
      ON CONFLICT (id) DO UPDATE SET
        scope_note = EXCLUDED.scope_note,
        name_ko = EXCLUDED.name_ko,
-       aliases = EXCLUDED.aliases`,
+       aliases = EXCLUDED.aliases,
+       ugc_open = EXCLUDED.ugc_open`,
     [GROUP_BTS],
   );
 

@@ -2,15 +2,16 @@ import { query } from "./db.js";
 import { track } from "./analytics.js";
 import { notFound } from "./errors.js";
 
-const GROUP_SELECT = `id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, status`;
+const GROUP_SELECT = `id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, status, ugc_open`;
 const MEMBER_SELECT = `id, group_id, name_zh, name_en, name_ko, aliases, color, sort_order, status`;
 
 export type CatalogStatus = "draft" | "published" | "deprecated";
 
-export async function listGroups(opts?: { includeUnpublished?: boolean }) {
+export async function listGroups(opts?: { includeUnpublished?: boolean; ugcOpen?: boolean }) {
   const statusFilter = opts?.includeUnpublished ? "" : "AND status = 'published'";
+  const ugcFilter = opts?.ugcOpen ? "AND ugc_open = true" : "";
   const r = await query(
-    `SELECT ${GROUP_SELECT} FROM idol_groups WHERE is_pilot = true ${statusFilter} ORDER BY slug`,
+    `SELECT ${GROUP_SELECT} FROM idol_groups WHERE is_pilot = true ${statusFilter} ${ugcFilter} ORDER BY slug`,
   );
   return r.rows.map(mapGroup);
 }
@@ -165,7 +166,7 @@ export async function searchTemplates(opts: SearchOpts) {
 
   const sql = `
     SELECT t.id, t.code, t.name, t.version, t.is_benefit, t.is_deprecated, t.status,
-           t.main_image_url, t.dedupe_key, t.release_id, t.member_id,
+           t.main_image_url, t.image_back, t.source, t.dedupe_key, t.release_id, t.member_id,
            r.title AS release_title, r.title_zh AS release_title_zh, r.released_on,
            r.group_id, g.slug AS group_slug, g.name_zh AS group_name_zh,
            m.name_en AS member_name_en, m.name_zh AS member_name_zh, m.color AS member_color
@@ -200,6 +201,7 @@ export function mapGroup(row: Record<string, unknown>) {
     scopeNote: row.scope_note,
     isPilot: row.is_pilot,
     status: (row.status as CatalogStatus) || "published",
+    ugcOpen: !!row.ugc_open,
   };
 }
 
@@ -213,6 +215,8 @@ export function mapTemplate(row: Record<string, unknown>) {
     isDeprecated: row.is_deprecated,
     status: row.status,
     mainImageUrl: row.main_image_url,
+    imageBack: row.image_back == null ? null : row.image_back,
+    source: row.source == null ? "ops" : row.source,
     dedupeKey: row.dedupe_key,
     releaseId: row.release_id,
     releaseTitle: row.release_title,

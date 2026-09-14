@@ -10,6 +10,7 @@ export default defineConfig({
     proxy: {
       "/admin": { target: api, changeOrigin: true },
       "/catalog": { target: api, changeOrigin: true },
+      "/media": { target: api, changeOrigin: true },
       "/health": { target: api, changeOrigin: true },
     },
   },

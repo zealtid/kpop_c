@@ -4,13 +4,14 @@
   <block wx:else>
     <view class="hero">
       <view class="ph hero-ph" style="background: {{card.memberColor || '#EBEDF3'}}">
-        <image wx:if="{{card.mainImageUrl}}" src="{{card.mainImageUrl}}" mode="aspectFill"/>
+        <image wx:if="{{card.mainImageUrl}}" src="{{showingBack && card.imageBack ? card.imageBack : card.mainImageUrl}}" mode="aspectFill"/>
       </view>
       <view class="meta">
         <view class="h1">{{card.memberNameEn || '卡片'}}</view>
         <view class="sub">{{card.memberNameZh}}</view>
         <view class="sub">{{card.releaseTitle}} · {{card.version}}</view>
         <view wx:if="{{card.isBenefit}}" class="tag">特典</view>
+        <view wx:if="{{card.imageBack}}" class="btn ghost slim" bindtap="flip">{{showingBack?'看卡面':'翻转看卡背'}}</view>
       </view>
     </view>
 
@@ -50,5 +51,6 @@
     </view>
 
     <view class="btn {{saving?'off':''}}" bindtap="save">保存</view>
+    <view class="btn ghost" bindtap="report">举报此卡</view>
   </block>
 </view>

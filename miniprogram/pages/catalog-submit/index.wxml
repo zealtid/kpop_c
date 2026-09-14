@@ -1,0 +1,78 @@
+<view class="page">
+  <view class="h1">投稿图鉴</view>
+  <view class="sub">白名单组合内提交单卡，审核通过后进入公开图鉴。卡面必填，卡背可跳过。</view>
+
+  <view wx:if="{{warnings.length}}" class="card warn">
+    <view wx:for="{{warnings}}" wx:key="code" class="muted">{{item.message}}</view>
+  </view>
+
+  <view class="card">
+    <view class="label">组合（仅已开放投稿）</view>
+    <view wx:if="{{groupsEmpty}}" class="muted">当前没有开放投稿的组合</view>
+    <view class="chips">
+      <view
+        class="chip {{groupId===item.id?'on':''}}"
+        wx:for="{{groups}}"
+        wx:key="id"
+        bindtap="pickGroup"
+        data-id="{{item.id}}"
+      >{{item.nameZh}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="label">专辑</view>
+    <view wx:if="{{!groupId}}" class="muted">请先选择组合</view>
+    <view class="chips">
+      <view
+        class="chip {{releaseId===item.id?'on':''}}"
+        wx:for="{{releases}}"
+        wx:key="id"
+        bindtap="pickRelease"
+        data-id="{{item.id}}"
+      >{{item.label}}</view>
+    </view>
+    <view class="label sub-label">成员（选填）</view>
+    <view class="chips">
+      <view class="chip {{memberId===''?'on':''}}" bindtap="pickMember" data-id="">不指定</view>
+      <view
+        class="chip {{memberId===item.id?'on':''}}"
+        wx:for="{{members}}"
+        wx:key="id"
+        bindtap="pickMember"
+        data-id="{{item.id}}"
+      >{{item.nameEn}}</view>
+    </view>
+    <view class="label sub-label">版本</view>
+    <input class="box input" value="{{versionLabel}}" bindinput="onVersion" placeholder="例如 Photobook A / 特典-POB" maxlength="40"/>
+    <view class="label sub-label">卡位 / 名称</view>
+    <input class="box input" value="{{slotLabel}}" bindinput="onSlot" placeholder="例如 成员小卡 01" maxlength="80"/>
+  </view>
+
+  <view class="card">
+    <view class="label">卡面（必填，{{aspectLabel}}）</view>
+    <image wx:if="{{frontPreview}}" class="preview" src="{{frontPreview}}" mode="aspectFill"/>
+    <view wx:else class="ph pick">选图后裁剪</view>
+    <view class="row pick-row">
+      <view class="btn ghost slim" bindtap="pickFront">选卡面</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="label">卡背（可跳过）</view>
+    <image wx:if="{{backPreview}}" class="preview" src="{{backPreview}}" mode="aspectFill"/>
+    <view class="row pick-row">
+      <view class="btn ghost slim" bindtap="pickBack">选卡背</view>
+      <view wx:if="{{backPreview}}" class="btn ghost slim" bindtap="skipBack">跳过</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="row" bindtap="toggleAgree">
+      <view class="chip {{agreed?'on':''}}">{{agreed?'已勾选':'未勾选'}}</view>
+      <view class="muted" style="margin-left:16rpx">我确认图片不侵犯第三方权利，同意审核与去重规则</view>
+    </view>
+  </view>
+
+  <view class="btn {{saving?'off':''}}" bindtap="submit">提交审核</view>
+</view>
