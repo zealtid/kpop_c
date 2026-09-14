@@ -24,7 +24,8 @@ import { ANALYTICS_EVENTS, track } from "./analytics.js";
 import { query } from "./db.js";
 import * as customCards from "./customCards.js";
 import { applyMediaCheckResult } from "./moderation.js";
-import { isSafeCustomMediaParams, readCustomImage } from "./storage.js";
+import { isSafeCustomMediaParams, isSafePendingMediaParams, readCustomImage, readStoredImage } from "./storage.js";
+import * as catalogSubmissions from "./catalogSubmissions.js";
 import * as feed from "./feed.js";
 import * as schedule from "./schedule.js";
 import { parseUtc } from "./time.js";
@@ -111,9 +112,10 @@ export function createApp() {
   });
 
   // ---- catalog (guest readable) ----
-  app.get("/catalog/groups", async (_req, res, next) => {
+  app.get("/catalog/groups", async (req, res, next) => {
     try {
-      res.json({ groups: await catalog.listGroups() });
+      const ugcOpen = req.query.ugc_open === "1" || req.query.ugc_open === "true";
+      res.json({ groups: await catalog.listGroups(ugcOpen ? { ugcOpen: true } : undefined) });
     } catch (e) {
       next(e);
     }
@@ -190,6 +192,48 @@ export function createApp() {
         userId: req.user?.id,
       });
       res.json({ q, templates, empty: templates.length === 0 });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/catalog/templates/:id/report", requireAuth, async (req, res, next) => {
+    try {
+      res.json(
+        await catalogSubmissions.reportTemplate(req.user!.id, req.params.id, req.body?.text || req.body?.reason),
+      );
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/media/ugc-pending", requireAuth, async (req, res, next) => {
+    try {
+      res.json(await catalogSubmissions.uploadPendingMedia(req.user!.id, req.body || {}));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/catalog/submissions", requireAuth, async (req, res, next) => {
+    try {
+      res.json(await catalogSubmissions.createSubmission(req.user!.id, req.body || {}, req.user!.wxOpenid));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/me/catalog-submissions", requireAuth, async (req, res, next) => {
+    try {
+      res.json({ submissions: await catalogSubmissions.listMine(req.user!.id) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/me/catalog-submissions/:id", requireAuth, async (req, res, next) => {
+    try {
+      res.json(await catalogSubmissions.getSubmissionForUser(req.user!.id, req.params.id));
     } catch (e) {
       next(e);
     }
@@ -343,6 +387,21 @@ export function createApp() {
   app.delete("/collection/custom-cards/:id", requireAuth, async (req, res, next) => {
     try {
       res.json(await customCards.deleteCustomCard(req.user!.id, req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/collection/custom-cards/:id/apply-catalog", requireAuth, async (req, res, next) => {
+    try {
+      res.json(
+        await catalogSubmissions.applyFromCustomCard(
+          req.user!.id,
+          req.params.id,
+          req.body || {},
+          req.user!.wxOpenid,
+        ),
+      );
     } catch (e) {
       next(e);
     }
@@ -818,6 +877,68 @@ export function createApp() {
         entityType: "template",
         entityId: result.id,
         payload: { status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/catalog-submissions", requireAdmin, async (req, res, next) => {
+    try {
+      res.json({
+        submissions: await catalogSubmissions.adminList({
+          status: req.query.status as string | undefined,
+          groupId: req.query.groupId as string | undefined,
+          releaseId: req.query.releaseId as string | undefined,
+        }),
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/catalog-submissions/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await catalogSubmissions.adminGet(req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog-submissions/:id/approve", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await catalogSubmissions.approveSubmission(
+        req.params.id,
+        req.body || {},
+        req.ops?.username || "ops",
+      );
+      await writeAuditLog({
+        actor: req.ops,
+        action: "catalog_submission.approve",
+        entityType: "catalog_submission",
+        entityId: req.params.id,
+        payload: { resultTemplateId: result.resultTemplateId, adopt: !!req.body?.adoptSubmissionImage },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog-submissions/:id/reject", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await catalogSubmissions.rejectSubmission(
+        req.params.id,
+        req.body?.reason,
+        req.ops?.username || "ops",
+      );
+      await writeAuditLog({
+        actor: req.ops,
+        action: "catalog_submission.reject",
+        entityType: "catalog_submission",
+        entityId: req.params.id,
+        payload: { reason: req.body?.reason },
       });
       res.json(result);
     } catch (e) {
@@ -1305,6 +1426,25 @@ export function createApp() {
     const dest = path.join(config.dataDir, "cards", path.basename(req.params.file));
     if (!fs.existsSync(dest)) return res.status(404).end();
     res.type("png").sendFile(dest);
+  });
+  app.get("/media/ugc-pending/:userId/:file", async (req, res, next) => {
+    try {
+      const { userId, file } = req.params;
+      if (!isSafePendingMediaParams(userId, file)) {
+        res.status(404).end();
+        return;
+      }
+      const publicPath = `/media/ugc-pending/${userId}/${file}`;
+      const img = await readStoredImage(publicPath);
+      if (!img) {
+        res.status(404).end();
+        return;
+      }
+      res.setHeader("Cache-Control", "private, max-age=300");
+      res.type(img.contentType).send(img.body);
+    } catch (e) {
+      next(e);
+    }
   });
   app.get("/media/custom/:userId/:file", async (req, res, next) => {
     try {

@@ -232,7 +232,7 @@ export async function createDraftTemplate(body: {
 export async function getTemplate(id: string) {
   const r = await query(
     `SELECT t.id, t.code, t.name, t.version, t.is_benefit, t.is_deprecated, t.status,
-            t.main_image_url, t.dedupe_key, t.release_id, t.member_id,
+            t.main_image_url, t.image_back, t.source, t.dedupe_key, t.release_id, t.member_id,
             r.title AS release_title, r.title_zh AS release_title_zh, r.released_on,
             r.group_id, g.slug AS group_slug, g.name_zh AS group_name_zh,
             m.name_en AS member_name_en, m.name_zh AS member_name_zh, m.color AS member_color

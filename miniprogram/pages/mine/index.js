@@ -198,6 +198,14 @@ Page({
     wx.navigateTo({ url: "/pages/settings/index" });
   },
 
+  goSubmit() {
+    wx.navigateTo({ url: "/pages/catalog-submit/index" });
+  },
+
+  goMySubmissions() {
+    wx.navigateTo({ url: "/pages/my-submissions/index" });
+  },
+
   goFeedback() {
     wx.navigateTo({ url: "/pages/feedback/index" });
   },

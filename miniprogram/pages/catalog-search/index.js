@@ -19,6 +19,7 @@ Page({
       const templates = (d.templates || []).map((t) => ({
         ...t,
         mainImageUrl: api.mediaUrl(t.mainImageUrl),
+        imageBack: t.imageBack ? api.mediaUrl(t.imageBack) : "",
         on: false,
       }));
       this.setData({ templates, empty: !!d.empty, selected: [] });

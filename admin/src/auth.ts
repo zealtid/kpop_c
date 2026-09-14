@@ -6,6 +6,7 @@ export type OpsUser = { id: string | null; username: string; role: string; menus
 
 export const DEFAULT_MENUS: Menu[] = [
   { id: "catalog", label: "图鉴" },
+  { id: "submissions", label: "投稿审核" },
   { id: "intel", label: "情报" },
   { id: "tickets", label: "反馈/工单" },
 ];

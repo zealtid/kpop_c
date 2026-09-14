@@ -1,5 +1,6 @@
 import { config } from "./config.js";
 import { query } from "./db.js";
+import { isPendingMediaPath, deleteStoredImage } from "./storage.js";
 
 export const MODERATION_PENDING = "pending";
 export const MODERATION_APPROVED = "approved";
@@ -100,6 +101,7 @@ export async function applyMediaCheckResult(opts: {
   customCardId?: string;
 }) {
   const status = suggestToStatus(opts.suggest);
+  let custom: Record<string, unknown> | null = null;
   if (opts.traceId) {
     const r = await query(
       `UPDATE user_custom_cards
@@ -108,7 +110,32 @@ export async function applyMediaCheckResult(opts: {
        RETURNING id, moderation_status`,
       [opts.traceId, status],
     );
-    return r.rows[0] || null;
+    custom = r.rows[0] || null;
+    if (status === "rejected") {
+      const sub = await query(
+        `SELECT id, image_front, image_back, image_front_thumb, image_back_thumb
+         FROM catalog_submissions
+         WHERE moderation_trace_id = $1 AND status = 'pending_review'`,
+        [opts.traceId],
+      );
+      if (sub.rowCount) {
+        await query(
+          `UPDATE catalog_submissions SET
+             status = 'rejected', reject_reason = '机审未通过', reviewed_at = now(), updated_at = now()
+           WHERE id = $1`,
+          [sub.rows[0].id],
+        );
+        for (const p of [
+          sub.rows[0].image_front,
+          sub.rows[0].image_back,
+          sub.rows[0].image_front_thumb,
+          sub.rows[0].image_back_thumb,
+        ]) {
+          if (p && isPendingMediaPath(String(p))) await deleteStoredImage(String(p));
+        }
+      }
+    }
+    return custom;
   }
   if (opts.customCardId) {
     const r = await query(

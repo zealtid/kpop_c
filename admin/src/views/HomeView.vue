@@ -16,6 +16,7 @@ const greeting = computed(() => {
     <p>当前账号 {{ greeting }}</p>
     <n-space>
       <n-button type="primary" @click="$router.push({ name: 'catalog', params: { tab: 'groups' } })">打开图鉴</n-button>
+      <n-button @click="$router.push({ name: 'submissions' })">投稿审核</n-button>
       <n-button @click="$router.push({ name: 'tickets' })">查看工单</n-button>
     </n-space>
   </n-card>

@@ -1,0 +1,7 @@
+<view class="page">
+  <view class="h1">{{item.slotLabel}}</view>
+  <view class="sub">{{item.statusLabel}}</view>
+  <image wx:if="{{item.imageFront}}" class="preview" src="{{item.imageFront}}" mode="aspectFill"/>
+  <view wx:if="{{item.rejectReason}}" class="card footnote">驳回原因：{{item.rejectReason}}</view>
+  <view class="muted">{{item.groupNameZh}} · {{item.releaseTitle}} · {{item.versionLabel}}</view>
+</view>

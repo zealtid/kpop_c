@@ -24,6 +24,7 @@ export type CatalogFormModel = {
   logoColor: string;
   scopeNote: string;
   isPilot: boolean;
+  ugcOpen: boolean;
   groupId: string;
   color: string;
   sortOrder: number;
@@ -64,6 +65,7 @@ function emptyForm(): CatalogFormModel {
     logoColor: "#ff6b9d",
     scopeNote: "",
     isPilot: true,
+    ugcOpen: false,
     groupId: "",
     color: "#888888",
     sortOrder: 0,
@@ -130,6 +132,7 @@ function hydrate() {
       logoColor: g.logoColor || "#ff6b9d",
       scopeNote: g.scopeNote || "",
       isPilot: g.isPilot !== false,
+      ugcOpen: !!g.ugcOpen,
     });
     return;
   }
@@ -190,6 +193,7 @@ function toPayload(): Record<string, unknown> {
       logoColor: form.logoColor.trim(),
       scopeNote: form.scopeNote.trim(),
       isPilot: form.isPilot,
+      ugcOpen: form.ugcOpen,
     };
   }
   if (props.tab === "members") {
@@ -266,6 +270,9 @@ function close() {
         </n-form-item>
         <n-form-item>
           <n-checkbox v-model:checked="form.isPilot">试点组合</n-checkbox>
+        </n-form-item>
+        <n-form-item>
+          <n-checkbox v-model:checked="form.ugcOpen">开放 UGC 投稿</n-checkbox>
         </n-form-item>
       </template>
 

@@ -11,6 +11,7 @@ Page({
     conditions: cardCondition.CONDITIONS,
     saving: false,
     missing: false,
+    showingBack: false,
   },
   onLoad(q) {
     this.setData({ id: q.id || "" });
@@ -25,7 +26,11 @@ Page({
       .then((card) => {
         this.setData({
           missing: false,
-          card: { ...card, mainImageUrl: api.mediaUrl(card.mainImageUrl) },
+          card: {
+            ...card,
+            mainImageUrl: api.mediaUrl(card.mainImageUrl),
+            imageBack: card.imageBack ? api.mediaUrl(card.imageBack) : "",
+          },
           quantity: cardCondition.clampQuantity(card.quantity),
           condition: card.condition || "",
           notes: card.notes || "",
@@ -79,5 +84,27 @@ Page({
         this.setData({ saving: false });
         api.handleWriteError(err);
       });
+  },
+  flip() {
+    this.setData({ showingBack: !this.data.showingBack });
+  },
+  report() {
+    if (!this.data.id) return;
+    wx.showModal({
+      title: "举报",
+      editable: true,
+      placeholderText: "请说明原因",
+      success: (res) => {
+        if (!res.confirm) return;
+        api
+          .request({
+            url: `/catalog/templates/${this.data.id}/report`,
+            method: "POST",
+            data: { text: res.content || "用户举报" },
+          })
+          .then(() => wx.showToast({ title: "已提交" }))
+          .catch(api.handleWriteError);
+      },
+    });
   },
 });

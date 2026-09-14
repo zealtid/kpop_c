@@ -202,3 +202,160 @@ export function isSafeCustomMediaParams(userId: string, file: string) {
     /^[0-9a-f-]{36}-(front|back)\.(jpe?g|png|webp)$/i.test(file)
   );
 }
+
+export function publicPendingPath(userId: string, fileName: string) {
+  return `/media/ugc-pending/${userId}/${fileName}`;
+}
+
+function storageKey(publicPath: string) {
+  if (publicPath.startsWith("/media/custom/")) {
+    return `custom/${publicPath.replace(/^\/media\/custom\//, "")}`;
+  }
+  if (publicPath.startsWith("/media/ugc-pending/")) {
+    return `ugc-pending/${publicPath.replace(/^\/media\/ugc-pending\//, "")}`;
+  }
+  if (publicPath.startsWith("/media/cards/")) {
+    return `cards/${publicPath.replace(/^\/media\/cards\//, "")}`;
+  }
+  return publicPath.replace(/^\//, "");
+}
+
+function localFile(publicPath: string) {
+  if (publicPath.startsWith("/media/custom/")) {
+    return localPathFromPublic(publicPath);
+  }
+  if (publicPath.startsWith("/media/ugc-pending/")) {
+    return path.join(config.dataDir, "ugc-pending", publicPath.replace(/^\/media\/ugc-pending\//, ""));
+  }
+  if (publicPath.startsWith("/media/cards/")) {
+    return path.join(config.dataDir, "cards", path.basename(publicPath));
+  }
+  return path.join(config.dataDir, publicPath.replace(/^\//, ""));
+}
+
+async function putObject(publicPath: string, body: Buffer, contentType: string) {
+  const client = getS3();
+  if (client) {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: config.bucket,
+        Key: storageKey(publicPath),
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+    return;
+  }
+  const dest = localFile(publicPath);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, body);
+}
+
+export async function readStoredImage(publicPath: string): Promise<{ body: Buffer; contentType: string } | null> {
+  if (publicPath.startsWith("/media/custom/")) return readCustomImage(publicPath);
+  if (!publicPath.startsWith("/media/ugc-pending/") && !publicPath.startsWith("/media/cards/")) {
+    return null;
+  }
+  const client = getS3();
+  if (client) {
+    try {
+      const out = await client.send(
+        new GetObjectCommand({
+          Bucket: config.bucket,
+          Key: storageKey(publicPath),
+        }),
+      );
+      const bytes = out.Body ? await out.Body.transformToByteArray() : null;
+      if (!bytes) return null;
+      return { body: Buffer.from(bytes), contentType: out.ContentType || "image/jpeg" };
+    } catch {
+      return null;
+    }
+  }
+  const dest = localFile(publicPath);
+  if (!fs.existsSync(dest)) return null;
+  const ext = path.extname(dest).toLowerCase();
+  const contentType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+  return { body: fs.readFileSync(dest), contentType };
+}
+
+export async function deleteStoredImage(publicPath: string | null | undefined) {
+  if (!publicPath) return;
+  if (publicPath.startsWith("/media/custom/")) {
+    await deleteCustomImage(publicPath);
+    return;
+  }
+  if (!publicPath.startsWith("/media/ugc-pending/") && !publicPath.startsWith("/media/cards/")) {
+    return;
+  }
+  const client = getS3();
+  if (client) {
+    try {
+      await client.send(
+        new DeleteObjectCommand({
+          Bucket: config.bucket,
+          Key: storageKey(publicPath),
+        }),
+      );
+    } catch {
+      // 幂等
+    }
+    return;
+  }
+  const dest = localFile(publicPath);
+  if (fs.existsSync(dest)) fs.unlinkSync(dest);
+}
+
+async function makeThumb(buffer: Buffer) {
+  const out = await sharp(buffer).rotate().resize(400, 400, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer();
+  return { buffer: out, contentType: "image/jpeg", ext: "jpg" };
+}
+
+export async function savePendingImage(opts: {
+  userId: string;
+  id: string;
+  buffer?: Buffer;
+  base64?: string;
+  mimeType?: string;
+  side?: "front" | "back";
+}) {
+  const parsed = parseImagePayload({
+    buffer: opts.buffer,
+    base64: opts.base64,
+    mimeType: opts.mimeType,
+  });
+  const normalized = await normalizeImage(parsed.buffer, parsed.mimeType);
+  const side = opts.side === "back" ? "back" : "front";
+  const fileName = `${opts.id}-${side}.${normalized.ext}`;
+  const thumbName = `${opts.id}-${side}-thumb.jpg`;
+  const publicPath = publicPendingPath(opts.userId, fileName);
+  const thumbPath = publicPendingPath(opts.userId, thumbName);
+  await putObject(publicPath, normalized.buffer, normalized.contentType);
+  const thumb = await makeThumb(normalized.buffer);
+  await putObject(thumbPath, thumb.buffer, thumb.contentType);
+  return {
+    publicPath,
+    thumbPath,
+    buffer: normalized.buffer,
+    contentType: normalized.contentType,
+  };
+}
+
+export async function copyPendingToPublicCards(pendingPath: string, fileName: string) {
+  const img = await readStoredImage(pendingPath);
+  if (!img) throw badRequest("待审图片不存在或已删除");
+  const publicPath = `/media/cards/${fileName}`;
+  await putObject(publicPath, img.body, img.contentType);
+  return publicPath;
+}
+
+export function isSafePendingMediaParams(userId: string, file: string) {
+  return (
+    /^[0-9a-f-]{36}$/i.test(userId) &&
+    /^[0-9a-f-]{36}-(front|back)(-thumb)?\.(jpe?g|png|webp)$/i.test(file)
+  );
+}
+
+export function isPendingMediaPath(publicPath: string) {
+  return publicPath.startsWith("/media/ugc-pending/");
+}

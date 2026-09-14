@@ -11,6 +11,7 @@ export type Group = {
   logoColor?: string;
   scopeNote?: string | null;
   isPilot?: boolean;
+  ugcOpen?: boolean;
   status: string;
 };
 
