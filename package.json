@@ -4,16 +4,19 @@
   "description": "星卡：管理你的偶像小卡，浏览图鉴，生成卡册长图。",
   "workspaces": [
     "api",
-    "admin"
+    "admin",
+    "h5"
   ],
   "scripts": {
     "dev": "npm run dev -w api",
     "dev:admin": "npm run dev -w admin",
+    "dev:h5": "npm run dev -w h5",
     "start": "npm run start -w api",
     "migrate": "npm run migrate -w api",
     "seed": "npm run seed -w api",
     "test": "npm test -w api",
-    "build:admin": "npm run build -w admin"
+    "build:admin": "npm run build -w admin",
+    "build:h5": "npm run build -w h5"
   },
   "engines": {
     "node": ">=20"

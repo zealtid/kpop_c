@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isAllowedCorsOrigin, parseCorsOrigins } from "../src/cors.js";
+import { isAllowedCorsOrigin, originFromPublicUrl, parseCorsOrigins } from "../src/cors.js";
 
 test("CORS allows missing Origin (non-browser / mini-program)", () => {
   assert.equal(isAllowedCorsOrigin(undefined), true);
@@ -32,6 +32,13 @@ test("CORS denies unrelated origins unless listed in CORS_ORIGINS", () => {
     true,
   );
   assert.equal(isAllowedCorsOrigin("https://ops.example.com", ["https://other.example"]), false);
+});
+
+test("originFromPublicUrl extracts Origin for H5 CORS", () => {
+  assert.equal(originFromPublicUrl("https://h5.example.com/"), "https://h5.example.com");
+  assert.equal(originFromPublicUrl("https://h5-production.up.railway.app"), "https://h5-production.up.railway.app");
+  assert.equal(originFromPublicUrl(""), undefined);
+  assert.equal(originFromPublicUrl("not-a-url"), undefined);
 });
 
 test("parseCorsOrigins splits comma-separated extras", () => {

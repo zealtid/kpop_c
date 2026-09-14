@@ -3,15 +3,29 @@ import express from "express";
 import cors from "cors";
 import fs from "node:fs";
 import path from "node:path";
-import { config } from "./config.js";
+import { config, mockWxWebLoginEnabled } from "./config.js";
 import { isAllowedCorsOrigin } from "./cors.js";
 import { AppError } from "./errors.js";
-import { optionalAuth, requireAuth, wxLogin, getUser, publicUser, updateUser, saveUserAvatar } from "./auth.js";
+import {
+  optionalAuth,
+  requireAuth,
+  wxLogin,
+  wxWebLogin,
+  wxWebAuthorizeUrl,
+  readWxWebState,
+  h5AuthReturnUrl,
+  getUser,
+  publicUser,
+  updateUser,
+  saveUserAvatar,
+} from "./auth.js";
 import { requireAdmin, requireOpsSession, loginOps, getOpsMe, clearOpsCookie, setOpsCookie } from "./opsAuth.js";
 import { listAuditLogs, writeAuditLog } from "./audit.js";
 import * as catalog from "./catalog.js";
 import * as collection from "./collection.js";
 import { createShareImage } from "./share.js";
+import { getShareSummary, h5LandingUrl, shareCta } from "./shareSummary.js";
+import { renderShareLandingHtml } from "./shareLanding.js";
 import * as admin from "./admin.js";
 import * as adminCatalog from "./adminCatalog.js";
 import { previewOrCommitImport } from "./importValidate.js";
@@ -59,7 +73,51 @@ export function createApp() {
   // ---- auth ----
   app.post("/auth/wx-login", async (req, res, next) => {
     try {
-      res.json(await wxLogin(String(req.body?.code || "")));
+      res.json(await wxLogin(String(req.body?.code || ""), { unionId: req.body?.unionId }));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/auth/wx-web-login", async (req, res, next) => {
+    try {
+      res.json(await wxWebLogin(String(req.body?.code || ""), { unionId: req.body?.unionId }));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/auth/wx-web/start", (req, res, next) => {
+    try {
+      const url = wxWebAuthorizeUrl(String(req.query.returnTo || req.query.return || ""));
+      if (req.query.format === "json" || String(req.headers.accept || "").includes("application/json")) {
+        res.json({ url, mock: !config.wxWebAppId || !config.wxWebSecret });
+        return;
+      }
+      res.redirect(url);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/auth/wx-web/callback", async (req, res, next) => {
+    try {
+      const code = String(req.query.code || "");
+      const state = String(req.query.state || "");
+      const parsed = state ? readWxWebState(state) : { typ: "wx-web" as const, returnTo: "/" };
+      const result = await wxWebLogin(code);
+      if (req.query.format === "json" || String(req.headers.accept || "").includes("application/json")) {
+        res.json({ ...result, returnTo: parsed.returnTo || "/" });
+        return;
+      }
+      if (config.h5PublicUrl) {
+        res.redirect(h5AuthReturnUrl(result.token, parsed.returnTo));
+        return;
+      }
+      res.type("html").send(
+        `<!doctype html><meta charset="utf-8"><title>星卡</title>
+         <body style="font-family:sans-serif;padding:24px">已授权，请返回星卡页面。</body>`,
+      );
     } catch (e) {
       next(e);
     }
@@ -152,8 +210,26 @@ export function createApp() {
 
   app.get("/catalog/releases/:id/templates", async (req, res, next) => {
     try {
+      await catalog.getRelease(req.params.id, { requirePublished: true });
       const templates = await catalog.searchTemplates({ releaseId: req.params.id });
       res.json({ templates });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/catalog/releases/:id", async (req, res, next) => {
+    try {
+      const release = await catalog.getRelease(req.params.id, { requirePublished: true });
+      res.json({ release });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/catalog/templates/:id", async (req, res, next) => {
+    try {
+      res.json({ template: await catalog.getPublicTemplate(req.params.id) });
     } catch (e) {
       next(e);
     }
@@ -436,11 +512,87 @@ export function createApp() {
     }
   });
 
-  app.get("/share/landing", (req, res) => {
-    res.type("html").send(
-      `<!doctype html><meta charset="utf-8"><title>星卡</title>
-       <body style="font-family:sans-serif;padding:24px">请使用微信打开星卡小程序（M1 无 Web 客户端）。group=${String(req.query.g || "")}</body>`,
-    );
+  app.get("/h5/bootstrap", (_req, res) => {
+    res.json({
+      webOAuth: Boolean(config.wxWebAppId) || mockWxWebLoginEnabled,
+      mockAuth: mockWxWebLoginEnabled,
+      mini: {
+        appId: config.wxAppId || null,
+        ghId: config.wxMiniGhId || null,
+        urlScheme: config.wxUrlScheme || null,
+      },
+      cta: shareCta(),
+      publicBaseUrl: config.publicBaseUrl,
+    });
+  });
+
+  app.get("/share/summary", async (req, res, next) => {
+    try {
+      res.json(
+        await getShareSummary({
+          g: req.query.g as string | undefined,
+          r: req.query.r as string | undefined,
+          t: req.query.t as string | undefined,
+        }),
+      );
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/share/landing", async (req, res, next) => {
+    try {
+      const input = {
+        g: req.query.g as string | undefined,
+        r: req.query.r as string | undefined,
+        t: req.query.t as string | undefined,
+      };
+      if (!input.g && !input.r && !input.t) {
+        input.g = "";
+      }
+      const wantsJson = req.query.format === "json" || String(req.headers.accept || "").includes("application/json");
+      if (wantsJson && (input.g || input.r || input.t)) {
+        res.json(await getShareSummary(input));
+        return;
+      }
+      const h5Url = req.query.noredirect ? null : h5LandingUrl(input);
+      if (h5Url && (input.g || input.r || input.t)) {
+        res.redirect(h5Url);
+        return;
+      }
+      if (!input.g && !input.r && !input.t) {
+        res.type("html").send(renderShareLandingHtml({
+          kind: "group",
+          group: {
+            id: "",
+            slug: "",
+            nameZh: "星卡",
+            nameEn: "Xingka",
+            logoColor: "#6B5CFF",
+            scopeNote: null,
+            publishedReleaseCount: 0,
+            publishedTemplateCount: 0,
+            releases: [],
+          },
+          mini: { path: "pages/catalog/index", query: "", page: "pages/catalog/index" },
+          cta: shareCta(),
+        }));
+        return;
+      }
+      const summary = await getShareSummary(input);
+      const catalogUrl = h5LandingUrl(input);
+      res.type("html").send(renderShareLandingHtml(summary, { catalogUrl }));
+    } catch (e) {
+      if (e instanceof AppError && e.status === 404 && req.query.format !== "json") {
+        res.status(404).type("html").send(
+          `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+           <title>星卡</title><body style="font-family:sans-serif;padding:24px;background:#F4F5F9">
+           <p>未找到已发布内容。请使用微信打开星卡小程序。</p></body>`,
+        );
+        return;
+      }
+      next(e);
+    }
   });
 
   // ---- feed (M2-a: API only, no mini-program UI) ----

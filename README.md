@@ -2,7 +2,7 @@
 
 星卡是微信小程序小卡图鉴。仓库路径：[`github.com/zealtid/kpop_c`](https://github.com/zealtid/kpop_c)。
 
-C 端只有微信小程序；M2.5 OPS-0 起另有独立 **Web 运营后台**（`admin/`），与小程序分离。后端是 Node.js + PostgreSQL。
+C 端主路径是微信小程序；另有只读 **H5**（`h5/`，UGC-2a / H5-1 分享落地 + 微信内图鉴浏览）和独立 **Web 运营后台**（`admin/`）。后端是 Node.js + PostgreSQL。
 
 首个落地切片：**schema + mock 微信登录 + H2H / BTS《ARIRANG》种子图鉴 + 拥有/想要/进度 + 卡册长图**。Path B（搜专辑 → 多选拥有 → 进度更新）可在 API 测试中一次性跑通。
 
@@ -31,7 +31,8 @@ npm run migrate
 npm run seed          # H2H 样品 + BTS ARIRANG 切片 + 占位卡图
 npm run dev           # API :3000，启动时默认会再跑一遍幂等 seed
 npm run dev:admin     # 运营后台 Vite :5173（代理 /admin 到 API）
-npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 / OPS-3 行为测试
+npm run dev:h5        # C 端 H5 Vite :5174（代理 /catalog /share /auth 到 API）
+npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS / H5 行为测试
 ```
 
 也可用 `docker compose up --build` 拉起 postgres + API。
@@ -93,14 +94,14 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS-0 / OPS-1 / OPS-2 / 
 
 | 职责 | 方法 / 路径 |
 | --- | --- |
-| 登录 / 我 | `POST /auth/wx-login` `GET\|PATCH /me` |
+| 登录 / 我 | `POST /auth/wx-login` `POST /auth/wx-web-login` `GET /auth/wx-web/start` `GET\|PATCH /me` |
 | 关注 | `GET\|PUT /me/follows` |
 | 图鉴 | `GET /catalog/groups`（`?ugc_open=1` 仅白名单） `.../members` `.../releases` `GET /catalog/releases/:id/templates` `GET /catalog/search` `GET /catalog/templates` |
 | 投稿 | `POST /media/ugc-pending` `POST /catalog/submissions` `GET /me/catalog-submissions` `GET /me/catalog-submissions/:id` `POST /collection/custom-cards/:id/apply-catalog` `POST /catalog/templates/:id/report` |
 | 卡册 | `GET /collection/overview` `GET /collection/groups/:id` `.../progress` |
 | 拥有 | `POST /collection/cards` `POST /collection/cards/batch` `PATCH\|DELETE /collection/cards/:templateId` |
 | 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
-| 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }` |
+| 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }`；公开落地 `GET /share/landing` `GET /share/summary`（已发布摘要） |
 | 反馈 | `POST /feedback/missing` `{ text }`（仅文字；不返回工单进度） |
 | 管理 | `POST /admin/import` `POST /admin/import/validate` `GET /admin/completeness` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`（组合含 `ugcOpen`）；UGC 审核 `GET /admin/catalog-submissions` `POST .../approve\|reject`；缺卡工单 `GET\|PATCH /admin/tickets` `POST /admin/tickets/:id/templates`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
 | OPS 登录 | `POST /admin/auth/login` `GET /admin/auth/me` `POST /admin/auth/logout` `GET /admin/audit` |
@@ -149,6 +150,7 @@ api/                 Express + pg + sharp 分享长图
   src/               路由与领域逻辑
   tests/             M1 / M2-a / OPS-0 / OPS-1 / OPS-2 / OPS-3
 admin/               独立 Web 运营后台（Vite：图鉴 CRUD + 完整度 + 导入 + 缺卡工单 + 情报只读）
+h5/                  C 端只读 H5（分享落地 + 微信内图鉴浏览；无投稿/交易）
 miniprogram/         微信小程序
 project.config.json  微信开发者工具打开仓库根目录用
 docker-compose.yml
@@ -282,6 +284,42 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 npm run build:admin   # 本地确认 dist/；需设置 VITE_API_BASE
 ```
 
+## UGC-2a / H5-1 只读 H5
+
+分享图二维码指向 `GET /share/landing?g={slug}`。该地址现在返回已发布组合/发行/模板摘要，并引导打开小程序；配置了 `H5_PUBLIC_URL` 时 302 到 H5 SPA。
+
+| 能力 | 说明 |
+| --- | --- |
+| 未登录落地 | `GET /share/summary` / `/share/landing` 仅已发布图鉴，不含私人卡册、待审 UGC、工单内部备注 |
+| 打开小程序 | CTA + 复制路径；可选 `WX_URL_SCHEME` / `WX_MINI_GH_ID`。卡册长图分享仍无独立公开链，本切片不接 |
+| 非微信 | 只展示摘要与打开引导，无登录 UI、无写入口 |
+| 微信授权 | `POST /auth/wx-web-login` / `GET /auth/wx-web/start`；用 **unionid** 对齐小程序 `user_id`（需开放平台绑定） |
+| 图鉴浏览 | 复用现有 `/catalog/...`（published-only）；搜索走 `/catalog/search` |
+
+### 本地打开 H5
+
+```bash
+npm run dev          # API :3000
+npm run dev:h5       # http://localhost:5174
+# 非微信浏览器只看落地页。本地调试图鉴：localStorage.xingka_force_wechat=1 或 URL ?wx=1
+```
+
+### 生产部署（Railway 静态服务 `h5`）
+
+与 Admin 一样独立服务托管 `h5/` 的 Vite `dist/`，不要挂在 API 路径下。
+
+1. Railway 项目新增服务 **`h5`**，Root Directory：`/h5`，Builder：Dockerfile（`h5/Dockerfile`）。
+2. 构建变量：`VITE_API_BASE=https://<api-host>`
+3. Generate Domain，得到 `https://<h5-service>.up.railway.app`
+4. API 变量：`H5_PUBLIC_URL=https://<h5-host>`（自动加入 CORS）；`PUBLIC_BASE_URL` 仍指向 API（二维码域名）
+5. 微信公众平台：网页授权回调域名填 API host；`WX_WEB_APPID` / `WX_WEB_SECRET` / `WX_WEB_REDIRECT_URI=https://<api-host>/auth/wx-web/callback`
+6. 将小程序与公众号绑定同一开放平台，否则 unionid 对不齐，H5 会建成独立 `web:` 用户
+7. 自定义 H5 域名再写入 API `CORS_ORIGINS`
+
+```bash
+npm run build:h5     # 本地确认 dist/；需设置 VITE_API_BASE
+```
+
 ## 明确不做（M1 之外）
 
-订阅消息 Worker、微博爬虫、缺卡清单页（C 端进度）、交易、投稿审核、好友关系、AI。
+订阅消息 Worker、微博爬虫、缺卡清单页（C 端进度）、交易、投稿审核、好友关系、AI。H5-2 投稿壳、UGC-2b 四宫/九宫、UGC-2c 票务深链不在本切片。
