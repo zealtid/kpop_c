@@ -38,7 +38,13 @@ import { ANALYTICS_EVENTS, track } from "./analytics.js";
 import { query } from "./db.js";
 import * as customCards from "./customCards.js";
 import { applyMediaCheckResult } from "./moderation.js";
-import { isSafeCustomMediaParams, isSafePendingMediaParams, readCustomImage, readStoredImage } from "./storage.js";
+import {
+  isSafeCardsMediaFile,
+  isSafeCustomMediaParams,
+  isSafePendingMediaParams,
+  readCustomImage,
+  readStoredImage,
+} from "./storage.js";
 import * as catalogSubmissions from "./catalogSubmissions.js";
 import * as feed from "./feed.js";
 import * as schedule from "./schedule.js";
@@ -1574,10 +1580,23 @@ export function createApp() {
     if (!fs.existsSync(dest)) return res.status(404).end();
     res.type("png").sendFile(dest);
   });
-  app.get("/media/cards/:file", (req, res) => {
-    const dest = path.join(config.dataDir, "cards", path.basename(req.params.file));
-    if (!fs.existsSync(dest)) return res.status(404).end();
-    res.type("png").sendFile(dest);
+  app.get("/media/cards/:file", async (req, res, next) => {
+    try {
+      const file = path.basename(req.params.file);
+      if (!isSafeCardsMediaFile(file)) {
+        res.status(404).end();
+        return;
+      }
+      const img = await readStoredImage(`/media/cards/${file}`);
+      if (!img) {
+        res.status(404).end();
+        return;
+      }
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.type(img.contentType).send(img.body);
+    } catch (e) {
+      next(e);
+    }
   });
   app.get("/media/ugc-pending/:userId/:file", async (req, res, next) => {
     try {

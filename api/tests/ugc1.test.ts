@@ -4,6 +4,7 @@
  */
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
@@ -212,8 +213,16 @@ test("U1-05/08/10 approve creates published template and grants own", async () =
   assert.ok(resultId);
 
   const tpl = await api(`/catalog/templates?q=${encodeURIComponent("UGC New Slot")}`);
-  const templates = (tpl.body as { templates: { id: string; status: string }[] }).templates;
-  assert.ok(templates.some((t) => t.id === resultId && t.status === "published"));
+  const templates = (tpl.body as { templates: { id: string; status: string; mainImageUrl?: string }[] }).templates;
+  const published = templates.find((t) => t.id === resultId && t.status === "published");
+  assert.ok(published);
+  assert.ok(published.mainImageUrl && published.mainImageUrl.startsWith("/media/cards/"));
+
+  const imgRes = await fetch(base + published.mainImageUrl);
+  assert.equal(imgRes.status, 200);
+  assert.match(imgRes.headers.get("content-type") || "", /^image\//);
+  const bytes = Buffer.from(await imgRes.arrayBuffer());
+  assert.ok(bytes.length > 100);
 
   const owned = await api(`/collection/cards/${resultId}`);
   assert.equal(owned.status, 200);
@@ -319,6 +328,41 @@ test("U1-07 merge keeps official image unless adopt_submission_image", async () 
   });
   const swapped = await query("SELECT main_image_url FROM templates WHERE id = $1", [templateId]);
   assert.notEqual(swapped.rows[0].main_image_url, official);
+});
+
+test("merge fills empty official main image without adopt flag", async () => {
+  const tplId = randomUUID();
+  const version = "UGC-Empty-Main";
+  await query(
+    `INSERT INTO templates (id, release_id, member_id, code, name, version, is_benefit, is_deprecated, status, main_image_url, dedupe_key)
+     VALUES ($1,$2,$3,'UGC-EMPTY','Empty Main',$4,false,false,'published',NULL,'h2h:The Chase:Carmen:UGC-Empty-Main')`,
+    [tplId, CHASE, CARMEN, version],
+  );
+  const front = await uploadFront(71);
+  const created = await api("/catalog/submissions", {
+    method: "POST",
+    body: JSON.stringify({
+      groupId: GROUP_H2H,
+      releaseId: CHASE,
+      memberId: CARMEN,
+      versionLabel: version,
+      slotLabel: "Empty Main Slot",
+      imageFront: front.path,
+      agreementAccepted: true,
+    }),
+  });
+  assert.equal(created.status, 200, JSON.stringify(created.body));
+  const id = (created.body as { id: string }).id;
+  const approved = await api(`/admin/catalog-submissions/${id}/approve`, {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({ mergeTemplateId: tplId, adoptSubmissionImage: false }),
+  });
+  assert.equal(approved.status, 200, JSON.stringify(approved.body));
+  const row = await query("SELECT main_image_url FROM templates WHERE id = $1", [tplId]);
+  assert.match(String(row.rows[0].main_image_url || ""), /^\/media\/cards\//);
+  const imgRes = await fetch(base + String(row.rows[0].main_image_url));
+  assert.equal(imgRes.status, 200);
 });
 
 test("U1-08 apply-catalog copies into pending prefix and keeps custom card", async () => {

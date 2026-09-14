@@ -487,7 +487,8 @@ export async function approveSubmission(
       );
       const sets = ["phash_front = COALESCE(phash_front, $2)"];
       const params: unknown[] = [mergeId, phash];
-      if (adopt) {
+      const currentUrl = current.rows[0]?.main_image_url;
+      if (adopt || !currentUrl) {
         params.push(publicFront);
         sets.push(`main_image_url = $${params.length}`);
       }

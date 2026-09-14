@@ -10,7 +10,7 @@ import { getGroup } from "./catalog.js";
 import { track } from "./analytics.js";
 import { PROGRESS_COPY, progressForGroups } from "./collection.js";
 import { listShareableCustomCards } from "./customCards.js";
-import { readCustomImage } from "./storage.js";
+import { readStoredImage } from "./storage.js";
 
 const COLS = 3;
 const CARD_W = 210;
@@ -161,13 +161,8 @@ export async function createShareImage(userId: string, groupKey: string) {
 }
 
 async function loadShareCardImage(publicPath: string): Promise<Buffer | null> {
-  const custom = await readCustomImage(publicPath);
-  if (custom) return custom.body;
-  if (publicPath.startsWith("/media/cards/")) {
-    const dest = path.join(config.dataDir, "cards", path.basename(publicPath));
-    if (fs.existsSync(dest)) return fs.readFileSync(dest);
-  }
-  return null;
+  const img = await readStoredImage(publicPath);
+  return img ? img.body : null;
 }
 
 function shareSvg(opts: {

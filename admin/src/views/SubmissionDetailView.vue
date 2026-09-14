@@ -15,7 +15,7 @@ import {
 } from "naive-ui";
 import { useRoute, useRouter } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
-import { errorMessage } from "../api";
+import { errorMessage, mediaUrl } from "../api";
 import { loadCatalogLookups } from "../catalog/api";
 import {
   approveSubmission,
@@ -43,9 +43,7 @@ const members = ref<{ label: string; value: string }[]>([]);
 const id = computed(() => String(route.params.id || ""));
 
 function mediaSrc(path: string | null | undefined) {
-  if (!path) return "";
-  if (/^https?:\/\//.test(path)) return path;
-  return path;
+  return mediaUrl(path);
 }
 
 async function refresh() {

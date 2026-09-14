@@ -41,3 +41,10 @@ export function errorMessage(body: unknown, fallback = "请求失败") {
   const msg = (body as ApiError)?.error?.message;
   return msg || fallback;
 }
+
+/** 相对媒体路径拼 API 源；线上 Admin 与 API 不同源，不能直接用 /media/...。 */
+export function mediaUrl(path: string | null | undefined) {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return apiBase() + path;
+}

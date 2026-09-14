@@ -359,3 +359,8 @@ export function isSafePendingMediaParams(userId: string, file: string) {
 export function isPendingMediaPath(publicPath: string) {
   return publicPath.startsWith("/media/ugc-pending/");
 }
+
+/** 公开图鉴主图文件名：仅 basename，禁止路径穿越。 */
+export function isSafeCardsMediaFile(file: string) {
+  return file === path.basename(file) && /^[A-Za-z0-9._-]+\.(jpe?g|png|webp)$/i.test(file);
+}

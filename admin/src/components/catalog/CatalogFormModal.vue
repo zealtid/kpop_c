@@ -12,6 +12,7 @@ import {
   NSelect,
   NSpace,
 } from "naive-ui";
+import { mediaUrl } from "../../api";
 import type { CatalogCrudTab, Group, Member, Release, Template } from "../../catalog/types";
 import { RELEASE_KINDS } from "../../catalog/types";
 
@@ -109,6 +110,8 @@ const dedupeKey = computed(() => {
   if (props.tab !== "templates" || !props.editing) return "";
   return (props.editing as Template).dedupeKey || "";
 });
+
+const mainImagePreview = computed(() => mediaUrl(form.mainImageUrl));
 
 function hydrate() {
   const next = emptyForm();
@@ -342,6 +345,7 @@ function close() {
         <n-form-item label="主图 URL">
           <n-input v-model:value="form.mainImageUrl" placeholder="/media/cards/xxx.png" />
         </n-form-item>
+        <img v-if="mainImagePreview" class="preview" :src="mainImagePreview" alt="主图预览" />
         <n-form-item>
           <n-checkbox v-model:checked="form.isBenefit">特典</n-checkbox>
         </n-form-item>
@@ -362,6 +366,14 @@ function close() {
 .muted {
   color: var(--color-text-secondary);
   font-size: 13px;
+  margin: 0 0 12px;
+}
+.preview {
+  width: 140px;
+  height: 196px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #eee;
   margin: 0 0 12px;
 }
 </style>
