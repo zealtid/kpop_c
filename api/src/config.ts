@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCorsOrigins } from "./cors.js";
+import { originFromPublicUrl, parseCorsOrigins } from "./cors.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(here, "../../.env") });
@@ -25,7 +25,18 @@ export const config = {
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
   /** Extra CORS origins (comma-separated). localhost and *.up.railway.app are always allowed. */
-  corsOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
+  corsOrigins: parseCorsOrigins(
+    [process.env.CORS_ORIGINS, originFromPublicUrl(process.env.H5_PUBLIC_URL)].filter(Boolean).join(","),
+  ),
+  /** Public H5 origin (Railway `h5` service). Used to redirect QR `/share/landing` and OAuth return. */
+  h5PublicUrl: (process.env.H5_PUBLIC_URL || "").replace(/\/$/, ""),
+  /** Official Account / website-app credentials for WeChat web OAuth (H5). Distinct from WX_APPID. */
+  wxWebAppId: process.env.WX_WEB_APPID || "",
+  wxWebSecret: process.env.WX_WEB_SECRET || "",
+  wxWebRedirectUri: process.env.WX_WEB_REDIRECT_URI || "",
+  /** Optional static URL Scheme / 原始 ID for「打开小程序」CTA. */
+  wxUrlScheme: process.env.WX_URL_SCHEME || "",
+  wxMiniGhId: process.env.WX_MINI_GH_ID || "",
   /**
    * Optional A07 constraint: `bts:<uuid>[,<uuid>]`. Read live from env in catalogConstraints
    * so tests can toggle it. Documented here for operators.
@@ -44,3 +55,5 @@ export const config = {
 
 export const isProd = config.nodeEnv === "production";
 export const mockWxLoginEnabled = !isProd || !config.wxAppId || !config.wxSecret;
+/** H5 网页授权：未配 WX_WEB_APPID/SECRET 时走 mock（与小程序 mock 对齐）。 */
+export const mockWxWebLoginEnabled = !isProd || !config.wxWebAppId || !config.wxWebSecret;

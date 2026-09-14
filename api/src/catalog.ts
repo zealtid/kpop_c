@@ -106,6 +106,30 @@ export async function getRelease(id: string, opts?: { requirePublished?: boolean
   return mapRelease(row);
 }
 
+/** Guest catalog: published template only. Draft / unpublished parent → 404. */
+export async function getPublicTemplate(id: string) {
+  const r = await query(
+    `SELECT t.id, t.code, t.name, t.version, t.is_benefit, t.is_deprecated, t.status,
+            t.main_image_url, t.dedupe_key, t.release_id, t.member_id,
+            r.title AS release_title, r.title_zh AS release_title_zh, r.released_on,
+            r.status AS release_status, r.group_id,
+            g.slug AS group_slug, g.name_zh AS group_name_zh, g.status AS group_status,
+            m.name_en AS member_name_en, m.name_zh AS member_name_zh, m.color AS member_color
+     FROM templates t
+     JOIN releases r ON r.id = t.release_id
+     JOIN idol_groups g ON g.id = r.group_id
+     LEFT JOIN members m ON m.id = t.member_id
+     WHERE t.id::text = $1`,
+    [id],
+  );
+  const row = r.rows[0];
+  if (!row) throw notFound("卡片不存在");
+  if (row.status !== "published" || row.release_status !== "published" || row.group_status !== "published") {
+    throw notFound("卡片不存在");
+  }
+  return mapTemplate(row);
+}
+
 type SearchOpts = {
   q?: string;
   groupId?: string;

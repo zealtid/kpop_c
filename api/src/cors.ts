@@ -1,3 +1,14 @@
+/** Public URL → Origin string for CORS / OAuth allowlists. */
+export function originFromPublicUrl(raw: string | undefined | null): string | undefined {
+  const value = String(raw || "").trim();
+  if (!value) return undefined;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Extra origins from CORS_ORIGINS (comma-separated, exact Origin strings). */
 export function parseCorsOrigins(raw: string | undefined): string[] {
   return (raw || "")

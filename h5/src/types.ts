@@ -1,0 +1,86 @@
+export type ShareSummary = {
+  kind: "group" | "release" | "template";
+  group?: {
+    id: string;
+    slug: string;
+    nameZh: string;
+    nameEn: string;
+    logoColor: string;
+    scopeNote: string | null;
+    publishedReleaseCount: number;
+    publishedTemplateCount: number;
+    releases: { id: string; title: string; titleZh: string | null; releasedOn: string | null; kind: string }[];
+  };
+  release?: {
+    id: string;
+    title: string;
+    titleZh: string | null;
+    releasedOn: string | null;
+    kind: string;
+    groupId: string;
+    groupSlug: string;
+    groupNameZh: string;
+    publishedTemplateCount: number;
+  };
+  template?: {
+    id: string;
+    code: string;
+    name: string;
+    version: string;
+    mainImageUrl: string | null;
+    backImageUrl: string | null;
+    memberNameEn: string | null;
+    memberNameZh: string | null;
+    memberColor: string | null;
+    releaseId: string;
+    releaseTitle: string;
+    groupSlug: string;
+    groupNameZh: string;
+  };
+  mini: { path: string; query: string; page: string };
+  cta: { title: string; hint: string; urlScheme: string | null; ghId: string | null };
+};
+
+export type CatalogGroup = {
+  id: string;
+  slug: string;
+  nameZh: string;
+  nameEn: string;
+  logoColor: string;
+  scopeNote: string | null;
+};
+
+export type CatalogRelease = {
+  id: string;
+  title: string;
+  title_zh?: string | null;
+  titleZh?: string | null;
+  released_on?: string | null;
+  releasedOn?: string | null;
+  kind?: string;
+  status?: string;
+};
+
+export type CatalogTemplate = {
+  id: string;
+  code: string;
+  name: string;
+  version: string;
+  mainImageUrl: string | null;
+  backImageUrl?: string | null;
+  memberNameEn?: string | null;
+  memberNameZh?: string | null;
+  memberColor?: string | null;
+  releaseTitle?: string;
+  groupSlug?: string;
+  groupNameZh?: string;
+  releaseId?: string;
+};
+
+export type H5Bootstrap = {
+  webOAuth: boolean;
+  mockAuth: boolean;
+  mini: { appId: string | null; ghId: string | null; urlScheme: string | null };
+  cta: { title: string; hint: string; urlScheme: string | null; ghId: string | null };
+  publicBaseUrl: string;
+};
