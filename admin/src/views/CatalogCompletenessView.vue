@@ -26,7 +26,7 @@ function goMaintain(group: CompletenessGroup, rel?: CompletenessRelease) {
     params: { tab: "templates" },
     query: {
       groupId: group.id,
-      releaseId: rel?.id,
+      ...(rel?.id ? { releaseId: rel.id } : {}),
     },
   });
 }
