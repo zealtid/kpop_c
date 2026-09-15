@@ -8,7 +8,6 @@ import {
   NDataTable,
   NInput,
   NSelect,
-  NSpace,
   NSpin,
   NTabPane,
   NTabs,
@@ -70,6 +69,7 @@ const router = useRouter();
 const message = useMessage();
 const dialog = useDialog();
 const { isNarrow } = useNarrow();
+const { isNarrow: isCompact } = useNarrow(720);
 const checkedRowKeys = ref<Array<string | number>>([]);
 
 const tab = computed(() => parseCatalogTab(route.params.tab));
@@ -218,9 +218,35 @@ function statusTag(status: string) {
 function nameButton(label: string, row: AnyRow) {
   return h(
     NButton,
-    { text: true, type: "primary", onClick: () => openEdit(row) },
+    { text: true, type: "primary", class: "entity-name-title", onClick: () => openEdit(row) },
     { default: () => label || "（无名称）" },
   );
+}
+
+function entityNameCell(thumb: unknown, title: string, sub: string, row: AnyRow) {
+  return h("div", { class: "entity-name" }, [
+    thumb,
+    h("div", { class: "entity-name-text" }, [
+      nameButton(title, row),
+      sub ? h("span", { class: "entity-name-sub" }, sub) : null,
+    ]),
+  ]);
+}
+
+function groupThumbNode(row: Group) {
+  const src = mediaUrl(row.iconUrl || row.logoUrl);
+  if (src) return h("img", { class: "group-thumb", src, alt: "" });
+  return h(
+    "span",
+    { class: "group-letter", style: { background: row.logoColor || "#ff6b9d" } },
+    (row.nameZh || "?").slice(0, 1),
+  );
+}
+
+function templateThumbNode(row: Template) {
+  const src = mediaUrl(row.mainImageUrl);
+  if (src) return h("img", { class: "tpl-thumb", src, alt: "" });
+  return h("span", { class: "tpl-missing" }, "无图");
 }
 
 function canHardDelete(row: AnyRow) {
@@ -230,16 +256,16 @@ function canHardDelete(row: AnyRow) {
 }
 
 function actionsCell(row: AnyRow) {
-  const maintain = h(
-    NButton,
-    { size: "tiny", type: "primary", onClick: () => openEdit(row) },
-    { default: () => "维护" },
-  );
   const nodes = [
-    maintain,
+    h(
+      NButton,
+      { size: "small", type: "primary", onClick: () => openEdit(row) },
+      { default: () => "维护" },
+    ),
     h(StatusActions, {
       status: rowStatus(row),
       pending: acting.value,
+      size: "small",
       onAct: (status: "published" | "draft" | "deprecated") => void onStatus(row, status),
     }),
   ];
@@ -248,7 +274,7 @@ function actionsCell(row: AnyRow) {
       h(
         NButton,
         {
-          size: "tiny",
+          size: "small",
           type: "error",
           ghost: true,
           disabled: acting.value,
@@ -266,25 +292,33 @@ const selectionColumn: DataTableColumns<AnyRow>[number] = {
   disabled: () => acting.value,
 };
 
+const ACTION_COL: DataTableColumns<AnyRow>[number] = {
+  title: "操作",
+  key: "actions",
+  width: 240,
+  render: (row) => actionsCell(row),
+};
+
 const columns = computed<DataTableColumns<AnyRow>>(() => {
   if (tab.value === "members") {
     return [
       selectionColumn,
-      { title: "英文", key: "nameEn", render: (row) => nameButton((row as Member).nameEn, row) },
+      { title: "英文", key: "nameEn", minWidth: 140, render: (row) => nameButton((row as Member).nameEn, row) },
       { title: "中文", key: "nameZh", render: (row) => (row as Member).nameZh || "" },
       { title: "组合", key: "groupNameZh", render: (row) => (row as Member).groupNameZh || "" },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-      { title: "", key: "actions", width: 280, render: (row) => actionsCell(row) },
+      ACTION_COL,
     ];
   }
   if (tab.value === "releases") {
     return [
       selectionColumn,
-      { title: "标题", key: "title", render: (row) => nameButton((row as Release).title, row) },
+      { title: "标题", key: "title", minWidth: 160, render: (row) => nameButton((row as Release).title, row) },
       { title: "组合", key: "groupNameZh", render: (row) => (row as Release).groupNameZh || "" },
       {
         title: "类型",
         key: "kind",
+        width: 140,
         render: (row) => {
           const r = row as Release;
           return r.kind === "concert_md" ? `${r.kind} · 特典` : r.kind;
@@ -292,30 +326,29 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
       },
       { title: "日期", key: "releasedOn", width: 120, render: (row) => (row as Release).releasedOn || "" },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-      { title: "", key: "actions", width: 280, render: (row) => actionsCell(row) },
+      ACTION_COL,
     ];
   }
   if (tab.value === "templates") {
     return [
       selectionColumn,
-      { title: "名称", key: "name", render: (row) => nameButton((row as Template).name, row) },
-      { title: "发行", key: "releaseTitle", render: (row) => (row as Template).releaseTitle || "" },
-      { title: "成员", key: "memberNameEn", render: (row) => (row as Template).memberNameEn || "group" },
-      { title: "版本", key: "version", width: 88, render: (row) => (row as Template).version },
-      { title: "", key: "isBenefit", width: 56, render: (row) => ((row as Template).isBenefit ? "特典" : "") },
       {
-        title: "图",
-        key: "mainImageUrl",
-        width: 72,
+        title: "名称",
+        key: "name",
+        minWidth: 220,
         render: (row) => {
           const t = row as Template;
-          const src = mediaUrl(t.mainImageUrl);
-          if (src) return h("img", { class: "tpl-thumb", src, alt: "" });
-          return h("span", { style: "color: var(--color-warning)" }, "无主图");
+          return entityNameCell(
+            templateThumbNode(t),
+            t.name,
+            `${t.memberNameEn || "group"} · ${t.version}${t.isBenefit ? " · 特典" : ""}`,
+            row,
+          );
         },
       },
+      { title: "发行", key: "releaseTitle", render: (row) => (row as Template).releaseTitle || "" },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-      { title: "", key: "actions", width: 280, render: (row) => actionsCell(row) },
+      ACTION_COL,
     ];
   }
   return [
@@ -323,18 +356,13 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
     {
       title: "名称",
       key: "nameZh",
+      minWidth: 240,
       render: (row) => {
         const g = row as Group;
-        const src = mediaUrl(g.iconUrl || g.logoUrl);
-        return h("div", { class: "name-with-logo" }, [
-          src
-            ? h("img", { class: "group-thumb", src, alt: "" })
-            : h("span", { class: "group-letter", style: { background: g.logoColor || "#ff6b9d" } }, (g.nameZh || "?").slice(0, 1)),
-          nameButton(g.nameZh, row),
-        ]);
+        return entityNameCell(groupThumbNode(g), g.nameZh, g.nameEn || g.slug, row);
       },
     },
-    { title: "slug", key: "slug", render: (row) => (row as Group).slug },
+    { title: "slug", key: "slug", width: 140, render: (row) => (row as Group).slug },
     {
       title: "UGC",
       key: "ugcOpen",
@@ -342,7 +370,7 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
       render: (row) => ((row as Group).ugcOpen ? "开" : "关"),
     },
     { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-    { title: "", key: "actions", width: 280, render: (row) => actionsCell(row) },
+    ACTION_COL,
   ];
 });
 
@@ -552,7 +580,7 @@ function confirmBatchDeprecate() {
   }
   dialog.warning({
     title: "批量废弃",
-    content: `将软废弃已选 ${targets.length} 条（不会硬删除）。确定继续？`,
+    content: `将软废弃已选 ${targets.length} 条。废弃后 C 端不再展示，记录仍保留。这与「永久删除」不同。`,
     positiveText: "废弃",
     negativeText: "取消",
     onPositiveClick: () => onBatchDeprecate(targets),
@@ -678,6 +706,8 @@ async function onBatchHardDelete(ids: string[]) {
   await refresh();
 }
 
+const filterControlStyle = computed(() => (isCompact.value ? { width: "100%" } : undefined));
+
 function toggleChecked(id: string, checked: boolean) {
   if (checked) {
     if (!checkedRowKeys.value.includes(id)) checkedRowKeys.value = [...checkedRowKeys.value, id];
@@ -772,6 +802,7 @@ onMounted(() => {
           :page-size="pageSize"
           :item-count="itemCount"
           :searching="loading"
+          :stacked="isCompact"
           @search="onSearch"
           @reset="onReset"
           @update:page="setQuery({ page: $event })"
@@ -779,41 +810,44 @@ onMounted(() => {
         >
           <n-input
             v-model:value="keywordDraft"
+            class="filter-control"
             clearable
             placeholder="关键词"
-            style="width: 200px"
+            :style="filterControlStyle"
             @keyup.enter="onSearch"
           />
           <n-select
+            class="filter-control"
             :value="filterStatus"
             :options="STATUS_OPTIONS"
-            style="width: 140px"
+            :style="filterControlStyle"
             @update:value="setQuery({ status: $event || undefined, page: 1 })"
           />
           <n-select
             v-if="tab !== 'groups'"
+            class="filter-control"
             :value="filterGroupId"
             :options="groupOptions"
             filterable
-            style="width: 200px"
+            :style="filterControlStyle"
             @update:value="setQuery({ groupId: $event || undefined, releaseId: undefined, page: 1 })"
           />
           <n-select
             v-if="tab === 'templates'"
+            class="filter-control"
             :value="filterReleaseId"
             :options="releaseOptions"
             filterable
-            style="width: 220px"
+            :style="filterControlStyle"
             @update:value="setQuery({ releaseId: $event || undefined, page: 1 })"
           />
           <template #actions>
-            <n-button type="error" :disabled="!selectedIds.length || acting" @click="confirmBatchDeprecate">
+            <n-button type="error" ghost :disabled="!selectedIds.length || acting" @click="confirmBatchDeprecate">
               批量废弃{{ selectedIds.length ? ` (${selectedIds.length})` : "" }}
             </n-button>
             <n-button
               v-if="tab === 'templates'"
               type="error"
-              ghost
               :disabled="acting || !selectedIds.length"
               @click="confirmBatchHardDelete"
             >
@@ -826,27 +860,28 @@ onMounted(() => {
         <div v-if="isNarrow" class="cards">
           <n-card v-for="row in rows" :key="row.id" size="small" class="entity-card">
             <div class="card-head">
-              <div class="name-with-logo">
+              <div class="entity-name">
                 <n-checkbox
-                  v-if="tab === 'templates'"
                   :checked="selectedIds.includes(row.id)"
                   @update:checked="(v) => toggleChecked(row.id, !!v)"
                 />
                 <img v-if="cardThumb(row)" :class="tab === 'templates' ? 'tpl-thumb' : 'group-thumb'" :src="cardThumb(row)" alt="" />
                 <span v-else-if="tab === 'groups'" class="group-letter" :style="{ background: cardLetter(row).color }">{{ cardLetter(row).text }}</span>
-                <n-button text type="primary" @click="openEdit(row)">{{ cardTitle(row) }}</n-button>
+                <div class="entity-name-text">
+                  <n-button class="entity-name-title" text type="primary" @click="openEdit(row)">{{ cardTitle(row) }}</n-button>
+                  <span class="entity-name-sub">{{ cardMeta(row) }}</span>
+                </div>
               </div>
               <n-tag size="small" :type="rowStatus(row) === 'published' ? 'success' : rowStatus(row) === 'deprecated' ? 'error' : 'default'" :bordered="false">
                 {{ statusLabel(rowStatus(row)) }}
               </n-tag>
             </div>
-            <p class="card-meta">{{ cardMeta(row) }}</p>
-            <n-space :size="6" :wrap="true">
-              <n-button size="tiny" type="primary" @click="openEdit(row)">维护</n-button>
-              <StatusActions :status="rowStatus(row)" :pending="acting" @act="(s) => onStatus(row, s)" />
+            <div class="card-actions">
+              <n-button size="small" type="primary" @click="openEdit(row)">维护</n-button>
+              <StatusActions :status="rowStatus(row)" :pending="acting" size="small" @act="(s) => onStatus(row, s)" />
               <n-button
                 v-if="canHardDelete(row)"
-                size="tiny"
+                size="small"
                 type="error"
                 ghost
                 :disabled="acting"
@@ -854,7 +889,7 @@ onMounted(() => {
               >
                 删除
               </n-button>
-            </n-space>
+            </div>
           </n-card>
           <AdminEmptyState v-if="!rows.length" :copy="emptyCopy">
             <n-button type="primary" @click="openCreate">{{ tab === "templates" ? "新建小卡" : "新建" }}</n-button>
@@ -868,7 +903,7 @@ onMounted(() => {
           :data="rows"
           :pagination="false"
           striped
-          :scroll-x="tab === 'templates' ? 1180 : 900"
+          :scroll-x="tab === 'templates' ? 980 : 900"
           :row-key="(row: AnyRow) => row.id"
         />
         <AdminEmptyState v-else :copy="emptyCopy">
@@ -914,6 +949,10 @@ onMounted(() => {
   margin: 0;
 }
 
+.filter-control {
+  width: 200px;
+}
+
 .cards {
   display: flex;
   flex-direction: column;
@@ -926,16 +965,27 @@ onMounted(() => {
 
 .card-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 12px;
 }
 
-.card-meta {
-  margin: 0 0 10px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
+.card-head .entity-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-actions :deep(.n-button) {
+  min-height: 36px;
+  min-width: 44px;
 }
 
 .row-actions {
@@ -944,56 +994,87 @@ onMounted(() => {
   gap: 8px;
   flex-wrap: wrap;
 }
-
-.tpl-thumb,
-.group-thumb {
-  width: 40px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: 4px;
-  background: #eee;
-  display: block;
-}
-
-.group-thumb {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-}
-
-.name-with-logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.group-letter {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
 </style>
 
 <style>
-.tpl-thumb,
-.group-thumb {
+/* h() 单元格没有 scoped 属性，名称列样式放这里 */
+.entity-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.entity-name-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entity-name-title {
+  max-width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.entity-name-title.n-button,
+.entity-name-title.n-button .n-button__content {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entity-name-sub {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entity-name .group-thumb,
+.entity-name .group-letter {
   width: 40px;
-  height: 56px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
   object-fit: cover;
+  background: #eee;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.entity-name .group-letter {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.entity-name .tpl-thumb {
+  width: 32px;
+  height: 44px;
   border-radius: 4px;
+  flex-shrink: 0;
+  object-fit: cover;
   background: #eee;
   display: block;
 }
-.group-thumb {
+
+.entity-name .tpl-missing {
   width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  height: 44px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f7f8fc;
+  color: var(--color-warning);
+  font-size: 11px;
 }
 </style>
