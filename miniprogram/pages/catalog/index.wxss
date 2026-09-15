@@ -1,5 +1,17 @@
-.submit-entry {
+.submit-row {
+  display: flex;
+  gap: 16rpx;
   margin: 24rpx 0 8rpx;
+}
+.submit-row .btn {
+  flex: 1;
+  margin-top: 0;
+}
+.submit-row .btn + .btn {
+  margin-top: 0;
+}
+.submit-entry {
+  margin: 0;
 }
 
 .group-ident {

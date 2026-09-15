@@ -27,4 +27,7 @@ Page({
   goSubmit() {
     wx.navigateTo({ url: "/pages/catalog-submit/index" });
   },
+  goGrid() {
+    wx.navigateTo({ url: "/pages/catalog-grid/index" });
+  },
 });

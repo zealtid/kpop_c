@@ -59,6 +59,7 @@ import {
   savePublicCatalogImage,
 } from "./storage.js";
 import * as catalogSubmissions from "./catalogSubmissions.js";
+import * as gridSplit from "./gridSplit.js";
 import { jsSdkSignature, resolveMiniJump } from "./wxMiniJump.js";
 import * as feed from "./feed.js";
 import * as schedule from "./schedule.js";
@@ -337,6 +338,14 @@ export function createApp() {
   app.post("/catalog/submissions", requireAuth, async (req, res, next) => {
     try {
       res.json(await catalogSubmissions.createSubmission(req.user!.id, req.body || {}, req.user!.wxOpenid));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/catalog/grid/split", requireAuth, async (req, res, next) => {
+    try {
+      res.json(await gridSplit.splitPhotocardGrid(req.body || {}));
     } catch (e) {
       next(e);
     }

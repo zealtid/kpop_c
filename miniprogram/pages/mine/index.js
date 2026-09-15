@@ -202,6 +202,10 @@ Page({
     wx.navigateTo({ url: "/pages/catalog-submit/index" });
   },
 
+  goGrid() {
+    wx.navigateTo({ url: "/pages/catalog-grid/index" });
+  },
+
   goMySubmissions() {
     wx.navigateTo({ url: "/pages/my-submissions/index" });
   },

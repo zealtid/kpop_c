@@ -1,0 +1,32 @@
+<view class="page">
+  <view class="h1">宫格入册</view>
+  <view class="sub">拍或选四宫 / 九宫整页，自动切成单卡后确认入册。不是宫格会改走单卡投稿。</view>
+
+  <view class="card">
+    <view class="label">宫格</view>
+    <view class="chips">
+      <view class="chip {{cells===4?'on':''}}" bindtap="pickCells" data-cells="4">四宫</view>
+      <view class="chip {{cells===9?'on':''}}" bindtap="pickCells" data-cells="9">九宫</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="label">整页照片</view>
+    <image wx:if="{{preview}}" class="preview" src="{{preview}}" mode="aspectFit"/>
+    <view wx:else class="ph pick">相册或相机</view>
+    <view class="row pick-row">
+      <view class="btn ghost slim {{busy?'off':''}}" bindtap="pickAlbum">相册</view>
+      <view class="btn ghost slim {{busy?'off':''}}" bindtap="pickCamera">拍照</view>
+    </view>
+  </view>
+
+  <view wx:if="{{busy}}" class="muted hint">{{busyText}}</view>
+  <view wx:if="{{failHint}}" class="footnote">{{failHint}}</view>
+
+  <canvas
+    canvas-id="detectCanvas"
+    class="offscreen"
+    style="width: {{canvasW}}px; height: {{canvasH}}px;"
+    disable-scroll="true"
+  />
+</view>

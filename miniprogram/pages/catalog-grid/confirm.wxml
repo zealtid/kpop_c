@@ -1,0 +1,144 @@
+<view class="page">
+  <view class="h1">确认宫格</view>
+  <view class="sub">整页共用组合 / 专辑 / 版本。点选单卡可改成员、特典，也可调框、旋转或删除。</view>
+
+  <view wx:if="{{warnings.length}}" class="card warn">
+    <view wx:for="{{warnings}}" wx:key="code" class="muted">{{item.message}}</view>
+  </view>
+
+  <view class="card">
+    <view class="label">组合（仅已开放投稿）</view>
+    <view wx:if="{{groupsEmpty}}" class="muted">当前没有开放投稿的组合</view>
+    <view class="chips">
+      <view
+        class="chip {{groupId===item.id?'on':''}}"
+        wx:for="{{groups}}"
+        wx:key="id"
+        bindtap="pickGroup"
+        data-id="{{item.id}}"
+      >{{item.nameZh}}</view>
+    </view>
+    <view class="label sub-label">专辑</view>
+    <view wx:if="{{!groupId}}" class="muted">请先选择组合</view>
+    <view class="chips">
+      <view
+        class="chip {{releaseId===item.id?'on':''}}"
+        wx:for="{{releases}}"
+        wx:key="id"
+        bindtap="pickRelease"
+        data-id="{{item.id}}"
+      >{{item.label}}</view>
+    </view>
+    <view class="label sub-label">版本</view>
+    <input class="box input" value="{{versionLabel}}" bindinput="onVersion" placeholder="例如 Photobook A / 特典-POB" maxlength="40"/>
+  </view>
+
+  <view class="card">
+    <view class="label">切分结果（点选后可拖边）</view>
+    <view class="stage" style="height: {{displayH}}px;">
+      <image
+        wx:if="{{src}}"
+        class="stage-img"
+        src="{{src}}"
+        mode="scaleToFill"
+        style="width: {{displayW}}px; height: {{displayH}}px;"
+      />
+      <view
+        wx:for="{{overlays}}"
+        wx:key="index"
+        class="obox {{item.selected?'on':''}}"
+        style="left: {{item.left}}px; top: {{item.top}}px; width: {{item.width}}px; height: {{item.height}}px;"
+        bindtap="selectCard"
+        data-index="{{item.index}}"
+      >
+        <view class="oidx">{{item.n}}</view>
+        <view class="handle n" catchtouchstart="onHandleStart" catchtouchmove="onHandleMove" catchtouchend="onHandleEnd" data-edge="n" data-index="{{item.index}}"></view>
+        <view class="handle s" catchtouchstart="onHandleStart" catchtouchmove="onHandleMove" catchtouchend="onHandleEnd" data-edge="s" data-index="{{item.index}}"></view>
+        <view class="handle w" catchtouchstart="onHandleStart" catchtouchmove="onHandleMove" catchtouchend="onHandleEnd" data-edge="w" data-index="{{item.index}}"></view>
+        <view class="handle e" catchtouchstart="onHandleStart" catchtouchmove="onHandleMove" catchtouchend="onHandleEnd" data-edge="e" data-index="{{item.index}}"></view>
+      </view>
+    </view>
+    <view class="muted" wx:if="{{cvNote}}">{{cvNote}}</view>
+  </view>
+
+  <view class="card" wx:if="{{selected}}">
+    <view class="label">第 {{selected.n}} 张</view>
+    <view class="label sub-label">成员（选填）</view>
+    <view class="chips">
+      <view class="chip {{selected.memberId===''?'on':''}}" bindtap="pickMember" data-id="">不指定</view>
+      <view
+        class="chip {{selected.memberId===item.id?'on':''}}"
+        wx:for="{{members}}"
+        wx:key="id"
+        bindtap="pickMember"
+        data-id="{{item.id}}"
+      >{{item.nameEn}}</view>
+    </view>
+    <view class="label sub-label">名称/别称</view>
+    <input class="box input" value="{{selected.slotLabel}}" bindinput="onSlot" maxlength="80"/>
+    <view class="label sub-label">通路 / 特典</view>
+    <input
+      class="box input"
+      value="{{channelQ}}"
+      bindinput="onChannelQ"
+      placeholder="搜索 Weverse / 天猫 / 预购特典"
+      maxlength="40"
+    />
+    <view class="chips channel-hits">
+      <view
+        class="chip {{selected.channelValue===item.value?'on':''}}"
+        wx:for="{{channelHits}}"
+        wx:key="label"
+        bindtap="pickChannel"
+        data-value="{{item.value}}"
+        data-label="{{item.label}}"
+      >{{item.label}}</view>
+    </view>
+    <input
+      wx:if="{{selected.channelOther}}"
+      class="box input"
+      value="{{selected.channelCustom}}"
+      bindinput="onChannelCustom"
+      placeholder="没有匹配时手填通路或特典名称"
+      maxlength="40"
+    />
+    <view class="row pick-row">
+      <view class="btn ghost slim" bindtap="rotateSelected">旋转 {{selected.rotation}}°</view>
+      <view class="btn ghost slim" bindtap="deleteSelected">删除此卡</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view
+      class="agree {{agreed?'on':''}} {{saving?'off':''}}"
+      bindtap="toggleAgree"
+      hover-class="agree-hover"
+    >
+      <view class="agree-box" aria-role="checkbox" aria-checked="{{agreed}}">
+        <view wx:if="{{agreed}}" class="agree-mark"></view>
+      </view>
+      <view class="agree-text">我确认图片不侵犯第三方权利，同意审核与去重规则。命中已有模板会直接入册，其余先审后发。</view>
+    </view>
+  </view>
+
+  <view class="btn {{saving?'off':''}}" bindtap="submit">{{saving ? '提交中…' : '确认入册'}}</view>
+  <view class="btn ghost" bindtap="degrade">改走单卡投稿</view>
+
+  <view wx:if="{{saving}}" class="progress-mask">
+    <view class="progress-card">
+      <view class="h1" style="font-size:32rpx">提交进度</view>
+      <view class="muted">{{progressText}}</view>
+      <view class="prog-row" wx:for="{{progress}}" wx:key="index">
+        <view>{{item.title}}</view>
+        <view class="muted">{{item.statusLabel}}</view>
+      </view>
+    </view>
+  </view>
+
+  <canvas
+    canvas-id="cropCanvas"
+    class="offscreen"
+    style="width: {{outW}}px; height: {{outH}}px;"
+    disable-scroll="true"
+  />
+</view>

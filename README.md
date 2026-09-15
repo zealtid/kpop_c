@@ -18,7 +18,7 @@ C 端主路径是微信小程序；另有只读 **H5**（`h5/`，UGC-2a / H5-1 �
 - 缺卡反馈 **仅文字**。
 - **P7**：卡册总览无搜索（搜索在图鉴）。
 - **P8**：分享长图必须拼完所有已拥有卡，禁止截成前 N 张。
-- 本阶段不做：订阅消息、交易开关、缺卡清单页、好友、AI。UGC-1 单卡投稿审核已开放（白名单团 + Admin 审核台）。
+- 本阶段不做：订阅消息、交易开关、缺卡清单页、好友、AI。UGC-1 单卡投稿审核与 UGC-2b 四宫/九宫入册已开放（无私有-only、无 H5 宫格）。
 
 ## 本地运行
 
@@ -97,7 +97,7 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS / H5 行为测试
 | 登录 / 我 | `POST /auth/wx-login` `POST /auth/wx-web-login` `GET /auth/wx-web/start` `GET\|PATCH /me` |
 | 关注 | `GET\|PUT /me/follows` |
 | 图鉴 | `GET /catalog/groups`（`?ugc_open=1` 仅白名单） `.../members` `.../releases` `GET /catalog/releases/:id/templates` `GET /catalog/search` `GET /catalog/templates` |
-| 投稿 | `POST /media/ugc-pending` `POST /catalog/submissions` `GET /me/catalog-submissions` `GET /me/catalog-submissions/:id` `POST /collection/custom-cards/:id/apply-catalog` `POST /catalog/templates/:id/report` |
+| 投稿 | `POST /media/ugc-pending` `POST /catalog/submissions`（可选 `matchOwnIfDuplicate`：近 dup 则挂拥有、不建待审） `GET /me/catalog-submissions` `GET /me/catalog-submissions/:id` `POST /collection/custom-cards/:id/apply-catalog` `POST /catalog/templates/:id/report` `POST /catalog/grid/split`（4/9 宫格薄回退，jsfeat 投影） |
 | 卡册 | `GET /collection/overview` `GET /collection/groups/:id` `.../progress` |
 | 拥有 | `POST /collection/cards` `POST /collection/cards/batch` `PATCH\|DELETE /collection/cards/:templateId` |
 | 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
@@ -320,6 +320,12 @@ npm run dev:h5       # http://localhost:5174
 npm run build:h5     # 本地确认 dist/；需设置 VITE_API_BASE
 ```
 
+## UGC-2b 四宫 / 九宫入册
+
+小程序「宫格入册」：相册或相机拍整页 → 选 4 或 9 → **jsfeat**（灰度 + Sobel + 行列投影）客户端切分；失败则 `POST /catalog/grid/split` 薄回退（sharp 解码，同一套投影）。确认页可调框、删除、旋转。共享组合/专辑/版本；成员与特典按卡可改。
+
+确认后每卡复用 UGC-1：`POST /media/ugc-pending`（≤150KB）+ `POST /catalog/submissions`（白名单、协议、先审后发）。`matchOwnIfDuplicate: true` 时近 dup 命中已发布模板则挂拥有（Mode B），不新建 published、不跳过审核。切分失败降级到单卡 `pages/catalog-submit`。无 H5 宫格、无私有-only。
+
 ## 明确不做（M1 之外）
 
-订阅消息 Worker、微博爬虫、缺卡清单页（C 端进度）、交易、投稿审核、好友关系、AI。H5-2 投稿壳、UGC-2b 四宫/九宫、UGC-2c 票务深链不在本切片。
+订阅消息 Worker、微博爬虫、缺卡清单页（C 端进度）、交易、好友关系、AI。H5-2 投稿壳、UGC-2c 票务深链不在本切片。

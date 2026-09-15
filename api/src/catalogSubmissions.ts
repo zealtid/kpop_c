@@ -8,6 +8,7 @@ import {
   CLARITY_EXTREME,
   clarityWarnings,
   computeDHash,
+  hammingHex,
   isNearDuplicate,
   type ImageWarning,
 } from "./imageHash.js";
@@ -156,15 +157,17 @@ export async function findNearDuplicateTemplates(phash: string, groupId: string)
   const hits: { id: string; name: string; version: string; distance: number }[] = [];
   for (const row of r.rows) {
     const other = String(row.phash_front || "");
+    const distance = hammingHex(phash, other);
     if (isNearDuplicate(phash, other)) {
       hits.push({
         id: String(row.id),
         name: String(row.name),
         version: String(row.version),
-        distance: 0,
+        distance,
       });
     }
   }
+  hits.sort((a, b) => a.distance - b.distance);
   return hits.slice(0, 8);
 }
 
@@ -256,13 +259,23 @@ type CreateBody = {
   agreementAccepted?: boolean;
   customCardId?: string;
   source?: string;
+  /** UGC-2b Mode B：近 dup 命中已发布模板则挂拥有，不建待审、不发 published */
+  matchOwnIfDuplicate?: boolean;
 };
+
+function resolveSource(
+  body: CreateBody,
+  fallback: "direct_submit" | "from_custom_card" | "grid_page",
+): "direct_submit" | "from_custom_card" | "grid_page" {
+  if (body.source === "grid_page") return "grid_page";
+  return fallback;
+}
 
 async function insertSubmission(
   userId: string,
   body: CreateBody,
   openid: string,
-  source: "direct_submit" | "from_custom_card",
+  source: "direct_submit" | "from_custom_card" | "grid_page",
 ) {
   if (!body.agreementAccepted) throw badRequest("请先勾选上传协议");
   const groupId = text(body.groupId, "groupId", true)!;
@@ -293,6 +306,28 @@ async function insertSubmission(
       code: "NEAR_DUP",
       message: `图鉴中可能已有相似模板（${dups[0].name} ${dups[0].version}）`,
     });
+  }
+
+  if (body.matchOwnIfDuplicate && dups[0]) {
+    await grantOwned(userId, dups[0].id);
+    await purgePendingImages([imageFront, imageBack, body.imageFrontThumb, body.imageBackThumb]);
+    await track(
+      "catalog_grid_match_own",
+      { templateId: dups[0].id, groupId, source },
+      userId,
+    );
+    return {
+      mode: "own" as const,
+      status: "matched_own",
+      templateId: dups[0].id,
+      templateName: dups[0].name,
+      templateVersion: dups[0].version,
+      warnings,
+      nearDuplicates: dups,
+      groupSlug: group.slug,
+      releaseTitle: release.title,
+      memberEn: member?.name_en || null,
+    };
   }
 
   const id = randomUUID();
@@ -339,7 +374,9 @@ async function insertSubmission(
   const mapped = await getSubmissionForUser(userId, id);
   return {
     ...mapped,
+    mode: "submit" as const,
     warnings,
+    nearDuplicates: dups,
     moderation: { submitted: check.submitted, reason: check.reason, hookReady: check.hookReady },
     releaseTitle: release.title,
     memberEn: member?.name_en || null,
@@ -348,7 +385,8 @@ async function insertSubmission(
 }
 
 export async function createSubmission(userId: string, body: CreateBody, openid: string) {
-  return insertSubmission(userId, body, openid, body.customCardId ? "from_custom_card" : "direct_submit");
+  const fallback = body.customCardId ? "from_custom_card" : body.source === "grid_page" ? "grid_page" : "direct_submit";
+  return insertSubmission(userId, body, openid, resolveSource(body, fallback));
 }
 
 export async function applyFromCustomCard(userId: string, customCardId: string, body: CreateBody, openid: string) {

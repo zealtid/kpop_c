@@ -70,6 +70,10 @@
       <text class="action-label">投稿图鉴</text>
       <text class="action-arrow">›</text>
     </view>
+    <view class="action-row" bindtap="goGrid">
+      <text class="action-label">宫格入册</text>
+      <text class="action-arrow">›</text>
+    </view>
     <view class="action-row" bindtap="goMySubmissions">
       <text class="action-label">我的投稿</text>
       <text class="action-arrow">›</text>
