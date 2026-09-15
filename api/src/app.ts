@@ -1262,6 +1262,21 @@ export function createApp() {
     }
   });
 
+  app.delete("/admin/templates/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await admin.deleteTemplate(req.params.id);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "template.delete",
+        entityType: "template",
+        entityId: result.id,
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
   app.get("/admin/catalog-submissions", requireAdmin, async (req, res, next) => {
     try {
       res.json({
@@ -1444,6 +1459,21 @@ export function createApp() {
     }
   });
 
+  app.delete("/admin/catalog/groups/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.deleteGroup(req.params.id);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "group.delete",
+        entityType: "idol_group",
+        entityId: result.id,
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
   app.get("/admin/catalog/members", requireAdmin, async (req, res, next) => {
     try {
       res.json({ members: await adminCatalog.listAdminMembers(req.query.groupId as string | undefined) });
@@ -1501,6 +1531,21 @@ export function createApp() {
         entityType: "member",
         entityId: result.id,
         payload: { status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.delete("/admin/catalog/members/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.deleteMember(req.params.id);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "member.delete",
+        entityType: "member",
+        entityId: result.id,
       });
       res.json(result);
     } catch (e) {
@@ -1572,6 +1617,21 @@ export function createApp() {
     }
   });
 
+  app.delete("/admin/catalog/releases/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await adminCatalog.deleteRelease(req.params.id);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "release.delete",
+        entityType: "release",
+        entityId: result.id,
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
   app.get("/admin/catalog/templates", requireAdmin, async (req, res, next) => {
     try {
       const templates = await catalog.searchTemplates({
@@ -1597,6 +1657,30 @@ export function createApp() {
         entityType: "template",
         entityId: result.id,
         payload: { releaseId: req.body?.releaseId, version: req.body?.version },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/catalog/templates/hard-delete", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await admin.hardDeleteTemplates(req.body?.ids);
+      for (const id of result.deleted) {
+        await writeAuditLog({
+          actor: req.ops,
+          action: "template.delete",
+          entityType: "template",
+          entityId: id,
+        });
+      }
+      await writeAuditLog({
+        actor: req.ops,
+        action: "template.hard_delete",
+        entityType: "template",
+        entityId: result.deleted[0] || null,
+        payload: { deleted: result.deleted, failed: result.failed },
       });
       res.json(result);
     } catch (e) {
@@ -1637,6 +1721,21 @@ export function createApp() {
         entityType: "template",
         entityId: result.id,
         payload: { status: result.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.delete("/admin/catalog/templates/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await admin.deleteTemplate(req.params.id);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "template.delete",
+        entityType: "template",
+        entityId: result.id,
       });
       res.json(result);
     } catch (e) {

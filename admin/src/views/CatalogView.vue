@@ -4,6 +4,7 @@ import {
   NAlert,
   NButton,
   NCard,
+  NCheckbox,
   NDataTable,
   NInput,
   NSelect,
@@ -18,7 +19,14 @@ import {
 } from "naive-ui";
 import { useRoute, useRouter } from "vue-router";
 import { errorMessage, mediaUrl } from "../api";
-import { loadAdminTemplates, loadCatalogLookups, saveCatalog, setCatalogStatus } from "../catalog/api";
+import {
+  deleteCatalog,
+  hardDeleteTemplates,
+  loadAdminTemplates,
+  loadCatalogLookups,
+  saveCatalog,
+  setCatalogStatus,
+} from "../catalog/api";
 import {
   CATALOG_TABS,
   isBenefitsTab,
@@ -85,7 +93,7 @@ const headings: Record<CatalogTab, { title: string; hint: string }> = {
   releases: { title: "图鉴 · 发行", hint: "Release。演唱会特典用 kind=concert_md，没有独立 Event 表。" },
   templates: {
     title: "图鉴 · 小卡模板/维护",
-    hint: "在此添加官方图鉴小卡：点「新建小卡」填发行与版本，上传正面主图（必填）和卡背（可选）到 /media/cards，再发布。无主图不能发布。",
+    hint: "在此添加官方图鉴小卡：点「新建小卡」填发行与版本，上传正面主图（必填）和卡背（可选）到 /media/cards，再发布。无主图不能发布。行内「删除」为永久硬删，与「废弃」不同。",
   },
   completeness: { title: "图鉴 · 完整度", hint: "按组合查看发行闸门与缺图/缺成员。缺图可跳到模板维护。" },
   import: { title: "图鉴 · 导入校验", hint: "校验 CSV / Markdown / JSON，通过后再写入。" },
@@ -215,20 +223,42 @@ function nameButton(label: string, row: AnyRow) {
   );
 }
 
+function canHardDelete(row: AnyRow) {
+  if (tab.value === "templates") return true;
+  const st = rowStatus(row);
+  return st === "draft" || st === "deprecated";
+}
+
 function actionsCell(row: AnyRow) {
   const maintain = h(
     NButton,
     { size: "tiny", type: "primary", onClick: () => openEdit(row) },
     { default: () => "维护" },
   );
-  return h("div", { class: "row-actions" }, [
+  const nodes = [
     maintain,
     h(StatusActions, {
       status: rowStatus(row),
       pending: acting.value,
       onAct: (status: "published" | "draft" | "deprecated") => void onStatus(row, status),
     }),
-  ]);
+  ];
+  if (canHardDelete(row)) {
+    nodes.push(
+      h(
+        NButton,
+        {
+          size: "tiny",
+          type: "error",
+          ghost: true,
+          disabled: acting.value,
+          onClick: () => confirmHardDelete(row),
+        },
+        { default: () => "删除" },
+      ),
+    );
+  }
+  return h("div", { class: "row-actions" }, nodes);
 }
 
 const selectionColumn: DataTableColumns<AnyRow>[number] = {
@@ -244,7 +274,7 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
       { title: "中文", key: "nameZh", render: (row) => (row as Member).nameZh || "" },
       { title: "组合", key: "groupNameZh", render: (row) => (row as Member).groupNameZh || "" },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-      { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
+      { title: "", key: "actions", width: 280, render: (row) => actionsCell(row) },
     ];
   }
   if (tab.value === "releases") {
@@ -262,7 +292,7 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
       },
       { title: "日期", key: "releasedOn", width: 120, render: (row) => (row as Release).releasedOn || "" },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-      { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
+      { title: "", key: "actions", width: 280, render: (row) => actionsCell(row) },
     ];
   }
   if (tab.value === "templates") {
@@ -285,7 +315,7 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
         },
       },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-      { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
+      { title: "", key: "actions", width: 280, render: (row) => actionsCell(row) },
     ];
   }
   return [
@@ -312,7 +342,7 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
       render: (row) => ((row as Group).ugcOpen ? "开" : "关"),
     },
     { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-    { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
+    { title: "", key: "actions", width: 280, render: (row) => actionsCell(row) },
   ];
 });
 
@@ -559,6 +589,103 @@ async function onBatchDeprecate(targets: AnyRow[]) {
   await refresh();
 }
 
+function hardDeleteCopy(row: AnyRow) {
+  const name = cardTitle(row) || row.id;
+  if (tab.value === "templates") {
+    return `将永久删除小卡模板「${name}」，不可恢复。这与「废弃」不同：废弃只从 C 端隐藏，删除会从数据库移除该模板（心愿单会一并去掉）。若已有用户收藏，接口会拒绝删除。`;
+  }
+  const kind = tab.value === "groups" ? "组合" : tab.value === "members" ? "成员" : "发行";
+  return `将永久删除${kind}「${name}」，不可恢复。这与「废弃」不同。仅当没有子数据/引用时才能删除；已发布请先废弃。`;
+}
+
+function confirmHardDelete(row: AnyRow) {
+  dialog.warning({
+    title: "永久删除（不可恢复）",
+    content: hardDeleteCopy(row),
+    positiveText: "永久删除",
+    negativeText: "取消",
+    closable: true,
+    maskClosable: false,
+    positiveButtonProps: { type: "error" },
+    onPositiveClick: () => onHardDelete(row),
+  });
+}
+
+function confirmBatchHardDelete() {
+  const ids = selectedIds.value.filter(Boolean);
+  if (!ids.length) {
+    message.warning("请先勾选要硬删的小卡模板");
+    return;
+  }
+  dialog.warning({
+    title: "批量永久删除（不可恢复）",
+    content: `将永久删除已选的 ${ids.length} 张小卡模板，不可恢复。这与「废弃」不同：废弃只从 C 端隐藏。已被用户收藏的条目会跳过并显示错误。`,
+    positiveText: "永久删除",
+    negativeText: "取消",
+    closable: true,
+    maskClosable: false,
+    positiveButtonProps: { type: "error" },
+    onPositiveClick: () => onBatchHardDelete(ids),
+  });
+}
+
+async function onHardDelete(row: AnyRow) {
+  if (!isCrudTab(tab.value)) return;
+  acting.value = true;
+  const res = await deleteCatalog(tab.value, row.id);
+  acting.value = false;
+  if (res.status !== 200) {
+    const msg = errorMessage(res.body);
+    pageNotice.value = msg;
+    pageNoticeOk.value = false;
+    message.error(msg);
+    return;
+  }
+  checkedRowKeys.value = checkedRowKeys.value.filter((k) => String(k) !== row.id);
+  pageNotice.value = "已永久删除";
+  pageNoticeOk.value = true;
+  message.success(pageNotice.value);
+  await refresh();
+}
+
+async function onBatchHardDelete(ids: string[]) {
+  acting.value = true;
+  const res = await hardDeleteTemplates(ids);
+  acting.value = false;
+  if (res.status !== 200) {
+    const msg = errorMessage(res.body);
+    pageNotice.value = msg;
+    pageNoticeOk.value = false;
+    message.error(msg);
+    return;
+  }
+  const deleted = res.body.deleted || [];
+  const failed = res.body.failed || [];
+  checkedRowKeys.value = checkedRowKeys.value.filter((k) => !deleted.includes(String(k)));
+  if (deleted.length && !failed.length) {
+    pageNotice.value = `已永久删除 ${deleted.length} 张模板`;
+    pageNoticeOk.value = true;
+    message.success(pageNotice.value);
+  } else if (deleted.length) {
+    pageNotice.value = `已永久删除 ${deleted.length} 张；${failed.length} 张未删除：${failed[0]?.message || "失败"}`;
+    pageNoticeOk.value = false;
+    message.warning(pageNotice.value);
+  } else {
+    pageNotice.value = failed[0]?.message || "没有删除任何模板";
+    pageNoticeOk.value = false;
+    message.error(pageNotice.value);
+  }
+  await refresh();
+}
+
+function toggleChecked(id: string, checked: boolean) {
+  if (checked) {
+    if (!checkedRowKeys.value.includes(id)) checkedRowKeys.value = [...checkedRowKeys.value, id];
+    return;
+  }
+  checkedRowKeys.value = checkedRowKeys.value.filter((k) => String(k) !== id);
+}
+
 watch(tab, () => {
   formShow.value = false;
   editing.value = null;
@@ -630,7 +757,7 @@ onMounted(() => {
           :show-icon="false"
           class="block"
         >
-          官方图鉴小卡在此维护：点「新建小卡」上传正面（发布必填）和卡背（可选）。也可点行内「维护」改已有卡。
+          官方图鉴小卡在此维护：点「新建小卡」上传正面（发布必填）和卡背（可选）。也可点行内「维护」改已有卡。行内「删除」/「批量硬删」会永久移除记录，与「废弃」（仅 C 端隐藏）不同。
         </n-alert>
         <n-alert
           v-if="tab === 'templates' && templatesCapped"
@@ -680,12 +807,17 @@ onMounted(() => {
             @update:value="setQuery({ releaseId: $event || undefined, page: 1 })"
           />
           <template #actions>
-            <n-button
-              type="error"
-              :disabled="!selectedIds.length || acting"
-              @click="confirmBatchDeprecate"
-            >
+            <n-button type="error" :disabled="!selectedIds.length || acting" @click="confirmBatchDeprecate">
               批量废弃{{ selectedIds.length ? ` (${selectedIds.length})` : "" }}
+            </n-button>
+            <n-button
+              v-if="tab === 'templates'"
+              type="error"
+              ghost
+              :disabled="acting || !selectedIds.length"
+              @click="confirmBatchHardDelete"
+            >
+              批量硬删{{ selectedIds.length ? ` (${selectedIds.length})` : "" }}
             </n-button>
             <n-button type="primary" @click="openCreate">{{ tab === "templates" ? "新建小卡" : "新建" }}</n-button>
           </template>
@@ -695,6 +827,11 @@ onMounted(() => {
           <n-card v-for="row in rows" :key="row.id" size="small" class="entity-card">
             <div class="card-head">
               <div class="name-with-logo">
+                <n-checkbox
+                  v-if="tab === 'templates'"
+                  :checked="selectedIds.includes(row.id)"
+                  @update:checked="(v) => toggleChecked(row.id, !!v)"
+                />
                 <img v-if="cardThumb(row)" :class="tab === 'templates' ? 'tpl-thumb' : 'group-thumb'" :src="cardThumb(row)" alt="" />
                 <span v-else-if="tab === 'groups'" class="group-letter" :style="{ background: cardLetter(row).color }">{{ cardLetter(row).text }}</span>
                 <n-button text type="primary" @click="openEdit(row)">{{ cardTitle(row) }}</n-button>
@@ -707,6 +844,16 @@ onMounted(() => {
             <n-space :size="6" :wrap="true">
               <n-button size="tiny" type="primary" @click="openEdit(row)">维护</n-button>
               <StatusActions :status="rowStatus(row)" :pending="acting" @act="(s) => onStatus(row, s)" />
+              <n-button
+                v-if="canHardDelete(row)"
+                size="tiny"
+                type="error"
+                ghost
+                :disabled="acting"
+                @click="confirmHardDelete(row)"
+              >
+                删除
+              </n-button>
             </n-space>
           </n-card>
           <AdminEmptyState v-if="!rows.length" :copy="emptyCopy">
@@ -721,7 +868,7 @@ onMounted(() => {
           :data="rows"
           :pagination="false"
           striped
-          :scroll-x="tab === 'templates' ? 1120 : 840"
+          :scroll-x="tab === 'templates' ? 1180 : 900"
           :row-key="(row: AnyRow) => row.id"
         />
         <AdminEmptyState v-else :copy="emptyCopy">

@@ -5,6 +5,7 @@ import { sid } from "./ids.js";
 import { mapTemplate } from "./catalog.js";
 import { isReleaseKind, normalizeReleaseKind } from "./catalogConstants.js";
 import { assertImportReleaseAllowed } from "./catalogConstraints.js";
+import { deleteStoredImage } from "./storage.js";
 
 type ImportTemplate = {
   code?: string;
@@ -39,6 +40,24 @@ export function templateDedupeKey(
 
 export function isPgUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23505";
+}
+
+export function isPgForeignKeyViolation(err: unknown): boolean {
+  return typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23503";
+}
+
+const HARD_DELETE_BATCH_MAX = 100;
+
+async function bestEffortDeleteMedia(publicPath: string | null | undefined) {
+  try {
+    await deleteStoredImage(publicPath);
+  } catch {
+    // 媒体缺失或对象存储失败不阻断硬删
+  }
+}
+
+function catalogInUse(message: string, details?: unknown) {
+  return new AppError(409, "CATALOG_IN_USE", message, details);
 }
 
 export function duplicatePublished(message = "已存在相同去重键的已发布模板") {
@@ -311,4 +330,58 @@ export async function updateTemplate(
     throw err;
   }
   return getTemplate(id);
+}
+
+export type HardDeleteResult = { id: string; deleted: true };
+
+export type HardDeleteFailure = { id: string; code: string; message: string };
+
+/** 硬删 PhotocardTemplate。有 user_cards 时 409，不级联抹掉用户收藏。心愿单 CASCADE。媒体 best-effort。 */
+export async function deleteTemplate(id: string): Promise<HardDeleteResult> {
+  const r = await query(
+    "SELECT id, main_image_url, image_back FROM templates WHERE id = $1",
+    [id],
+  );
+  if (!r.rows[0]) throw notFound("模板不存在");
+  const owned = await query<{ n: number }>(
+    "SELECT COUNT(*)::int AS n FROM user_cards WHERE template_id = $1",
+    [id],
+  );
+  const owners = Number(owned.rows[0]?.n || 0);
+  if (owners > 0) {
+    throw catalogInUse(`该模板已被 ${owners} 名用户收藏，无法硬删。请改用废弃。`, { owners });
+  }
+  try {
+    await query("DELETE FROM templates WHERE id = $1", [id]);
+  } catch (err) {
+    if (isPgForeignKeyViolation(err)) {
+      throw catalogInUse("该模板仍被其他数据引用，无法硬删。请改用废弃。");
+    }
+    throw err;
+  }
+  await bestEffortDeleteMedia(r.rows[0].main_image_url as string | null);
+  await bestEffortDeleteMedia(r.rows[0].image_back as string | null);
+  return { id, deleted: true };
+}
+
+export async function hardDeleteTemplates(idsRaw: unknown) {
+  if (!Array.isArray(idsRaw) || idsRaw.length === 0) throw badRequest("ids 不能为空");
+  if (idsRaw.length > HARD_DELETE_BATCH_MAX) throw badRequest(`一次最多删除 ${HARD_DELETE_BATCH_MAX} 条`);
+  const ids = [...new Set(idsRaw.map((x) => String(x ?? "").trim()).filter(Boolean))];
+  if (!ids.length) throw badRequest("ids 不能为空");
+  const deleted: string[] = [];
+  const failed: HardDeleteFailure[] = [];
+  for (const id of ids) {
+    try {
+      await deleteTemplate(id);
+      deleted.push(id);
+    } catch (err) {
+      if (err instanceof AppError) {
+        failed.push({ id, code: err.code, message: err.message });
+        continue;
+      }
+      throw err;
+    }
+  }
+  return { deleted, failed };
 }
