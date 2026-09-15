@@ -1,5 +1,4 @@
 const api = require("../../utils/api");
-const nav = require("../../utils/navigate");
 
 const STATUS = {
   pending_review: "待审",
@@ -30,6 +29,6 @@ Page({
       });
   },
   open(e) {
-    nav.navigateTo({ url: `/pages/my-submissions/detail?id=${e.currentTarget.dataset.id}` });
+    wx.navigateTo({ url: `/pages/my-submissions/detail?id=${e.currentTarget.dataset.id}` });
   },
 });

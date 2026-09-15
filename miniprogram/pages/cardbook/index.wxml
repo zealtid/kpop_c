@@ -20,7 +20,7 @@
         <view class="muted">不计入上方官方进度</view>
       </view>
       <view class="grid3">
-        <view class="tile" wx:for="{{customCards}}" wx:key="id" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="openCustom" data-id="{{item.id}}">
+        <view class="tile" wx:for="{{customCards}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
           <view class="ph" style="background: {{item.memberColor || '#EBEDF3'}}" catchtap="openPreview" data-id="{{item.id}}">
             <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
             <view class="badge">{{item.badge}}</view>

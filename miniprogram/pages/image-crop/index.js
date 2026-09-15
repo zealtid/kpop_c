@@ -1,5 +1,4 @@
 const crop = require("../../utils/crop");
-const nav = require("../../utils/navigate");
 const compressImage = require("../../utils/compressImage");
 
 Page({
@@ -24,7 +23,7 @@ Page({
     const session = crop.getSession();
     if (!session || !session.src) {
       wx.showToast({ title: "请先选择照片", icon: "none" });
-      setTimeout(() => nav.navigateBack(), 240);
+      setTimeout(() => wx.navigateBack(), 240);
       return;
     }
     this._origSrc = session.origSrc || session.src;
@@ -170,13 +169,13 @@ Page({
                   this._confirmed = true;
                   crop.setCroppedPath(path || cropped);
                   this.setData({ busy: false });
-                  nav.navigateBack();
+                  wx.navigateBack();
                 })
                 .catch(() => {
                   this._confirmed = true;
                   crop.setCroppedPath(cropped);
                   this.setData({ busy: false });
-                  nav.navigateBack();
+                  wx.navigateBack();
                 });
             },
             fail: () => {

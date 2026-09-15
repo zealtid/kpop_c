@@ -3,7 +3,6 @@ const analytics = require("../../utils/analytics");
 const onboarding = require("../../utils/followOnboarding");
 const session = require("../../utils/session");
 const customCard = require("../../utils/customCard");
-const nav = require("../../utils/navigate");
 
 Page({
   data: {
@@ -86,12 +85,12 @@ Page({
   },
   openGroup(e) {
     const id = e.currentTarget.dataset.id;
-    nav.navigateTo({ url: `/pages/cardbook-group/index?id=${id}` });
+    wx.navigateTo({ url: `/pages/cardbook-group/index?id=${id}` });
   },
   openCustom(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    nav.navigateTo({ url: `/pages/custom-card/index?id=${id}` });
+    wx.navigateTo({ url: `/pages/custom-card/index?id=${id}` });
   },
   openPreview(e) {
     const id = e.currentTarget.dataset.id;
@@ -114,13 +113,13 @@ Page({
       this.doLogin();
       return;
     }
-    nav.navigateTo({ url: "/pages/custom-card-add/index" });
+    wx.navigateTo({ url: "/pages/custom-card-add/index" });
   },
   goFollowPicker() {
     onboarding.openOnboarding({ force: true });
   },
   goCatalog() {
-    nav.switchTab({ url: "/pages/catalog/index" });
+    wx.switchTab({ url: "/pages/catalog/index" });
   },
   doLogin() {
     const app = getApp();

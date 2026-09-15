@@ -1,7 +1,6 @@
 const api = require("../../utils/api");
 const cardCondition = require("../../utils/cardCondition");
 const customCard = require("../../utils/customCard");
-const nav = require("../../utils/navigate");
 
 Page({
   data: {
@@ -64,12 +63,12 @@ Page({
     if (this.data.tab === 1) return;
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    nav.navigateTo({ url: `/pages/card-detail/index?id=${id}` });
+    wx.navigateTo({ url: `/pages/card-detail/index?id=${id}` });
   },
   openCustom(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    nav.navigateTo({ url: `/pages/custom-card/index?id=${id}` });
+    wx.navigateTo({ url: `/pages/custom-card/index?id=${id}` });
   },
   openPreview(e) {
     const id = e.currentTarget.dataset.id;
@@ -89,7 +88,7 @@ Page({
   },
   addCustom() {
     const gid = (this.data.group && this.data.group.id) || "";
-    nav.navigateTo({
+    wx.navigateTo({
       url: gid ? `/pages/custom-card-add/index?groupId=${gid}` : "/pages/custom-card-add/index",
     });
   },
@@ -113,7 +112,7 @@ Page({
       .request({ url: "/share/image", method: "POST", data: { groupId: this.data.id } })
       .then((data) => {
         wx.hideLoading();
-        nav.navigateTo({
+        wx.navigateTo({
           url: `/pages/share-preview/index?url=${encodeURIComponent(data.url)}&n=${data.cardCount}`,
         });
       })

@@ -1,9 +1,5 @@
 {
   "navigationBarTitleText": "选择关注",
-  "backgroundColor": "#F4F5F9",
-  "backgroundColorContent": "#F4F5F9",
-  "backgroundColorTop": "#FFFFFF",
-  "backgroundColorBottom": "#F4F5F9",
   "usingComponents": {
     "follow-picker": "/components/follow-picker/index"
   }

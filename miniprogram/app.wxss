@@ -7,13 +7,16 @@ page {
   min-height: 100%;
 }
 
-/* Notion #16：点击反馈短、系统转场自己走；减动效时去掉过渡 */
+/* MP-T05：页内点按 ≤300ms；整页转场走原生 navigate/switchTab/back */
 .card,
 .group-card,
 .action-row,
 .tile,
-.settings-row {
-  transition: opacity 140ms ease;
+.settings-row,
+.chip,
+.privacy-opt,
+.step {
+  transition: opacity 200ms ease, background-color 200ms ease;
 }
 
 .nav-hover {
@@ -25,7 +28,10 @@ page {
   .group-card,
   .action-row,
   .tile,
-  .settings-row {
+  .settings-row,
+  .chip,
+  .privacy-opt,
+  .step {
     transition: none;
   }
 
