@@ -5,12 +5,14 @@ import {
   NCard,
   NDataTable,
   NSelect,
+  NSpace,
   NSpin,
   NTag,
   type DataTableColumns,
 } from "naive-ui";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
+import AuthMediaImg from "../components/AuthMediaImg.vue";
 import { loadCatalogLookups } from "../catalog/api";
 import { listSubmissions, type Submission } from "../submissions/api";
 import { useNarrow } from "../narrow";
@@ -42,6 +44,19 @@ function statusTag(status: string) {
 }
 
 const columns = computed<DataTableColumns<Submission>>(() => [
+  {
+    title: "图",
+    key: "thumb",
+    width: 56,
+    render: (row) =>
+      row.status === "pending_review"
+        ? h(AuthMediaImg, {
+            compact: true,
+            adminMediaPath: `/admin/catalog-submissions/${row.id}/media/thumb`,
+            srcPath: row.imageFrontThumbUrl || row.imageFrontUrl || row.imageFrontThumb || row.imageFront,
+          })
+        : "",
+  },
   {
     title: "名称",
     key: "slotLabel",
@@ -99,8 +114,19 @@ function onGroup(value: string) {
     <n-data-table v-if="!isNarrow" :columns="columns" :data="rows" :bordered="false" />
     <div v-else class="cards">
       <n-card v-for="row in rows" :key="row.id" size="small" @click="$router.push({ name: 'submission-detail', params: { id: row.id } })">
-        <div class="card-title">{{ row.slotLabel }}</div>
-        <div class="muted">{{ row.groupNameZh }} · {{ row.releaseTitle }}</div>
+        <div class="card-row">
+          <AuthMediaImg
+            v-if="row.status === 'pending_review'"
+            compact
+            :admin-media-path="`/admin/catalog-submissions/${row.id}/media/thumb`"
+            :src-path="row.imageFrontThumbUrl || row.imageFrontUrl || row.imageFrontThumb || row.imageFront"
+            alt=""
+          />
+          <div>
+            <div class="card-title">{{ row.slotLabel }}</div>
+            <div class="muted">{{ row.groupNameZh }} · {{ row.releaseTitle }}</div>
+          </div>
+        </div>
       </n-card>
     </div>
   </n-spin>
@@ -111,6 +137,11 @@ function onGroup(value: string) {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.card-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 .card-title {
   font-weight: 600;

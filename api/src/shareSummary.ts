@@ -2,6 +2,7 @@ import { query } from "./db.js";
 import { badRequest } from "./errors.js";
 import { getGroup, getPublicTemplate, getRelease, listReleases } from "./catalog.js";
 import { config } from "./config.js";
+import { resolveMiniJump } from "./wxMiniJump.js";
 
 export type ShareKind = "group" | "release" | "template";
 
@@ -55,7 +56,11 @@ export type ShareSummary = {
     title: string;
     hint: string;
     urlScheme: string | null;
+    urlLink: string | null;
     ghId: string | null;
+    appId: string | null;
+    canJump: boolean;
+    missing: string[];
   };
 };
 
@@ -69,7 +74,27 @@ export function shareCta() {
     title: "打开星卡小程序",
     hint: "打不开时请长按复制路径，微信搜索「星卡」后粘贴；或扫描分享图二维码",
     urlScheme: config.wxUrlScheme || null,
+    urlLink: null as string | null,
     ghId: config.wxMiniGhId || null,
+    appId: config.wxAppId || null,
+    canJump: !!(config.wxUrlScheme || config.wxMiniGhId),
+    missing: [] as string[],
+  };
+}
+
+async function attachJump(summary: ShareSummary): Promise<ShareSummary> {
+  const jump = await resolveMiniJump({ page: summary.mini.page, query: summary.mini.query });
+  return {
+    ...summary,
+    cta: {
+      ...summary.cta,
+      urlScheme: jump.urlScheme,
+      urlLink: jump.urlLink,
+      ghId: jump.ghId,
+      appId: jump.appId,
+      canJump: jump.canJump,
+      missing: jump.missing,
+    },
   };
 }
 
@@ -179,9 +204,9 @@ export async function getShareSummary(input: { g?: string; r?: string; t?: strin
   const t = String(input.t || "").trim();
   const r = String(input.r || "").trim();
   const g = String(input.g || "").trim();
-  if (t) return templateShareSummary(t);
-  if (r) return releaseShareSummary(r);
-  if (g) return groupShareSummary(g);
+  if (t) return attachJump(await templateShareSummary(t));
+  if (r) return attachJump(await releaseShareSummary(r));
+  if (g) return attachJump(await groupShareSummary(g));
   throw badRequest("缺少分享参数 g / r / t");
 }
 

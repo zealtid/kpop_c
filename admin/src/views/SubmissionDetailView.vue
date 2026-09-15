@@ -15,7 +15,8 @@ import {
 } from "naive-ui";
 import { useRoute, useRouter } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
-import { errorMessage, mediaUrl } from "../api";
+import AuthMediaImg from "../components/AuthMediaImg.vue";
+import { errorMessage } from "../api";
 import { loadCatalogLookups } from "../catalog/api";
 import {
   approveSubmission,
@@ -41,10 +42,6 @@ const memberId = ref<string | null>(null);
 const members = ref<{ label: string; value: string }[]>([]);
 
 const id = computed(() => String(route.params.id || ""));
-
-function mediaSrc(path: string | null | undefined) {
-  return mediaUrl(path);
-}
 
 async function refresh() {
   loading.value = true;
@@ -127,11 +124,21 @@ async function onUnpublish() {
   <n-alert v-if="deny" type="error">{{ deny }}</n-alert>
   <n-spin :show="loading">
     <n-card v-if="item">
-      <n-space>
-        <img v-if="item.imageFront" class="preview" :src="mediaSrc(item.imageFront)" alt="卡面" />
-        <img v-if="item.imageBack" class="preview" :src="mediaSrc(item.imageBack)" alt="卡背" />
+      <n-space v-if="item.status === 'pending_review'">
+        <AuthMediaImg
+          :admin-media-path="`/admin/catalog-submissions/${item.id}/media/front`"
+          :src-path="item.imageFrontUrl || item.imageFront"
+          alt="卡面"
+        />
+        <AuthMediaImg
+          v-if="item.imageBack || item.imageBackUrl"
+          :admin-media-path="`/admin/catalog-submissions/${item.id}/media/back`"
+          :src-path="item.imageBackUrl || item.imageBack"
+          alt="卡背"
+        />
         <div v-else class="muted">无卡背</div>
       </n-space>
+      <p v-else class="muted">通过/驳回后待审原图会删除；公开主图请到图鉴模板里查看。</p>
       <p class="muted">{{ item.groupNameZh }} · {{ item.releaseTitle }} · {{ item.source }} · {{ item.status }}</p>
       <n-form>
         <n-form-item label="卡位/名称">
@@ -168,13 +175,6 @@ async function onUnpublish() {
 </template>
 
 <style scoped>
-.preview {
-  width: 140px;
-  height: 196px;
-  object-fit: cover;
-  border-radius: 8px;
-  background: #eee;
-}
 .muted {
   color: var(--n-text-color-3);
   margin: 12px 0;

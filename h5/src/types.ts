@@ -38,7 +38,16 @@ export type ShareSummary = {
     groupNameZh: string;
   };
   mini: { path: string; query: string; page: string };
-  cta: { title: string; hint: string; urlScheme: string | null; ghId: string | null };
+  cta: {
+    title: string;
+    hint: string;
+    urlScheme: string | null;
+    urlLink?: string | null;
+    ghId: string | null;
+    appId?: string | null;
+    canJump?: boolean;
+    missing?: string[];
+  };
 };
 
 export type CatalogGroup = {
@@ -80,7 +89,20 @@ export type CatalogTemplate = {
 export type H5Bootstrap = {
   webOAuth: boolean;
   mockAuth: boolean;
-  mini: { appId: string | null; ghId: string | null; urlScheme: string | null };
-  cta: { title: string; hint: string; urlScheme: string | null; ghId: string | null };
+  mini: { appId: string | null; ghId: string | null; urlScheme: string | null; urlLink?: string | null };
+  cta: {
+    title: string;
+    hint: string;
+    urlScheme: string | null;
+    urlLink?: string | null;
+    ghId: string | null;
+    appId?: string | null;
+    canJump?: boolean;
+    missing?: string[];
+  };
+  jsSdk?: boolean;
+  canJump?: boolean;
+  missing?: string[];
+  reason?: string;
   publicBaseUrl: string;
 };

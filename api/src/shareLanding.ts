@@ -39,6 +39,9 @@ export function renderShareLandingHtml(summary: ShareSummary, opts?: { catalogUr
   const h = heading(summary);
   const miniPath = summary.mini.path;
   const scheme = summary.cta.urlScheme || "";
+  const urlLink = summary.cta.urlLink || "";
+  const canJump = !!(scheme || urlLink);
+  const missing = (summary.cta.missing || []).join("、");
   const catalogLink = opts?.catalogUrl
     ? `<a class="ghost" href="${escapeHtml(opts.catalogUrl)}">在微信中浏览图鉴</a>`
     : "";
@@ -92,18 +95,20 @@ export function renderShareLandingHtml(summary: ShareSummary, opts?: { catalogUr
     ${h.note ? `<p class="note">${escapeHtml(h.note)}</p>` : ""}
     ${img}
     ${releaseList}
-    <button class="cta" type="button" id="openMini">${escapeHtml(summary.cta.title)}</button>
+    <a class="cta" id="openMini" ${urlLink ? `href="${escapeHtml(urlLink)}"` : 'href="#"'}>${escapeHtml(summary.cta.title)}</a>
     ${catalogLink}
     <div class="fallback">
-      微信内打不开时：长按下方路径复制，打开微信搜索「星卡」小程序后粘贴；或扫描分享图上的小程序码。
+      ${canJump ? "若未自动跳转：" : missing ? `当前无法自动打开小程序（缺少 ${escapeHtml(missing)}）。` : "当前未配置 URL Link / URL Scheme，无法自动跳转。"}
+      长按下方路径复制，微信搜索「星卡」后粘贴；或扫描分享图上的小程序码。
       <div class="path" id="miniPath">${escapeHtml(miniPath)}</div>
       <a class="ghost" href="#" id="copyPath">复制小程序路径</a>
-      <p class="hint" id="schemeMiss" style="display:none">若未自动跳转，请用上方复制/长按路径，或扫描分享图二维码。</p>
+      <p class="hint" id="schemeMiss" style="display:${canJump ? "none" : "block"}">${canJump ? "若未自动跳转，请用上方复制/长按路径，或扫描分享图二维码。" : "配置 WX_SECRET 后 API 会签发打开链接；在此之前请复制路径或扫码。"}</p>
     </div>
     <p class="hint">${escapeHtml(summary.cta.hint)}</p>
   </div>
   <script>
     var scheme = ${JSON.stringify(scheme)};
+    var urlLink = ${JSON.stringify(urlLink)};
     var path = ${JSON.stringify(miniPath)};
     function copyFallback() {
       var el = document.createElement("textarea");
@@ -121,25 +126,35 @@ export function renderShareLandingHtml(summary: ShareSummary, opts?: { catalogUr
       var n = document.getElementById("schemeMiss");
       if (n) n.style.display = "block";
     }
-    document.getElementById("openMini").onclick = function () {
+    document.getElementById("openMini").onclick = function (e) {
       var wxMini = window.wx && window.wx.miniProgram;
       if (wxMini && wxMini.navigateTo) {
+        if (e) e.preventDefault();
         wxMini.navigateTo({ url: path.indexOf("/") === 0 ? path : "/" + path });
         return;
       }
-      if (scheme) {
+      var target = urlLink || scheme;
+      if (target) {
+        if (urlLink) return;
+        if (e) e.preventDefault();
         var a = document.createElement("a");
-        a.href = scheme;
+        a.href = target;
         a.rel = "noreferrer";
         document.body.appendChild(a);
         a.click();
         a.remove();
-        setTimeout(function () { try { window.location.href = scheme; } catch (e) {} }, 80);
+        setTimeout(function () { try { window.location.href = target; } catch (err) {} }, 80);
         setTimeout(showMiss, 1600);
         return;
       }
+      if (e) e.preventDefault();
       document.getElementById("copyPath").click();
     };
+    if (urlLink && /MicroMessenger/i.test(navigator.userAgent)) {
+      setTimeout(function () {
+        try { window.location.href = urlLink; } catch (err) {}
+      }, 400);
+    }
     document.getElementById("copyPath").onclick = function (e) {
       e.preventDefault();
       if (navigator.clipboard && navigator.clipboard.writeText) {
