@@ -77,19 +77,25 @@ test("wxml: empty copy, version chips, 待补无假图, footnote", () => {
   assert.doesNotMatch(wxml, /已凑齐全部特典/);
 });
 
-test("published slot navigates to catalog search; pending toasts 图鉴待补", () => {
+test("published slot with templateId opens catalog detail; else search; pending toasts 图鉴待补", () => {
   const page = pageWithData({});
+  page.openSlot({
+    currentTarget: { dataset: { navigable: true, templateId: "tmpl-1", q: "预购特典 Weverse" } },
+  });
+  assert.equal(navigations.length, 1);
+  assert.equal(navigations[0].url, "/pages/card-detail/index?id=tmpl-1&from=catalog");
+
   page.openSlot({
     currentTarget: { dataset: { navigable: true, q: "预购特典 Weverse" } },
   });
-  assert.equal(navigations.length, 1);
-  assert.match(navigations[0].url, /\/pages\/catalog-search\/index\?q=/);
+  assert.equal(navigations.length, 2);
+  assert.match(navigations[1].url, /\/pages\/catalog-search\/index\?q=/);
   assert.equal(toasts.length, 0);
 
   page.openSlot({ currentTarget: { dataset: { navigable: false, q: "无卡" } } });
   assert.equal(toasts.length, 1);
   assert.equal(toasts[0].title, "图鉴待补");
-  assert.equal(navigations.length, 1);
+  assert.equal(navigations.length, 2);
 });
 
 test("load empty matrix shows empty state and incomplete footnote", async () => {

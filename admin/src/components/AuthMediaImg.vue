@@ -7,6 +7,8 @@ const props = defineProps<{
   adminMediaPath?: string | null;
   alt?: string;
   compact?: boolean;
+  /** 详情页卡面：撑满父级宽度，比例固定 2:3 */
+  fill?: boolean;
 }>();
 
 const objectUrl = ref("");
@@ -50,7 +52,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="wrap" :class="{ compact }">
+  <div class="wrap" :class="{ compact, fill }">
     <img v-if="objectUrl" class="preview" :src="objectUrl" :alt="alt || ''" />
     <img
       v-else-if="absoluteFallback"
@@ -91,5 +93,15 @@ onUnmounted(() => {
 .compact .ph {
   font-size: 10px;
   padding: 2px;
+}
+.wrap.fill {
+  display: block;
+  width: 100%;
+}
+.fill .preview {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
 }
 </style>

@@ -177,6 +177,21 @@ export function createApp() {
   });
 
   // ---- catalog (guest readable) ----
+  app.get("/catalog/channels", async (_req, res, next) => {
+    try {
+      const dict = loadChannelDictionary();
+      res.json({
+        channels: dict.channels.map((c) => ({
+          code: c.code,
+          nameZh: c.name_zh,
+          aliases: c.aliases,
+        })),
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
   app.get("/catalog/groups", async (req, res, next) => {
     try {
       const ugcOpen = req.query.ugc_open === "1" || req.query.ugc_open === "true";

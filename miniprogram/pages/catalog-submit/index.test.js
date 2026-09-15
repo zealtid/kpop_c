@@ -74,6 +74,16 @@ test("submit without agreement toasts", () => {
   assert.equal(toasts[0].title, "请先勾选协议");
 });
 
+test("wxml uses 名称/别称, agreement checkbox, and searchable 通路", () => {
+  const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
+  assert.match(wxml, /名称\/别称/);
+  assert.doesNotMatch(wxml, /卡位 \/ 名称/);
+  assert.match(wxml, /class="agree/);
+  assert.match(wxml, /bindtap="toggleAgree"/);
+  assert.match(wxml, /bindinput="onChannelQ"/);
+  assert.match(wxml, /其他\/手填|channelOther/);
+});
+
 test("app.json registers submit and my-submissions", () => {
   const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, "../../app.json"), "utf8"));
   assert.ok(appJson.pages.includes("pages/catalog-submit/index"));

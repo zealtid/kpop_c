@@ -28,6 +28,14 @@ function toggleSelected(releases, templateId) {
   return { releases: next, selected: collectSelectedIds(next) };
 }
 
+function clearSelected(releases) {
+  const next = (releases || []).map((r) => ({
+    ...r,
+    templates: (r.templates || []).map((t) => ({ ...t, on: false })),
+  }));
+  return { releases: next, selected: [] };
+}
+
 function toBatchOwnItems(selected) {
   return (selected || []).map((templateId) => ({ templateId, quantity: 1 }));
 }
@@ -36,5 +44,6 @@ module.exports = {
   mapTemplatesForGrid,
   collectSelectedIds,
   toggleSelected,
+  clearSelected,
   toBatchOwnItems,
 };

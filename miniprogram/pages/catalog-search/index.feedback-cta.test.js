@@ -37,6 +37,8 @@ test("empty state wxml has 反馈缺卡 CTA bound to goFeedback", () => {
   assert.match(wxml, /没有匹配模板/);
   assert.match(wxml, /bindtap="goFeedback"/);
   assert.match(wxml, />反馈缺卡</);
+  assert.match(wxml, /bindtap="enterSelect">多选</);
+  assert.match(wxml, /bindtap="onTileTap"/);
 });
 
 test("goFeedback navigates to existing feedback page", () => {

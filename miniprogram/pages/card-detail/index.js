@@ -12,15 +12,23 @@ Page({
     saving: false,
     missing: false,
     showingBack: false,
+    catalogMode: false,
   },
   onLoad(q) {
-    this.setData({ id: q.id || "" });
+    this.setData({
+      id: q.id || "",
+      catalogMode: q.from === "catalog",
+    });
   },
   onShow() {
     this.load();
   },
   load() {
     if (!this.data.id) return;
+    if (this.data.catalogMode) {
+      this.loadCatalog();
+      return;
+    }
     api
       .request({ url: `/collection/cards/${this.data.id}` })
       .then((card) => {
@@ -44,6 +52,57 @@ Page({
         }
         api.handleWriteError(err);
       });
+  },
+  loadCatalog() {
+    api
+      .request({ url: `/catalog/templates/${this.data.id}`, auth: false })
+      .then((d) => {
+        const card = d.template || d;
+        this.setData({
+          missing: false,
+          card: {
+            ...card,
+            mainImageUrl: api.mediaUrl(card.mainImageUrl),
+            imageBack: card.imageBack ? api.mediaUrl(card.imageBack) : "",
+          },
+        });
+      })
+      .catch((err) => {
+        if (err && err.status === 404) {
+          this.setData({ missing: true, card: {} });
+          wx.showToast({ title: "卡片不存在", icon: "none" });
+          return;
+        }
+        api.handleWriteError(err);
+      });
+  },
+  ownOne() {
+    if (!this.data.id) return;
+    api
+      .request({
+        url: "/collection/cards",
+        method: "POST",
+        data: { items: [{ templateId: this.data.id, quantity: 1 }] },
+      })
+      .then(() => wx.showToast({ title: "已标记拥有" }))
+      .catch(api.handleWriteError);
+  },
+  wantOne() {
+    if (!this.data.id) return;
+    api
+      .request({
+        url: "/collection/wants",
+        method: "POST",
+        data: { templateId: this.data.id },
+      })
+      .then((data) => {
+        if (api.isOwnWantMutex(data)) {
+          wx.showToast({ title: data.message || "已拥有，无法加入想要", icon: "none" });
+          return;
+        }
+        wx.showToast({ title: "已加入想要" });
+      })
+      .catch(api.handleWriteError);
   },
   decQty() {
     this.setData({ quantity: cardCondition.clampQuantity(this.data.quantity - 1) });

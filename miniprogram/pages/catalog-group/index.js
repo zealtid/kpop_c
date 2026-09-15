@@ -3,7 +3,7 @@ const catalogSelect = require("../../utils/catalogSelect");
 const releaseDate = require("../../utils/releaseDate");
 
 Page({
-  data: { id: "", group: {}, releases: [], selected: [], pageLoading: true },
+  data: { id: "", group: {}, releases: [], selected: [], pageLoading: true, selectMode: false },
   onLoad(q) {
     this.setData({ id: q.id });
     this.load();
@@ -44,6 +44,25 @@ Page({
     wx.navigateTo({
       url: `/pages/catalog-search/index?q=${encodeURIComponent(q + " " + (this.data.group.nameEn || ""))}`,
     });
+  },
+  enterSelect() {
+    this.setData({ selectMode: true });
+  },
+  exitSelect() {
+    const next = catalogSelect.clearSelected(this.data.releases);
+    this.setData({ ...next, selectMode: false });
+  },
+  onTileTap(e) {
+    if (this.data.selectMode) {
+      this.toggle(e);
+      return;
+    }
+    this.openCard(e);
+  },
+  openCard(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/card-detail/index?id=${id}&from=catalog` });
   },
   toggle(e) {
     const next = catalogSelect.toggleSelected(this.data.releases, e.currentTarget.dataset.id);

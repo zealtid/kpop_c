@@ -1,4 +1,5 @@
 const crop = require("../../utils/crop");
+const compressImage = require("../../utils/compressImage");
 
 Page({
   data: {
@@ -159,12 +160,23 @@ Page({
             destWidth: outW,
             destHeight: outH,
             fileType: "jpg",
-            quality: 0.9,
+            quality: 0.72,
             success: (res) => {
-              this._confirmed = true;
-              crop.setCroppedPath(res.tempFilePath);
-              this.setData({ busy: false });
-              wx.navigateBack();
+              const cropped = res.tempFilePath;
+              compressImage
+                .compressToLimit(cropped)
+                .then((path) => {
+                  this._confirmed = true;
+                  crop.setCroppedPath(path || cropped);
+                  this.setData({ busy: false });
+                  wx.navigateBack();
+                })
+                .catch(() => {
+                  this._confirmed = true;
+                  crop.setCroppedPath(cropped);
+                  this.setData({ busy: false });
+                  wx.navigateBack();
+                });
             },
             fail: () => {
               this.setData({ busy: false });

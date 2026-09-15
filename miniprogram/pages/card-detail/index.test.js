@@ -69,6 +69,8 @@ test("wxml has quantity stepper, 品相 chips, 备注, save", () => {
   assert.match(wxml, /bindtap="pickCondition"/);
   assert.match(wxml, />备注</);
   assert.match(wxml, /bindtap="save">保存</);
+  assert.match(wxml, /catalogMode/);
+  assert.match(wxml, /bindtap="ownOne"/);
 });
 
 test("page is registered outside tabBar; pages[0] stays cardbook", () => {

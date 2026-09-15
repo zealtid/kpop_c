@@ -9,7 +9,7 @@ import type { Server } from "node:http";
 import sharp from "sharp";
 import { createApp } from "../src/app.js";
 import { config } from "../src/config.js";
-import { isSafeCardsMediaFile } from "../src/storage.js";
+import { isSafeCardsMediaFile, MAX_CARD_BYTES, normalizeImage } from "../src/storage.js";
 
 let server: Server;
 let base = "";
@@ -56,4 +56,18 @@ test("GET /media/cards rejects traversal and missing files", async () => {
   assert.equal(missing.status, 404);
   const traversal = await fetch(`${base}/media/cards/${encodeURIComponent("../package.json")}`);
   assert.equal(traversal.status, 404);
+});
+
+test("normalizeImage jpeg-encodes oversize photos to <=150KB", async () => {
+  const w = 1200;
+  const h = 1800;
+  const raw = Buffer.alloc(w * h * 3);
+  for (let i = 0; i < raw.length; i++) raw[i] = (i * 47 + (i >> 3)) & 255;
+  const big = await sharp(raw, { raw: { width: w, height: h, channels: 3 } })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+  assert.ok(big.length > MAX_CARD_BYTES);
+  const out = await normalizeImage(big, "image/jpeg");
+  assert.ok(out.buffer.length <= MAX_CARD_BYTES);
+  assert.equal(out.ext, "jpg");
 });

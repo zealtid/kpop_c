@@ -46,8 +46,34 @@
     </view>
     <view class="label sub-label">版本</view>
     <input class="box input" value="{{versionLabel}}" bindinput="onVersion" placeholder="例如 Photobook A / 特典-POB" maxlength="40"/>
-    <view class="label sub-label">卡位 / 名称</view>
-    <input class="box input" value="{{slotLabel}}" bindinput="onSlot" placeholder="例如 成员小卡 01" maxlength="80"/>
+    <view class="label sub-label">名称/别称</view>
+    <input class="box input" value="{{slotLabel}}" bindinput="onSlot" placeholder="例如 成员小卡 01 / 别称" maxlength="80"/>
+    <view class="label sub-label">通路 / 特典</view>
+    <input
+      class="box input"
+      value="{{channelQ}}"
+      bindinput="onChannelQ"
+      placeholder="搜索 Weverse / 天猫 / 预购特典"
+      maxlength="40"
+    />
+    <view class="chips channel-hits">
+      <view
+        class="chip {{channelValue===item.value?'on':''}}"
+        wx:for="{{channelHits}}"
+        wx:key="label"
+        bindtap="pickChannel"
+        data-value="{{item.value}}"
+        data-label="{{item.label}}"
+      >{{item.label}}</view>
+    </view>
+    <input
+      wx:if="{{channelOther}}"
+      class="box input"
+      value="{{channelCustom}}"
+      bindinput="onChannelCustom"
+      placeholder="没有匹配时手填通路或特典名称"
+      maxlength="40"
+    />
   </view>
 
   <view class="card">
@@ -69,9 +95,15 @@
   </view>
 
   <view class="card">
-    <view class="row" bindtap="toggleAgree">
-      <view class="chip {{agreed?'on':''}}">{{agreed?'已勾选':'未勾选'}}</view>
-      <view class="muted" style="margin-left:16rpx">我确认图片不侵犯第三方权利，同意审核与去重规则</view>
+    <view
+      class="agree {{agreed?'on':''}} {{saving?'off':''}}"
+      bindtap="toggleAgree"
+      hover-class="agree-hover"
+    >
+      <view class="agree-box" aria-role="checkbox" aria-checked="{{agreed}}">
+        <view wx:if="{{agreed}}" class="agree-mark"></view>
+      </view>
+      <view class="agree-text">我确认图片不侵犯第三方权利，同意审核与去重规则</view>
     </view>
   </view>
 
