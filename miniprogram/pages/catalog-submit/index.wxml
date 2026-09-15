@@ -53,6 +53,7 @@
       class="box input"
       value="{{channelQ}}"
       bindinput="onChannelQ"
+      bindfocus="onChannelFocus"
       placeholder="搜索 Weverse / 天猫 / 预购特典"
       maxlength="40"
     />
@@ -60,7 +61,7 @@
       <view
         class="chip {{channelValue===item.value?'on':''}}"
         wx:for="{{channelHits}}"
-        wx:key="label"
+        wx:key="key"
         bindtap="pickChannel"
         data-value="{{item.value}}"
         data-label="{{item.label}}"
@@ -77,24 +78,28 @@
   </view>
 
   <view class="card">
-    <view class="label">卡面（必填，{{aspectLabel}}）</view>
-    <view class="card-face">
-      <image wx:if="{{frontPreview}}" src="{{frontPreview}}" mode="aspectFill"/>
-      <view wx:else class="card-face-hint">选图后裁剪</view>
-    </view>
-    <view class="row pick-row">
-      <view class="btn ghost slim" bindtap="pickFront">选卡面</view>
-    </view>
-  </view>
-
-  <view class="card">
-    <view class="label">卡背（可跳过）</view>
-    <view wx:if="{{backPreview}}" class="card-face">
-      <image src="{{backPreview}}" mode="aspectFill"/>
-    </view>
-    <view class="row pick-row">
-      <view class="btn ghost slim" bindtap="pickBack">选卡背</view>
-      <view wx:if="{{backPreview}}" class="btn ghost slim" bindtap="skipBack">跳过</view>
+    <view class="faces-row">
+      <view class="face-col">
+        <view class="label">卡面（必填，{{aspectLabel}}）</view>
+        <view class="card-face">
+          <image wx:if="{{frontPreview}}" src="{{frontPreview}}" mode="aspectFill"/>
+          <view wx:else class="card-face-hint">选图后裁剪</view>
+        </view>
+        <view class="row pick-row">
+          <view class="btn ghost slim" bindtap="pickFront">选卡面</view>
+        </view>
+      </view>
+      <view class="face-col">
+        <view class="label">卡背（可跳过）</view>
+        <view class="card-face">
+          <image wx:if="{{backPreview}}" src="{{backPreview}}" mode="aspectFill"/>
+          <view wx:else class="card-face-hint">可跳过</view>
+        </view>
+        <view class="row pick-row">
+          <view class="btn ghost slim" bindtap="pickBack">选卡背</view>
+          <view wx:if="{{backPreview}}" class="btn ghost slim" bindtap="skipBack">跳过</view>
+        </view>
+      </view>
     </view>
   </view>
 

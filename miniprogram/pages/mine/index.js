@@ -47,11 +47,23 @@ Page({
     loginFailed: false,
     loginBtnLabel: "登录",
     contributionPoints: 0,
+    // 仅手动点「同步微信昵称」后才挂载 type=nickname，避免进 Tab 自动拉起微信面板
+    nicknameSyncArmed: false,
+    nicknameSyncFocus: false,
   },
 
   onShow() {
     analytics.tabView("我的");
+    if (this.data.nicknameSyncArmed || this.data.nicknameSyncFocus) {
+      this.setData({ nicknameSyncArmed: false, nicknameSyncFocus: false });
+    }
     this.load();
+  },
+
+  onHide() {
+    if (this.data.nicknameSyncArmed || this.data.nicknameSyncFocus) {
+      this.setData({ nicknameSyncArmed: false, nicknameSyncFocus: false });
+    }
   },
 
   applyProfile(user, follows) {
@@ -60,7 +72,7 @@ Page({
     const nicknameUnset = displayName.isUnsetNickname(user && user.nickname);
     const avatarSrc = resolveAvatarSrc(user);
     const contributionPoints = Number(user && user.contributionPoints);
-    this.setData({
+    const patch = {
       needsLogin: false,
       loginFailed: false,
       loginBtnLabel: session.loginButtonLabel(false),
@@ -74,7 +86,12 @@ Page({
       followCount: summary.count,
       followLabel: summary.label,
       followPreview: summary.preview,
-    });
+    };
+    if (!nicknameUnset) {
+      patch.nicknameSyncArmed = false;
+      patch.nicknameSyncFocus = false;
+    }
+    this.setData(patch);
   },
 
   load() {
@@ -103,6 +120,8 @@ Page({
           followCount: 0,
           followLabel: "",
           followPreview: [],
+          nicknameSyncArmed: false,
+          nicknameSyncFocus: false,
         });
         if (app && (app._loginPromise || (app.globalData && app.globalData.loginState === "pending"))) {
           return;
@@ -110,8 +129,17 @@ Page({
       });
   },
 
+  // 用户点「同步微信昵称」后才渲染 type=nickname，由微信手势拉起选择器。
+  armNicknameSync() {
+    if (this.data.needsLogin || !this.data.nicknameUnset) return;
+    this.setData({ nicknameSyncArmed: true, nicknameSyncFocus: true });
+  },
+
   // 微信昵称填充（input type=nickname）回写；已有展示名只读，不走手改。
   onWxNicknameFill(e) {
+    if (this.data.nicknameSyncFocus) {
+      this.setData({ nicknameSyncFocus: false });
+    }
     if (this.data.needsLogin || !this.data.nicknameUnset) return;
     const nickname = displayName.normalizeNickname(e.detail && e.detail.value);
     if (!nickname || displayName.isUnsetNickname(nickname)) return;

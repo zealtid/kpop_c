@@ -85,37 +85,49 @@ Page({
       })
       .catch(() => this.setData({ groups: [], groupsEmpty: true, pageLoading: false }));
   },
-  refreshChannelHits() {
-    const hits = channelPick.filterOptions(this.data.channelOptions, this.data.channelQ);
-    this.setData({ channelHits: hits });
+  refreshChannelHits(q, options) {
+    const query = q != null ? q : this.data.channelQ;
+    const list = options || this.data.channelOptions;
+    this.setData({ channelHits: channelPick.filterOptions(list, query) });
   },
   loadChannels() {
     api
       .request({ url: "/catalog/channels", auth: false })
       .then((d) => {
         this._dictChannels = channelPick.mapChannels(d.channels);
-        this.setData({ channelOptions: this._dictChannels });
-        this.refreshChannelHits();
+        const channelOptions = this._dictChannels;
+        this.setData({
+          channelOptions,
+          channelHits: channelPick.filterOptions(channelOptions, this.data.channelQ),
+        });
         if (this.data.releaseId) this.loadBenefits(this.data.releaseId);
       })
       .catch(() => {
         this._dictChannels = [];
-        this.setData({ channelOptions: [] });
-        this.refreshChannelHits();
+        this.setData({
+          channelOptions: [],
+          channelHits: channelPick.filterOptions([], this.data.channelQ),
+        });
       });
   },
   loadBenefits(releaseId) {
     if (!releaseId) {
-      this.setData({ channelOptions: this._dictChannels || [] });
-      this.refreshChannelHits();
+      const channelOptions = this._dictChannels || [];
+      this.setData({
+        channelOptions,
+        channelHits: channelPick.filterOptions(channelOptions, this.data.channelQ),
+      });
       return;
     }
     api
       .request({ url: `/catalog/releases/${releaseId}/benefit-matrix`, auth: false })
       .then((d) => {
         const benefits = channelPick.mapBenefitRows(d.rows);
-        this.setData({ channelOptions: channelPick.mergeOptions(this._dictChannels || [], benefits) });
-        this.refreshChannelHits();
+        const channelOptions = channelPick.mergeOptions(this._dictChannels || [], benefits);
+        this.setData({
+          channelOptions,
+          channelHits: channelPick.filterOptions(channelOptions, this.data.channelQ),
+        });
       })
       .catch(() => this.refreshChannelHits());
   },
@@ -168,8 +180,18 @@ Page({
     this.setData({ slotLabel: e.detail.value || "" });
   },
   onChannelQ(e) {
-    this.setData({ channelQ: e.detail.value || "" });
-    this.refreshChannelHits();
+    const channelQ = (e.detail && e.detail.value) || "";
+    this.setData({
+      channelQ,
+      channelHits: channelPick.filterOptions(this.data.channelOptions, channelQ),
+    });
+  },
+  onChannelFocus(e) {
+    const channelQ = (e.detail && e.detail.value) || this.data.channelQ || "";
+    this.setData({
+      channelQ,
+      channelHits: channelPick.filterOptions(this.data.channelOptions, channelQ),
+    });
   },
   pickChannel(e) {
     const value = e.currentTarget.dataset.value || "";

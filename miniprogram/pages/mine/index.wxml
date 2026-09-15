@@ -25,11 +25,19 @@
           <view class="profile-name {{nicknameUnset ? 'placeholder' : ''}}">{{displayName}}</view>
           <view class="profile-points">贡献积分 {{contributionPoints}}</view>
           <view wx:if="{{nicknameUnset}}" class="nickname-sync-wrap">
-            <view class="btn nickname-sync-btn">同步微信昵称</view>
+            <view
+              wx:if="{{!nicknameSyncArmed}}"
+              class="btn nickname-sync-btn"
+              bindtap="armNicknameSync"
+            >同步微信昵称</view>
             <input
+              wx:if="{{nicknameSyncArmed}}"
               class="nickname-fill"
               type="nickname"
+              placeholder="点选微信昵称"
+              focus="{{nicknameSyncFocus}}"
               maxlength="32"
+              bindinput="onWxNicknameFill"
               bindblur="onWxNicknameFill"
               bindnicknamereview="onNicknameReview"
             />

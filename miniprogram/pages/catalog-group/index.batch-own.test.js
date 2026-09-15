@@ -64,6 +64,9 @@ test("wxml shows 特典 badge; tap opens detail; 多选 is explicit", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   assert.match(wxml, /wx:if="\{\{t\.isBenefit\}\}"/);
   assert.match(wxml, /class="benefit-badge">特典</);
+  assert.match(wxml, /class="meta-chip benefit"/);
+  assert.match(wxml, /class="release-title"/);
+  assert.match(wxml, /class="meta-chip"/);
   assert.match(wxml, /bindtap="onTileTap"/);
   assert.match(wxml, /bindtap="enterSelect">多选</);
   assert.match(wxml, /wx:if="\{\{selectMode\}\}"/);
@@ -82,6 +85,9 @@ test("wxss has Scheme A benefit corner badge and selected outline", () => {
   assert.match(wxss, /--color-warning/);
   assert.match(wxss, /--color-brand/);
   assert.match(wxss, /\.sel/);
+  assert.match(wxss, /\.meta-chip/);
+  assert.match(wxss, /border-radius:\s*999rpx/);
+  assert.match(wxss, /\.release-title/);
   assert.doesNotMatch(wxss, /#121016|#ff6b9d|#f5c36b/i);
   assert.doesNotMatch(wxss, /rgba\(\s*18\s*,\s*16\s*,\s*22/);
 });
