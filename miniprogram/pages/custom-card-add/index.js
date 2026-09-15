@@ -2,6 +2,7 @@ const api = require("../../utils/api");
 const cardCondition = require("../../utils/cardCondition");
 const customCard = require("../../utils/customCard");
 const crop = require("../../utils/crop");
+const nav = require("../../utils/navigate");
 
 Page({
   data: {
@@ -136,7 +137,7 @@ Page({
       if (!filePath) return;
       this._origPath = filePath;
       crop.beginSession(filePath);
-      wx.navigateTo({ url: "/pages/image-crop/index" });
+      nav.navigateTo({ url: "/pages/image-crop/index" });
     };
     if (typeof wx.chooseMedia === "function") {
       wx.chooseMedia({
@@ -199,7 +200,7 @@ Page({
       return;
     }
     crop.beginSession(orig);
-    wx.navigateTo({ url: "/pages/image-crop/index" });
+    nav.navigateTo({ url: "/pages/image-crop/index" });
   },
   pickCondition(e) {
     this.setData({ condition: e.currentTarget.dataset.value || "" });
@@ -246,7 +247,7 @@ Page({
           })
           .then(() => {
             wx.showToast({ title: `已加入${customCard.CUSTOM_BADGE}` });
-            setTimeout(() => wx.navigateBack(), 400);
+            setTimeout(() => nav.navigateBack(), 400);
           })
           .catch((err) => {
             hidePending();
@@ -275,6 +276,6 @@ Page({
       frontPath: this._filePath || "",
       frontPreview: this.data.preview || "",
     });
-    wx.navigateTo({ url: "/pages/catalog-submit/index" });
+    nav.navigateTo({ url: "/pages/catalog-submit/index" });
   },
 });

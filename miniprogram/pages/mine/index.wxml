@@ -67,27 +67,27 @@
   </block>
 
   <view class="card action-list">
-    <view class="action-row" bindtap="goSubmit">
+    <view class="action-row" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="goSubmit">
       <text class="action-label">投稿图鉴</text>
       <text class="action-arrow">›</text>
     </view>
-    <view class="action-row" bindtap="goGrid">
+    <view class="action-row" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="goGrid">
       <text class="action-label">宫格入册</text>
       <text class="action-arrow">›</text>
     </view>
-    <view class="action-row" bindtap="goMySubmissions">
+    <view class="action-row" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="goMySubmissions">
       <text class="action-label">我的投稿</text>
       <text class="action-arrow">›</text>
     </view>
-    <view class="action-row" bindtap="goSettings">
+    <view class="action-row" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="goSettings">
       <text class="action-label">设置</text>
       <text class="action-arrow">›</text>
     </view>
-    <view class="action-row" bindtap="goFeedback">
+    <view class="action-row" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="goFeedback">
       <text class="action-label">文字反馈缺卡</text>
       <text class="action-arrow">›</text>
     </view>
-    <view class="action-row" bindtap="goAbout">
+    <view class="action-row" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="goAbout">
       <text class="action-label">关于星卡</text>
       <text class="action-arrow">›</text>
     </view>

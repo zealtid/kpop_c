@@ -3,6 +3,7 @@ const analytics = require("../../utils/analytics");
 const session = require("../../utils/session");
 const displayName = require("../../utils/displayName");
 const followPicker = require("../../utils/followPicker");
+const nav = require("../../utils/navigate");
 
 function resolveAvatarSrc(user) {
   const raw = user && (user.avatarUrl || user.avatar_url);
@@ -195,30 +196,30 @@ Page({
   },
 
   goFollowManage() {
-    wx.navigateTo({ url: "/pages/follow-manage/index" });
+    nav.navigateTo({ url: "/pages/follow-manage/index" });
   },
 
   goSettings() {
-    wx.navigateTo({ url: "/pages/settings/index" });
+    nav.navigateTo({ url: "/pages/settings/index" });
   },
 
   goSubmit() {
-    wx.navigateTo({ url: "/pages/catalog-submit/index" });
+    nav.navigateTo({ url: "/pages/catalog-submit/index" });
   },
 
   goGrid() {
-    wx.navigateTo({ url: "/pages/catalog-grid/index" });
+    nav.navigateTo({ url: "/pages/catalog-grid/index" });
   },
 
   goMySubmissions() {
-    wx.navigateTo({ url: "/pages/my-submissions/index" });
+    nav.navigateTo({ url: "/pages/my-submissions/index" });
   },
 
   goFeedback() {
-    wx.navigateTo({ url: "/pages/feedback/index" });
+    nav.navigateTo({ url: "/pages/feedback/index" });
   },
 
   goAbout() {
-    wx.navigateTo({ url: "/pages/about/index" });
+    nav.navigateTo({ url: "/pages/about/index" });
   },
 });

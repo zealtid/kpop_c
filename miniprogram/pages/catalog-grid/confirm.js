@@ -5,6 +5,7 @@ const compressImage = require("../../utils/compressImage");
 const crop = require("../../utils/crop");
 const gridDetect = require("../../utils/gridDetect");
 const gridSession = require("../../utils/gridSession");
+const nav = require("../../utils/navigate");
 
 function readBase64(filePath) {
   return new Promise((resolve, reject) => {
@@ -415,7 +416,7 @@ Page({
             this.setData({ saving: false });
             return;
           }
-          wx.redirectTo({ url: "/pages/my-submissions/index" });
+          nav.redirectTo({ url: "/pages/my-submissions/index" });
         },
       });
     };

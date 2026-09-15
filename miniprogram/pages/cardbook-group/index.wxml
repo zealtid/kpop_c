@@ -17,7 +17,7 @@
   <block wx:if="{{tab===0 && custom.length}}">
     <view class="muted" style="margin-bottom:8rpx">自定义卡（审核中可预览原图）</view>
     <view class="grid3">
-      <view class="tile" wx:for="{{custom}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
+      <view class="tile" wx:for="{{custom}}" wx:key="id" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="openCustom" data-id="{{item.id}}">
         <view class="ph" style="background: {{item.memberColor || '#EBEDF3'}}" catchtap="openPreview" data-id="{{item.id}}">
           <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
           <view class="badge">{{item.badge}}</view>
@@ -32,7 +32,7 @@
 
   <view wx:if="{{list.length===0 && !(tab===0 && custom.length)}}" class="empty">暂无卡片</view>
   <view class="grid3">
-    <view class="tile" wx:for="{{list}}" wx:key="id" bindtap="openCard" data-id="{{item.id}}">
+    <view class="tile" wx:for="{{list}}" wx:key="id" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="openCard" data-id="{{item.id}}">
       <view class="ph" style="background: {{item.memberColor}}">
         <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
       </view>

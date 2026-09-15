@@ -3,7 +3,7 @@
   <view wx:if="{{pageLoading}}" class="page-loading">加载中…</view>
   <view class="sub">审核进度仅在站内查看，不会推送订阅消息。</view>
   <view wx:if="{{empty}}" class="muted" style="margin-top:24rpx">还没有投稿</view>
-  <view class="card" wx:for="{{items}}" wx:key="id" bindtap="open" data-id="{{item.id}}">
+  <view class="card" wx:for="{{items}}" wx:key="id" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="open" data-id="{{item.id}}">
     <view class="row">
       <view>
         <view class="h1" style="font-size:32rpx">{{item.slotLabel}}</view>

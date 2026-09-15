@@ -2,6 +2,8 @@
  * 私人拍照加卡展示口径（M1.5 / PC03–PC06）
  */
 
+const nav = require("./navigate");
+
 const CUSTOM_BADGE = "自定义";
 
 function customCountLabel(n) {
@@ -101,9 +103,7 @@ let previewSrc = "";
 function openFullscreen(src) {
   if (!src) return false;
   previewSrc = src;
-  if (typeof wx !== "undefined" && typeof wx.navigateTo === "function") {
-    wx.navigateTo({ url: "/pages/image-preview/index" });
-  }
+  nav.navigateTo({ url: "/pages/image-preview/index" });
   return true;
 }
 

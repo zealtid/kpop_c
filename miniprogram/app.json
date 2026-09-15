@@ -33,7 +33,11 @@
     "navigationBarTitleText": "星卡",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#F4F5F9",
-    "backgroundTextStyle": "dark"
+    "backgroundColorContent": "#F4F5F9",
+    "backgroundColorTop": "#FFFFFF",
+    "backgroundColorBottom": "#F4F5F9",
+    "backgroundTextStyle": "dark",
+    "handleWebviewPreload": "static"
   },
   "tabBar": {
     "color": "#667085",

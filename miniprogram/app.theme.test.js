@@ -141,7 +141,11 @@ test("TH06 light navigation bar and dark text style", () => {
   assert.equal(appJson.window.navigationBarBackgroundColor.toUpperCase(), "#FFFFFF");
   assert.equal(appJson.window.navigationBarTextStyle, "black");
   assert.equal(appJson.window.backgroundColor.toUpperCase(), "#F4F5F9");
+  assert.equal(appJson.window.backgroundColorContent.toUpperCase(), "#F4F5F9");
+  assert.equal(appJson.window.backgroundColorTop.toUpperCase(), "#FFFFFF");
+  assert.equal(appJson.window.backgroundColorBottom.toUpperCase(), "#F4F5F9");
   assert.equal(appJson.window.backgroundTextStyle, "dark");
+  assert.equal(appJson.darkmode, undefined);
   const preview = JSON.parse(
     fs.readFileSync(path.join(ROOT, "pages/image-preview/index.json"), "utf8"),
   );

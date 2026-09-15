@@ -2,6 +2,7 @@ const api = require("../../utils/api");
 const catalogSelect = require("../../utils/catalogSelect");
 const releaseDate = require("../../utils/releaseDate");
 const followPicker = require("../../utils/followPicker");
+const nav = require("../../utils/navigate");
 
 Page({
   data: { id: "", group: {}, releases: [], selected: [], pageLoading: true, selectMode: false },
@@ -38,11 +39,11 @@ Page({
   openRelease(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    wx.navigateTo({ url: `/pages/catalog-release/index?id=${id}` });
+    nav.navigateTo({ url: `/pages/catalog-release/index?id=${id}` });
   },
   onSearch(e) {
     const q = e.detail.value || "";
-    wx.navigateTo({
+    nav.navigateTo({
       url: `/pages/catalog-search/index?q=${encodeURIComponent(q + " " + (this.data.group.nameEn || ""))}`,
     });
   },
@@ -63,7 +64,7 @@ Page({
   openCard(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    wx.navigateTo({ url: `/pages/card-detail/index?id=${id}&from=catalog` });
+    nav.navigateTo({ url: `/pages/card-detail/index?id=${id}&from=catalog` });
   },
   toggle(e) {
     const next = catalogSelect.toggleSelected(this.data.releases, e.currentTarget.dataset.id);

@@ -2,6 +2,7 @@ const api = require("../../utils/api");
 const customCard = require("../../utils/customCard");
 const crop = require("../../utils/crop");
 const channelPick = require("../../utils/channelPick");
+const nav = require("../../utils/navigate");
 
 function readBase64(filePath) {
   return new Promise((resolve, reject) => {
@@ -205,7 +206,7 @@ Page({
     const done = (filePath) => {
       if (!filePath) return;
       crop.beginSession(filePath);
-      wx.navigateTo({ url: "/pages/image-crop/index" });
+      nav.navigateTo({ url: "/pages/image-crop/index" });
     };
     if (typeof wx.chooseMedia === "function") {
       wx.chooseMedia({
@@ -261,7 +262,7 @@ Page({
         .then((d) => {
           this.setData({ warnings: d.warnings || [] });
           wx.showToast({ title: "已提交待审" });
-          setTimeout(() => wx.redirectTo({ url: "/pages/my-submissions/index" }), 400);
+          setTimeout(() => nav.redirectTo({ url: "/pages/my-submissions/index" }), 400);
         })
         .catch((err) => {
           hidePending();
@@ -324,7 +325,7 @@ Page({
       .then((d) => {
         this.setData({ warnings: d.warnings || [] });
         wx.showToast({ title: "已提交待审" });
-        setTimeout(() => wx.redirectTo({ url: "/pages/my-submissions/index" }), 400);
+        setTimeout(() => nav.redirectTo({ url: "/pages/my-submissions/index" }), 400);
       })
       .catch((err) => {
         hidePending();

@@ -20,7 +20,7 @@
         <view class="muted">不计入上方官方进度</view>
       </view>
       <view class="grid3">
-        <view class="tile" wx:for="{{customCards}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
+        <view class="tile" wx:for="{{customCards}}" wx:key="id" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="openCustom" data-id="{{item.id}}">
           <view class="ph" style="background: {{item.memberColor || '#EBEDF3'}}" catchtap="openPreview" data-id="{{item.id}}">
             <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
             <view class="badge">{{item.badge}}</view>
@@ -39,7 +39,7 @@
     </view>
 
     <block wx:else>
-      <view wx:for="{{groups}}" wx:key="id" class="group-card" bindtap="openGroup" data-id="{{item.slug}}">
+      <view wx:for="{{groups}}" wx:key="id" class="group-card" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="openGroup" data-id="{{item.slug}}">
         <view class="left">
           <image wx:if="{{item.logoSrc}}" class="dot" src="{{item.logoSrc}}" mode="aspectFill"/>
           <view wx:else class="dot letter" style="background: {{item.logoColor}}">{{item.initial}}</view>

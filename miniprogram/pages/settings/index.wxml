@@ -24,7 +24,7 @@
       </view>
     </view>
 
-    <view class="card row settings-row" bindtap="goFollowManage">
+    <view class="card row settings-row" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="goFollowManage">
       <view>管理关注</view>
       <view class="muted">选择或调整关注的团体</view>
     </view>
