@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
 
-/** 图鉴投稿审核通过默认记 1 分；改这里或 CONTRIBUTION_POINTS_PER_APPROVED_CARD。 */
+/** 图鉴投稿首次审核通过默认 +1（OQ-P3-1）；改这里或 CONTRIBUTION_POINTS_PER_APPROVED_CARD。 */
 export const DEFAULT_POINTS_PER_APPROVED_CARD = 1;
 export const POINT_REASON_APPROVED = "catalog_submission_approved";
 
@@ -13,8 +13,9 @@ export function pointsPerApprovedCard(): number {
 }
 
 /**
- * 在审核通过事务内记分。同一 submission_id 只记一次。
- * 驳回路径不要调用（积分为 0）。
+ * 在审核通过事务内记分（新建模板与合并已有模板同一路径，OQ-P3-3）。
+ * 按 submission_id 幂等：同一投稿首次通过才记分。
+ * 驳回路径不要调用（积分为 0）。不回填历史上已经 approved 的记录（OQ-P3-2）。
  */
 export async function awardApprovedSubmissionPoints(
   client: PoolClient,

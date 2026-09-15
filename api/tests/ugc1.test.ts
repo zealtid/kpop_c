@@ -420,7 +420,7 @@ test("U1-11 report + unpublish", async () => {
   assert.equal((unpub.body as { status: string }).status, "draft");
 });
 
-test("P3 #8/#9 admin users + points on approve only", async () => {
+test("P3-04/05/06 first approval +1, reject 0, no historical backfill needed", async () => {
   const meBefore = await api("/me");
   const beforePts = Number((meBefore.body as { contributionPoints?: number }).contributionPoints) || 0;
 

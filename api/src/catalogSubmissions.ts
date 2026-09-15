@@ -595,6 +595,7 @@ export async function approveSubmission(
         ],
       );
     }
+    // OQ-P3-3：新建模板与 merge 进已有模板都记分；OQ-P3-1 首次通过 +1；按 submission_id 幂等。
     const pointsAwarded = await awardApprovedSubmissionPoints(client, {
       userId: String(row.user_id),
       submissionId: id,

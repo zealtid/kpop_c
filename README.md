@@ -269,7 +269,7 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 | `GET /admin/users` `GET /admin/users/:id` | C 端用户列表 / 详情（昵称、头像、关注、贡献积分、投稿计数） |
 | `GET /admin/users/:id/submissions` | 该用户图鉴投稿 / 上传记录（只读） |
 
-图鉴投稿 **审核通过** 时记入贡献积分，默认每张 1 分（`CONTRIBUTION_POINTS_PER_APPROVED_CARD`）。驳回为 0。Admin **用户**（`#/users`）与小程序「我的」只读展示。不含现金 / 会员 / 广告 / 商城 / 提现。
+图鉴投稿 **首次审核通过** 时记入贡献积分，默认每张 **1** 分（OQ-P3-1，`CONTRIBUTION_POINTS_PER_APPROVED_CARD`）。合并已有模板同样记分（OQ-P3-3）。驳回为 0。**不回填**历史上已经通过的投稿（OQ-P3-2）。Admin **用户**（`#/users`）与小程序「我的」只读展示。不含现金 / 会员 / 广告 / 商城 / 提现 / 封禁。
 
 ### 生产部署（Railway 静态服务 `admin`）
 
