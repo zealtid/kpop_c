@@ -7,7 +7,8 @@ import {
   mapMember,
   mapRelease,
 } from "./catalog.js";
-import { isPgUniqueViolation } from "./admin.js";
+import { isPgForeignKeyViolation, isPgUniqueViolation } from "./admin.js";
+import { deleteStoredImage } from "./storage.js";
 import { RELEASE_KINDS, type ReleaseKind, isReleaseKind } from "./catalogConstants.js";
 import { assertReleasePublishAllowed } from "./catalogConstraints.js";
 
@@ -155,6 +156,75 @@ export async function setGroupStatus(id: string, statusRaw: unknown) {
   return getAdminGroup(id);
 }
 
+async function bestEffortDeleteMedia(publicPath: string | null | undefined) {
+  try {
+    await deleteStoredImage(publicPath);
+  } catch {
+    // 媒体缺失不阻断硬删
+  }
+}
+
+function catalogInUse(message: string, details?: unknown) {
+  return new AppError(409, "CATALOG_IN_USE", message, details);
+}
+
+function catalogPublished(entityLabel: string) {
+  return new AppError(409, "CATALOG_PUBLISHED", `已发布${entityLabel}不能硬删，请先废弃。`);
+}
+
+function formatBlockers(parts: Array<[string, number]>) {
+  return parts.filter(([, n]) => n > 0).map(([label, n]) => `${label} ${n}`);
+}
+
+/** 硬删组合：仅草稿/废弃且无子数据。不级联删成员/发行/模板/关注。 */
+export async function deleteGroup(id: string) {
+  const row = await loadGroupRow(id);
+  if (String(row.status) === "published") throw catalogPublished("组合");
+  const counts = await query<{
+    members: number;
+    releases: number;
+    submissions: number;
+    follows: number;
+    shares: number;
+    feeds: number;
+    schedules: number;
+    maps: number;
+  }>(
+    `SELECT
+       (SELECT COUNT(*)::int FROM members WHERE group_id = $1) AS members,
+       (SELECT COUNT(*)::int FROM releases WHERE group_id = $1) AS releases,
+       (SELECT COUNT(*)::int FROM catalog_submissions WHERE group_id = $1) AS submissions,
+       (SELECT COUNT(*)::int FROM user_follows WHERE group_id = $1) AS follows,
+       (SELECT COUNT(*)::int FROM share_images WHERE group_id = $1) AS shares,
+       (SELECT COUNT(*)::int FROM feed_item_groups WHERE group_id = $1) AS feeds,
+       (SELECT COUNT(*)::int FROM schedule_events WHERE group_id = $1) AS schedules,
+       (SELECT COUNT(*)::int FROM release_benefit_map WHERE group_id = $1) AS maps`,
+    [id],
+  );
+  const c = counts.rows[0];
+  const blockers = formatBlockers([
+    ["成员", c.members],
+    ["发行", c.releases],
+    ["投稿", c.submissions],
+    ["关注", c.follows],
+    ["分享图", c.shares],
+    ["Feed 关联", c.feeds],
+    ["日程", c.schedules],
+    ["特典对照", c.maps],
+  ]);
+  if (blockers.length) {
+    throw catalogInUse(`该组合仍被引用：${blockers.join("、")}。请先处理子数据或改用废弃。`, { blockers });
+  }
+  try {
+    await query("DELETE FROM idol_groups WHERE id = $1", [id]);
+  } catch (err) {
+    if (isPgForeignKeyViolation(err)) throw catalogInUse("该组合仍被其他数据引用，无法硬删。请改用废弃。");
+    throw err;
+  }
+  await bestEffortDeleteMedia((row.icon_url || row.logo_url) as string | null);
+  return { id, deleted: true as const };
+}
+
 export async function listAdminMembers(groupId?: string) {
   const params: unknown[] = [];
   let where = "";
@@ -243,6 +313,33 @@ export async function setMemberStatus(id: string, statusRaw: unknown) {
   return getAdminMember(id);
 }
 
+/** 硬删成员：仅草稿/废弃且无模板绑定。不把已有小卡的 member_id 悄悄 SET NULL。 */
+export async function deleteMember(id: string) {
+  const row = await loadMemberRow(id);
+  if (String(row.status) === "published") throw catalogPublished("成员");
+  const counts = await query<{ templates: number; pending: number }>(
+    `SELECT
+       (SELECT COUNT(*)::int FROM templates WHERE member_id = $1) AS templates,
+       (SELECT COUNT(*)::int FROM catalog_submissions WHERE member_id = $1 AND status = 'pending_review') AS pending`,
+    [id],
+  );
+  const c = counts.rows[0];
+  const blockers = formatBlockers([
+    ["小卡模板", c.templates],
+    ["待审投稿", c.pending],
+  ]);
+  if (blockers.length) {
+    throw catalogInUse(`该成员仍被引用：${blockers.join("、")}。请先解绑或改用废弃。`, { blockers });
+  }
+  try {
+    await query("DELETE FROM members WHERE id = $1", [id]);
+  } catch (err) {
+    if (isPgForeignKeyViolation(err)) throw catalogInUse("该成员仍被其他数据引用，无法硬删。请改用废弃。");
+    throw err;
+  }
+  return { id, deleted: true as const };
+}
+
 export async function listAdminReleases(groupId?: string) {
   const params: unknown[] = [];
   let where = "";
@@ -323,4 +420,33 @@ export async function setReleaseStatus(id: string, statusRaw: unknown) {
   }
   await query("UPDATE releases SET status = $2 WHERE id = $1", [id, status]);
   return getAdminRelease(id);
+}
+
+/** 硬删发行：仅草稿/废弃且无模板/特典对照。不级联删小卡。 */
+export async function deleteRelease(id: string) {
+  const row = await loadReleaseRow(id);
+  if (String(row.status) === "published") throw catalogPublished("发行");
+  const counts = await query<{ templates: number; maps: number; pending: number }>(
+    `SELECT
+       (SELECT COUNT(*)::int FROM templates WHERE release_id = $1) AS templates,
+       (SELECT COUNT(*)::int FROM release_benefit_map WHERE release_id = $1) AS maps,
+       (SELECT COUNT(*)::int FROM catalog_submissions WHERE release_id = $1 AND status = 'pending_review') AS pending`,
+    [id],
+  );
+  const c = counts.rows[0];
+  const blockers = formatBlockers([
+    ["小卡模板", c.templates],
+    ["特典对照", c.maps],
+    ["待审投稿", c.pending],
+  ]);
+  if (blockers.length) {
+    throw catalogInUse(`该发行仍被引用：${blockers.join("、")}。请先处理子数据或改用废弃。`, { blockers });
+  }
+  try {
+    await query("DELETE FROM releases WHERE id = $1", [id]);
+  } catch (err) {
+    if (isPgForeignKeyViolation(err)) throw catalogInUse("该发行仍被其他数据引用，无法硬删。请改用废弃。");
+    throw err;
+  }
+  return { id, deleted: true as const };
 }

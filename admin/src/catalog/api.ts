@@ -83,3 +83,16 @@ export async function saveCatalog(tab: CatalogCrudTab, editingId: string | null,
 export async function setCatalogStatus(tab: CatalogCrudTab, id: string, status: string) {
   return api(`${PATH[tab]}/${id}/status`, { method: "POST", body: JSON.stringify({ status }) });
 }
+
+export async function deleteCatalog(tab: CatalogCrudTab, id: string) {
+  return api<{ id: string; deleted: boolean }>(`${PATH[tab]}/${id}`, { method: "DELETE" });
+}
+
+export type HardDeleteFailure = { id: string; code: string; message: string };
+
+export async function hardDeleteTemplates(ids: string[]) {
+  return api<{ deleted: string[]; failed: HardDeleteFailure[] }>("/admin/catalog/templates/hard-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}

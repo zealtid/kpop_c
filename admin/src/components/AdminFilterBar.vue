@@ -10,11 +10,13 @@ const props = withDefaults(
     showPager?: boolean;
     showActions?: boolean;
     searching?: boolean;
+    stacked?: boolean;
   }>(),
   {
     showPager: true,
     showActions: true,
     searching: false,
+    stacked: false,
   },
 );
 
@@ -30,15 +32,19 @@ const pageSizes = [...PAGE_SIZES];
 
 <template>
   <div class="filter-wrap">
-    <div class="filter-row">
-      <n-space align="center" wrap :size="[8, 8]">
-        <slot />
-        <template v-if="showActions">
-          <n-button type="primary" :loading="searching" @click="emit('search')">查询</n-button>
-          <n-button @click="emit('reset')">重置</n-button>
-        </template>
+    <div class="filter-row" :class="{ stacked: props.stacked }">
+      <div class="filter-fields">
+        <n-space :vertical="props.stacked" align="center" wrap :size="[8, 8]">
+          <slot />
+          <template v-if="showActions">
+            <n-button type="primary" :block="props.stacked" :loading="searching" @click="emit('search')">查询</n-button>
+            <n-button :block="props.stacked" @click="emit('reset')">重置</n-button>
+          </template>
+        </n-space>
+      </div>
+      <div v-if="$slots.actions" class="filter-actions">
         <slot name="actions" />
-      </n-space>
+      </div>
     </div>
     <div v-if="showPager" class="pager">
       <span class="count">共 {{ itemCount }} 条</span>
@@ -48,7 +54,7 @@ const pageSizes = [...PAGE_SIZES];
         :item-count="itemCount"
         :page-sizes="pageSizes"
         show-size-picker
-        :page-slot="5"
+        :page-slot="props.stacked ? 3 : 5"
         @update:page="emit('update:page', $event)"
         @update:page-size="emit('update:pageSize', $event)"
       />
@@ -70,9 +76,48 @@ const pageSizes = [...PAGE_SIZES];
 }
 
 .filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
   padding: 12px;
   background: var(--color-bg-page);
   border-radius: 8px;
+}
+
+.filter-row.stacked {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.filter-fields {
+  min-width: 0;
+  flex: 1;
+}
+
+.filter-row.stacked .filter-fields :deep(.n-space) {
+  width: 100%;
+}
+
+.filter-row.stacked .filter-fields :deep(.n-space-item) {
+  width: 100%;
+}
+
+.filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-row.stacked .filter-actions {
+  width: 100%;
+}
+
+.filter-row.stacked .filter-actions :deep(.n-button) {
+  min-height: 36px;
+  flex: 1 1 auto;
 }
 
 .pager {

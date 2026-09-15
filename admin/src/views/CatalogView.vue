@@ -4,10 +4,10 @@ import {
   NAlert,
   NButton,
   NCard,
+  NCheckbox,
   NDataTable,
   NInput,
   NSelect,
-  NSpace,
   NSpin,
   NTabPane,
   NTabs,
@@ -18,7 +18,14 @@ import {
 } from "naive-ui";
 import { useRoute, useRouter } from "vue-router";
 import { errorMessage, mediaUrl } from "../api";
-import { loadAdminTemplates, loadCatalogLookups, saveCatalog, setCatalogStatus } from "../catalog/api";
+import {
+  deleteCatalog,
+  hardDeleteTemplates,
+  loadAdminTemplates,
+  loadCatalogLookups,
+  saveCatalog,
+  setCatalogStatus,
+} from "../catalog/api";
 import {
   CATALOG_TABS,
   isBenefitsTab,
@@ -62,6 +69,7 @@ const router = useRouter();
 const message = useMessage();
 const dialog = useDialog();
 const { isNarrow } = useNarrow();
+const { isNarrow: isCompact } = useNarrow(720);
 const checkedRowKeys = ref<Array<string | number>>([]);
 
 const tab = computed(() => parseCatalogTab(route.params.tab));
@@ -85,7 +93,7 @@ const headings: Record<CatalogTab, { title: string; hint: string }> = {
   releases: { title: "图鉴 · 发行", hint: "Release。演唱会特典用 kind=concert_md，没有独立 Event 表。" },
   templates: {
     title: "图鉴 · 小卡模板/维护",
-    hint: "在此添加官方图鉴小卡：点「新建小卡」填发行与版本，上传正面主图（必填）和卡背（可选）到 /media/cards，再发布。无主图不能发布。",
+    hint: "在此添加官方图鉴小卡：点「新建小卡」填发行与版本，上传正面主图（必填）和卡背（可选）到 /media/cards，再发布。无主图不能发布。行内「删除」为永久硬删，与「废弃」不同。",
   },
   completeness: { title: "图鉴 · 完整度", hint: "按组合查看发行闸门与缺图/缺成员。缺图可跳到模板维护。" },
   import: { title: "图鉴 · 导入校验", hint: "校验 CSV / Markdown / JSON，通过后再写入。" },
@@ -210,25 +218,73 @@ function statusTag(status: string) {
 function nameButton(label: string, row: AnyRow) {
   return h(
     NButton,
-    { text: true, type: "primary", onClick: () => openEdit(row) },
+    { text: true, type: "primary", class: "entity-name-title", onClick: () => openEdit(row) },
     { default: () => label || "（无名称）" },
   );
 }
 
-function actionsCell(row: AnyRow) {
-  const maintain = h(
-    NButton,
-    { size: "tiny", type: "primary", onClick: () => openEdit(row) },
-    { default: () => "维护" },
+function entityNameCell(thumb: unknown, title: string, sub: string, row: AnyRow) {
+  return h("div", { class: "entity-name" }, [
+    thumb,
+    h("div", { class: "entity-name-text" }, [
+      nameButton(title, row),
+      sub ? h("span", { class: "entity-name-sub" }, sub) : null,
+    ]),
+  ]);
+}
+
+function groupThumbNode(row: Group) {
+  const src = mediaUrl(row.iconUrl || row.logoUrl);
+  if (src) return h("img", { class: "group-thumb", src, alt: "" });
+  return h(
+    "span",
+    { class: "group-letter", style: { background: row.logoColor || "#ff6b9d" } },
+    (row.nameZh || "?").slice(0, 1),
   );
-  return h("div", { class: "row-actions" }, [
-    maintain,
+}
+
+function templateThumbNode(row: Template) {
+  const src = mediaUrl(row.mainImageUrl);
+  if (src) return h("img", { class: "tpl-thumb", src, alt: "" });
+  return h("span", { class: "tpl-missing" }, "无图");
+}
+
+function canHardDelete(row: AnyRow) {
+  if (tab.value === "templates") return true;
+  const st = rowStatus(row);
+  return st === "draft" || st === "deprecated";
+}
+
+function actionsCell(row: AnyRow) {
+  const nodes = [
+    h(
+      NButton,
+      { size: "small", type: "primary", onClick: () => openEdit(row) },
+      { default: () => "维护" },
+    ),
     h(StatusActions, {
       status: rowStatus(row),
       pending: acting.value,
+      size: "small",
       onAct: (status: "published" | "draft" | "deprecated") => void onStatus(row, status),
     }),
-  ]);
+  ];
+  if (canHardDelete(row)) {
+    nodes.push(
+      h(
+        NButton,
+        {
+          size: "small",
+          type: "error",
+          ghost: true,
+          disabled: acting.value,
+          onClick: () => confirmHardDelete(row),
+        },
+        { default: () => "删除" },
+      ),
+    );
+  }
+  return h("div", { class: "row-actions" }, nodes);
 }
 
 const selectionColumn: DataTableColumns<AnyRow>[number] = {
@@ -236,25 +292,33 @@ const selectionColumn: DataTableColumns<AnyRow>[number] = {
   disabled: () => acting.value,
 };
 
+const ACTION_COL: DataTableColumns<AnyRow>[number] = {
+  title: "操作",
+  key: "actions",
+  width: 240,
+  render: (row) => actionsCell(row),
+};
+
 const columns = computed<DataTableColumns<AnyRow>>(() => {
   if (tab.value === "members") {
     return [
       selectionColumn,
-      { title: "英文", key: "nameEn", render: (row) => nameButton((row as Member).nameEn, row) },
+      { title: "英文", key: "nameEn", minWidth: 140, render: (row) => nameButton((row as Member).nameEn, row) },
       { title: "中文", key: "nameZh", render: (row) => (row as Member).nameZh || "" },
       { title: "组合", key: "groupNameZh", render: (row) => (row as Member).groupNameZh || "" },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-      { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
+      ACTION_COL,
     ];
   }
   if (tab.value === "releases") {
     return [
       selectionColumn,
-      { title: "标题", key: "title", render: (row) => nameButton((row as Release).title, row) },
+      { title: "标题", key: "title", minWidth: 160, render: (row) => nameButton((row as Release).title, row) },
       { title: "组合", key: "groupNameZh", render: (row) => (row as Release).groupNameZh || "" },
       {
         title: "类型",
         key: "kind",
+        width: 140,
         render: (row) => {
           const r = row as Release;
           return r.kind === "concert_md" ? `${r.kind} · 特典` : r.kind;
@@ -262,30 +326,29 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
       },
       { title: "日期", key: "releasedOn", width: 120, render: (row) => (row as Release).releasedOn || "" },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-      { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
+      ACTION_COL,
     ];
   }
   if (tab.value === "templates") {
     return [
       selectionColumn,
-      { title: "名称", key: "name", render: (row) => nameButton((row as Template).name, row) },
-      { title: "发行", key: "releaseTitle", render: (row) => (row as Template).releaseTitle || "" },
-      { title: "成员", key: "memberNameEn", render: (row) => (row as Template).memberNameEn || "group" },
-      { title: "版本", key: "version", width: 88, render: (row) => (row as Template).version },
-      { title: "", key: "isBenefit", width: 56, render: (row) => ((row as Template).isBenefit ? "特典" : "") },
       {
-        title: "图",
-        key: "mainImageUrl",
-        width: 72,
+        title: "名称",
+        key: "name",
+        minWidth: 220,
         render: (row) => {
           const t = row as Template;
-          const src = mediaUrl(t.mainImageUrl);
-          if (src) return h("img", { class: "tpl-thumb", src, alt: "" });
-          return h("span", { style: "color: var(--color-warning)" }, "无主图");
+          return entityNameCell(
+            templateThumbNode(t),
+            t.name,
+            `${t.memberNameEn || "group"} · ${t.version}${t.isBenefit ? " · 特典" : ""}`,
+            row,
+          );
         },
       },
+      { title: "发行", key: "releaseTitle", render: (row) => (row as Template).releaseTitle || "" },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-      { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
+      ACTION_COL,
     ];
   }
   return [
@@ -293,18 +356,13 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
     {
       title: "名称",
       key: "nameZh",
+      minWidth: 240,
       render: (row) => {
         const g = row as Group;
-        const src = mediaUrl(g.iconUrl || g.logoUrl);
-        return h("div", { class: "name-with-logo" }, [
-          src
-            ? h("img", { class: "group-thumb", src, alt: "" })
-            : h("span", { class: "group-letter", style: { background: g.logoColor || "#ff6b9d" } }, (g.nameZh || "?").slice(0, 1)),
-          nameButton(g.nameZh, row),
-        ]);
+        return entityNameCell(groupThumbNode(g), g.nameZh, g.nameEn || g.slug, row);
       },
     },
-    { title: "slug", key: "slug", render: (row) => (row as Group).slug },
+    { title: "slug", key: "slug", width: 140, render: (row) => (row as Group).slug },
     {
       title: "UGC",
       key: "ugcOpen",
@@ -312,7 +370,7 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
       render: (row) => ((row as Group).ugcOpen ? "开" : "关"),
     },
     { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
-    { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
+    ACTION_COL,
   ];
 });
 
@@ -522,7 +580,7 @@ function confirmBatchDeprecate() {
   }
   dialog.warning({
     title: "批量废弃",
-    content: `将软废弃已选 ${targets.length} 条（不会硬删除）。确定继续？`,
+    content: `将软废弃已选 ${targets.length} 条。废弃后 C 端不再展示，记录仍保留。这与「永久删除」不同。`,
     positiveText: "废弃",
     negativeText: "取消",
     onPositiveClick: () => onBatchDeprecate(targets),
@@ -557,6 +615,105 @@ async function onBatchDeprecate(targets: AnyRow[]) {
     message.success(pageNotice.value);
   }
   await refresh();
+}
+
+function hardDeleteCopy(row: AnyRow) {
+  const name = cardTitle(row) || row.id;
+  if (tab.value === "templates") {
+    return `将永久删除小卡模板「${name}」，不可恢复。这与「废弃」不同：废弃只从 C 端隐藏，删除会从数据库移除该模板（心愿单会一并去掉）。若已有用户收藏，接口会拒绝删除。`;
+  }
+  const kind = tab.value === "groups" ? "组合" : tab.value === "members" ? "成员" : "发行";
+  return `将永久删除${kind}「${name}」，不可恢复。这与「废弃」不同。仅当没有子数据/引用时才能删除；已发布请先废弃。`;
+}
+
+function confirmHardDelete(row: AnyRow) {
+  dialog.warning({
+    title: "永久删除（不可恢复）",
+    content: hardDeleteCopy(row),
+    positiveText: "永久删除",
+    negativeText: "取消",
+    closable: true,
+    maskClosable: false,
+    positiveButtonProps: { type: "error" },
+    onPositiveClick: () => onHardDelete(row),
+  });
+}
+
+function confirmBatchHardDelete() {
+  const ids = selectedIds.value.filter(Boolean);
+  if (!ids.length) {
+    message.warning("请先勾选要硬删的小卡模板");
+    return;
+  }
+  dialog.warning({
+    title: "批量永久删除（不可恢复）",
+    content: `将永久删除已选的 ${ids.length} 张小卡模板，不可恢复。这与「废弃」不同：废弃只从 C 端隐藏。已被用户收藏的条目会跳过并显示错误。`,
+    positiveText: "永久删除",
+    negativeText: "取消",
+    closable: true,
+    maskClosable: false,
+    positiveButtonProps: { type: "error" },
+    onPositiveClick: () => onBatchHardDelete(ids),
+  });
+}
+
+async function onHardDelete(row: AnyRow) {
+  if (!isCrudTab(tab.value)) return;
+  acting.value = true;
+  const res = await deleteCatalog(tab.value, row.id);
+  acting.value = false;
+  if (res.status !== 200) {
+    const msg = errorMessage(res.body);
+    pageNotice.value = msg;
+    pageNoticeOk.value = false;
+    message.error(msg);
+    return;
+  }
+  checkedRowKeys.value = checkedRowKeys.value.filter((k) => String(k) !== row.id);
+  pageNotice.value = "已永久删除";
+  pageNoticeOk.value = true;
+  message.success(pageNotice.value);
+  await refresh();
+}
+
+async function onBatchHardDelete(ids: string[]) {
+  acting.value = true;
+  const res = await hardDeleteTemplates(ids);
+  acting.value = false;
+  if (res.status !== 200) {
+    const msg = errorMessage(res.body);
+    pageNotice.value = msg;
+    pageNoticeOk.value = false;
+    message.error(msg);
+    return;
+  }
+  const deleted = res.body.deleted || [];
+  const failed = res.body.failed || [];
+  checkedRowKeys.value = checkedRowKeys.value.filter((k) => !deleted.includes(String(k)));
+  if (deleted.length && !failed.length) {
+    pageNotice.value = `已永久删除 ${deleted.length} 张模板`;
+    pageNoticeOk.value = true;
+    message.success(pageNotice.value);
+  } else if (deleted.length) {
+    pageNotice.value = `已永久删除 ${deleted.length} 张；${failed.length} 张未删除：${failed[0]?.message || "失败"}`;
+    pageNoticeOk.value = false;
+    message.warning(pageNotice.value);
+  } else {
+    pageNotice.value = failed[0]?.message || "没有删除任何模板";
+    pageNoticeOk.value = false;
+    message.error(pageNotice.value);
+  }
+  await refresh();
+}
+
+const filterControlStyle = computed(() => (isCompact.value ? { width: "100%" } : undefined));
+
+function toggleChecked(id: string, checked: boolean) {
+  if (checked) {
+    if (!checkedRowKeys.value.includes(id)) checkedRowKeys.value = [...checkedRowKeys.value, id];
+    return;
+  }
+  checkedRowKeys.value = checkedRowKeys.value.filter((k) => String(k) !== id);
 }
 
 watch(tab, () => {
@@ -630,7 +787,7 @@ onMounted(() => {
           :show-icon="false"
           class="block"
         >
-          官方图鉴小卡在此维护：点「新建小卡」上传正面（发布必填）和卡背（可选）。也可点行内「维护」改已有卡。
+          官方图鉴小卡在此维护：点「新建小卡」上传正面（发布必填）和卡背（可选）。也可点行内「维护」改已有卡。行内「删除」/「批量硬删」会永久移除记录，与「废弃」（仅 C 端隐藏）不同。
         </n-alert>
         <n-alert
           v-if="tab === 'templates' && templatesCapped"
@@ -645,6 +802,7 @@ onMounted(() => {
           :page-size="pageSize"
           :item-count="itemCount"
           :searching="loading"
+          :stacked="isCompact"
           @search="onSearch"
           @reset="onReset"
           @update:page="setQuery({ page: $event })"
@@ -652,40 +810,48 @@ onMounted(() => {
         >
           <n-input
             v-model:value="keywordDraft"
+            class="filter-control"
             clearable
             placeholder="关键词"
-            style="width: 200px"
+            :style="filterControlStyle"
             @keyup.enter="onSearch"
           />
           <n-select
+            class="filter-control"
             :value="filterStatus"
             :options="STATUS_OPTIONS"
-            style="width: 140px"
+            :style="filterControlStyle"
             @update:value="setQuery({ status: $event || undefined, page: 1 })"
           />
           <n-select
             v-if="tab !== 'groups'"
+            class="filter-control"
             :value="filterGroupId"
             :options="groupOptions"
             filterable
-            style="width: 200px"
+            :style="filterControlStyle"
             @update:value="setQuery({ groupId: $event || undefined, releaseId: undefined, page: 1 })"
           />
           <n-select
             v-if="tab === 'templates'"
+            class="filter-control"
             :value="filterReleaseId"
             :options="releaseOptions"
             filterable
-            style="width: 220px"
+            :style="filterControlStyle"
             @update:value="setQuery({ releaseId: $event || undefined, page: 1 })"
           />
           <template #actions>
-            <n-button
-              type="error"
-              :disabled="!selectedIds.length || acting"
-              @click="confirmBatchDeprecate"
-            >
+            <n-button type="error" ghost :disabled="!selectedIds.length || acting" @click="confirmBatchDeprecate">
               批量废弃{{ selectedIds.length ? ` (${selectedIds.length})` : "" }}
+            </n-button>
+            <n-button
+              v-if="tab === 'templates'"
+              type="error"
+              :disabled="acting || !selectedIds.length"
+              @click="confirmBatchHardDelete"
+            >
+              批量硬删{{ selectedIds.length ? ` (${selectedIds.length})` : "" }}
             </n-button>
             <n-button type="primary" @click="openCreate">{{ tab === "templates" ? "新建小卡" : "新建" }}</n-button>
           </template>
@@ -694,20 +860,36 @@ onMounted(() => {
         <div v-if="isNarrow" class="cards">
           <n-card v-for="row in rows" :key="row.id" size="small" class="entity-card">
             <div class="card-head">
-              <div class="name-with-logo">
+              <div class="entity-name">
+                <n-checkbox
+                  :checked="selectedIds.includes(row.id)"
+                  @update:checked="(v) => toggleChecked(row.id, !!v)"
+                />
                 <img v-if="cardThumb(row)" :class="tab === 'templates' ? 'tpl-thumb' : 'group-thumb'" :src="cardThumb(row)" alt="" />
                 <span v-else-if="tab === 'groups'" class="group-letter" :style="{ background: cardLetter(row).color }">{{ cardLetter(row).text }}</span>
-                <n-button text type="primary" @click="openEdit(row)">{{ cardTitle(row) }}</n-button>
+                <div class="entity-name-text">
+                  <n-button class="entity-name-title" text type="primary" @click="openEdit(row)">{{ cardTitle(row) }}</n-button>
+                  <span class="entity-name-sub">{{ cardMeta(row) }}</span>
+                </div>
               </div>
               <n-tag size="small" :type="rowStatus(row) === 'published' ? 'success' : rowStatus(row) === 'deprecated' ? 'error' : 'default'" :bordered="false">
                 {{ statusLabel(rowStatus(row)) }}
               </n-tag>
             </div>
-            <p class="card-meta">{{ cardMeta(row) }}</p>
-            <n-space :size="6" :wrap="true">
-              <n-button size="tiny" type="primary" @click="openEdit(row)">维护</n-button>
-              <StatusActions :status="rowStatus(row)" :pending="acting" @act="(s) => onStatus(row, s)" />
-            </n-space>
+            <div class="card-actions">
+              <n-button size="small" type="primary" @click="openEdit(row)">维护</n-button>
+              <StatusActions :status="rowStatus(row)" :pending="acting" size="small" @act="(s) => onStatus(row, s)" />
+              <n-button
+                v-if="canHardDelete(row)"
+                size="small"
+                type="error"
+                ghost
+                :disabled="acting"
+                @click="confirmHardDelete(row)"
+              >
+                删除
+              </n-button>
+            </div>
           </n-card>
           <AdminEmptyState v-if="!rows.length" :copy="emptyCopy">
             <n-button type="primary" @click="openCreate">{{ tab === "templates" ? "新建小卡" : "新建" }}</n-button>
@@ -721,7 +903,7 @@ onMounted(() => {
           :data="rows"
           :pagination="false"
           striped
-          :scroll-x="tab === 'templates' ? 1120 : 840"
+          :scroll-x="tab === 'templates' ? 980 : 900"
           :row-key="(row: AnyRow) => row.id"
         />
         <AdminEmptyState v-else :copy="emptyCopy">
@@ -767,6 +949,10 @@ onMounted(() => {
   margin: 0;
 }
 
+.filter-control {
+  width: 200px;
+}
+
 .cards {
   display: flex;
   flex-direction: column;
@@ -779,16 +965,27 @@ onMounted(() => {
 
 .card-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 12px;
 }
 
-.card-meta {
-  margin: 0 0 10px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
+.card-head .entity-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-actions :deep(.n-button) {
+  min-height: 36px;
+  min-width: 44px;
 }
 
 .row-actions {
@@ -797,56 +994,87 @@ onMounted(() => {
   gap: 8px;
   flex-wrap: wrap;
 }
-
-.tpl-thumb,
-.group-thumb {
-  width: 40px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: 4px;
-  background: #eee;
-  display: block;
-}
-
-.group-thumb {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-}
-
-.name-with-logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.group-letter {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
 </style>
 
 <style>
-.tpl-thumb,
-.group-thumb {
+/* h() 单元格没有 scoped 属性，名称列样式放这里 */
+.entity-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.entity-name-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entity-name-title {
+  max-width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.entity-name-title.n-button,
+.entity-name-title.n-button .n-button__content {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entity-name-sub {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entity-name .group-thumb,
+.entity-name .group-letter {
   width: 40px;
-  height: 56px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
   object-fit: cover;
+  background: #eee;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.entity-name .group-letter {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.entity-name .tpl-thumb {
+  width: 32px;
+  height: 44px;
   border-radius: 4px;
+  flex-shrink: 0;
+  object-fit: cover;
   background: #eee;
   display: block;
 }
-.group-thumb {
+
+.entity-name .tpl-missing {
   width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  height: 44px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f7f8fc;
+  color: var(--color-warning);
+  font-size: 11px;
 }
 </style>
