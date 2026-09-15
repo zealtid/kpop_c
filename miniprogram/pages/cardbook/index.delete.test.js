@@ -55,9 +55,15 @@ beforeEach(() => {
 
 test("wxml custom tiles expose 删除 without mixing into public catalog", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
+  const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
   assert.match(wxml, /catchtap="removeCustom"/);
   assert.match(wxml, />删除</);
-  assert.match(wxml, /不计入上方官方进度/);
+  assert.match(wxml, /历史私人卡/);
+  assert.doesNotMatch(wxml, /拍照加卡/);
+  assert.match(wxml, /拍照加入卡册/);
+  assert.match(wxml, /addFromCatalog/);
+  assert.match(wxml, /goCatalog/);
+  assert.match(wxss, /padding-top:\s*150%/);
 });
 
 test("removeCustom confirm reloads list; cancel does not", async () => {

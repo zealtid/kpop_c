@@ -28,6 +28,14 @@ test("searchable list always offers 其他/手填", () => {
   assert.ok(wv.some((h) => h.value === "weverse"));
   const none = pick.filterOptions(channels, "没有这个通路xyz");
   assert.ok(none.some((h) => h.value === pick.OTHER_VALUE));
+  const capped = pick.filterOptions(channels, "", 1);
+  assert.equal(capped.filter((h) => h.kind === "other").length, 1);
+});
+
+test("displayLabel prefers handwritten 其他/手填 text", () => {
+  assert.equal(pick.displayLabel("weverse", "Weverse Shop", "", false), "Weverse Shop");
+  assert.equal(pick.displayLabel(pick.OTHER_VALUE, pick.OTHER_LABEL, "店庆特典", true), "店庆特典");
+  assert.equal(pick.benefitsQuery("g1", ""), "/catalog/benefits?groupId=g1");
 });
 
 test("OQ-A other stores handwritten text", () => {

@@ -62,16 +62,32 @@ function withKeys(list) {
   return (list || []).map((item, index) => ({ ...item, key: optionKey(item, index) }));
 }
 
-function filterOptions(options, q) {
+function filterOptions(options, q, maxHits) {
+  const cap = Number(maxHits) > 0 ? Number(maxHits) : MAX_HITS;
   const s = String(q || "").trim().toLowerCase();
   const other = { value: OTHER_VALUE, label: OTHER_LABEL, aliases: ["其他", "手填"], kind: "other" };
   const base = options || [];
-  if (!s) return withKeys([...base.slice(0, MAX_HITS - 1), other]);
+  if (!s) return withKeys([...base.slice(0, Math.max(1, cap - 1)), other]);
   const hits = base.filter((o) => {
     const blob = [o.label, o.value, ...(o.aliases || [])].join(" ").toLowerCase();
     return blob.includes(s);
   });
-  return withKeys([...hits.slice(0, MAX_HITS - 1), other]);
+  return withKeys([...hits.slice(0, Math.max(1, cap - 1)), other]);
+}
+
+function displayLabel(channelValue, channelLabel, channelCustom, channelOther) {
+  if (channelOther || isOther(channelValue)) {
+    const t = String(channelCustom || "").trim();
+    return t || OTHER_LABEL;
+  }
+  return String(channelLabel || "").trim();
+}
+
+function benefitsQuery(groupId, releaseId) {
+  const params = [];
+  if (groupId) params.push(`groupId=${encodeURIComponent(String(groupId))}`);
+  if (releaseId) params.push(`releaseId=${encodeURIComponent(String(releaseId))}`);
+  return params.length ? `/catalog/benefits?${params.join("&")}` : "/catalog/benefits";
 }
 
 function isOther(value) {
@@ -98,4 +114,6 @@ module.exports = {
   filterOptions,
   isOther,
   resolveChannelCode,
+  displayLabel,
+  benefitsQuery,
 };

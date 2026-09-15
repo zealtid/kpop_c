@@ -1,13 +1,9 @@
 const api = require("../../utils/api");
 const session = require("../../utils/session");
-const followPicker = require("../../utils/followPicker");
 
 Page({
   data: {
     user: {},
-    privacy: "private",
-    privateOn: true,
-    publicOn: false,
     needsLogin: false,
     loginFailed: false,
     loginBtnLabel: "登录",
@@ -18,15 +14,11 @@ Page({
   },
 
   applyUser(user) {
-    const privacy = user && user.privacy === "public" ? "public" : "private";
     this.setData({
       needsLogin: false,
       loginFailed: false,
       loginBtnLabel: session.loginButtonLabel(false),
       user: user || {},
-      privacy,
-      privateOn: followPicker.privacyOptionClass(privacy, "private") === "on",
-      publicOn: followPicker.privacyOptionClass(privacy, "public") === "on",
     });
   },
 
@@ -47,21 +39,6 @@ Page({
           user: {},
         });
       });
-  },
-
-  setPrivacy(e) {
-    const next = e.currentTarget.dataset.v;
-    if (next !== "private" && next !== "public") return;
-    if (next === this.data.privacy) return;
-    api
-      .request({ url: "/me", method: "PATCH", data: { privacy: next } })
-      .then((user) => {
-        session.persistUser(user);
-        const app = getApp();
-        if (app && app.globalData) app.globalData.user = user;
-        this.applyUser(user);
-      })
-      .catch(api.handleWriteError);
   },
 
   goFollowManage() {

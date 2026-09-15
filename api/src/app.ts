@@ -42,7 +42,7 @@ import {
   retireBenefitMapRow,
   upsertBenefitMapRow,
 } from "./versionBenefit.js";
-import { getReleaseBenefitMatrix } from "./benefitMatrix.js";
+import { getReleaseBenefitMatrix, listLibraryBenefits } from "./benefitMatrix.js";
 import { getCompletenessDashboard } from "./completeness.js";
 import * as tickets from "./tickets.js";
 import { ANALYTICS_EVENTS, track } from "./analytics.js";
@@ -194,7 +194,7 @@ export function createApp() {
   // ---- catalog (guest readable) ----
   app.get("/catalog/channels", async (_req, res, next) => {
     try {
-      const dict = loadChannelDictionary();
+      const dict = await loadRuntimeChannelDictionary();
       res.json({
         channels: dict.channels.map((c) => ({
           code: c.code,
@@ -202,6 +202,18 @@ export function createApp() {
           aliases: c.aliases,
         })),
       });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/catalog/benefits", async (req, res, next) => {
+    try {
+      const rows = await listLibraryBenefits({
+        groupId: typeof req.query.groupId === "string" ? req.query.groupId : "",
+        releaseId: typeof req.query.releaseId === "string" ? req.query.releaseId : "",
+      });
+      res.json({ rows });
     } catch (e) {
       next(e);
     }

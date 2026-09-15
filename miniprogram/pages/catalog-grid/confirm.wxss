@@ -27,15 +27,13 @@
 .warn {
   border: 1rpx solid var(--color-warning);
 }
-.channel-hits {
-  margin-top: 12rpx;
-  max-height: 320rpx;
-  overflow-y: auto;
-  padding: 8rpx 4rpx 4rpx;
-  border: 1rpx solid var(--color-border-subtle);
-  border-radius: 16rpx;
-  background: var(--color-bg-page);
-  min-height: 80rpx;
+.channel-field {
+  min-height: 72rpx;
+  display: flex;
+  align-items: center;
+}
+.channel-field .ph {
+  color: var(--color-text-tertiary);
 }
 .pick-row {
   margin-top: 16rpx;

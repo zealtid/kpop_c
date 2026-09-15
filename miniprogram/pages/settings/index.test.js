@@ -1,5 +1,5 @@
 /**
- * UX-A 设置页 ME06
+ * UX-A 设置页：关注管理（公开可见性已从 MP 设置去掉）
  * run: node --test miniprogram/pages/settings/index.test.js
  */
 const { test, beforeEach, after } = require("node:test");
@@ -59,47 +59,31 @@ beforeEach(() => {
   api.request = origRequest;
 });
 
-test("ME06 settings hosts privacy private|public with selected class; IA has 管理关注", () => {
+test("settings hosts 管理关注 and no public visibility control", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
-  assert.match(wxml, /data-v="private"/);
-  assert.match(wxml, /data-v="public"/);
-  assert.match(wxml, /privateOn \? 'on'/);
-  assert.match(wxml, /publicOn \? 'on'/);
+  const js = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
   assert.match(wxml, /管理关注/);
   assert.match(wxml, /goFollowManage/);
   assert.doesNotMatch(wxml, /friends/);
-  assert.match(wxss, /\.privacy-opt\.on/);
+  assert.doesNotMatch(wxml, /可见性|公开|仅自己/);
+  assert.doesNotMatch(wxml, /data-v="private"|data-v="public"|setPrivacy/);
+  assert.doesNotMatch(js, /setPrivacy|privacy/);
+  assert.doesNotMatch(wxss, /privacy-opt/);
 });
 
-test("ME06 load and switch privacy only patches private|public", async () => {
+test("settings load fetches /me and never patches privacy", async () => {
   const calls = [];
   api.request = (opts) => {
     calls.push(opts);
-    if (opts.method === "PATCH") {
-      return Promise.resolve({ id: "u1", nickname: "星卡用户", privacy: opts.data.privacy });
-    }
     return Promise.resolve({ id: "u1", nickname: "星卡用户", privacy: "private" });
   };
   const page = pageWithData({});
   page.load();
   await flush();
-  assert.equal(page.data.privacy, "private");
-  assert.equal(page.data.privateOn, true);
-  assert.equal(page.data.publicOn, false);
-
-  page.setPrivacy({ currentTarget: { dataset: { v: "public" } } });
-  await flush();
-  assert.ok(calls.some((c) => c.url === "/me" && c.method === "PATCH" && c.data.privacy === "public"));
-  assert.equal(page.data.privacy, "public");
-  assert.equal(page.data.privateOn, false);
-  assert.equal(page.data.publicOn, true);
-
-  page.setPrivacy({ currentTarget: { dataset: { v: "friends" } } });
-  assert.equal(
-    calls.filter((c) => c.method === "PATCH" && c.data && c.data.privacy === "friends").length,
-    0,
-  );
+  assert.equal(page.data.needsLogin, false);
+  assert.equal(calls.filter((c) => c.method === "PATCH").length, 0);
+  assert.ok(calls.some((c) => c.url === "/me"));
 });
 
 test("ME06 管理关注 is under 设置", () => {

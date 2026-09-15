@@ -7,7 +7,6 @@ Page({
     id: "",
     group: {},
     progress: {},
-    copy: "",
     pct: 0,
     tab: 0,
     owned: [],
@@ -16,6 +15,7 @@ Page({
     custom: [],
     customLabel: "",
     list: [],
+    emptyTitle: "还没有卡",
   },
   onLoad(q) {
     this.setData({ id: q.id });
@@ -40,7 +40,6 @@ Page({
       this.setData({
         group: data.group,
         progress: data.progress,
-        copy: data.copy,
         pct,
         owned,
         wanted,
@@ -57,7 +56,12 @@ Page({
   },
   applyTab() {
     const lists = [this.data.owned, this.data.wanted, this.data.duplicates];
-    this.setData({ list: lists[this.data.tab] || [] });
+    const titles = ["还没有卡", "还没有想要", "还没有重复"];
+    const tab = this.data.tab;
+    this.setData({
+      list: lists[tab] || [],
+      emptyTitle: titles[tab] || "暂无卡片",
+    });
   },
   openCard(e) {
     if (this.data.tab === 1) return;
@@ -86,11 +90,11 @@ Page({
       })
       .catch(api.handleWriteError);
   },
-  addCustom() {
-    const gid = (this.data.group && this.data.group.id) || "";
-    wx.navigateTo({
-      url: gid ? `/pages/custom-card-add/index?groupId=${gid}` : "/pages/custom-card-add/index",
-    });
+  addFromCatalog() {
+    wx.navigateTo({ url: "/pages/catalog-grid/index" });
+  },
+  goCatalog() {
+    wx.switchTab({ url: "/pages/catalog/index" });
   },
   unown(e) {
     const id = e.currentTarget.dataset.id;

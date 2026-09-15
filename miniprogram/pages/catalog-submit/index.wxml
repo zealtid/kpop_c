@@ -49,31 +49,19 @@
     <view class="label sub-label">名称/别称</view>
     <input class="box input" value="{{slotLabel}}" bindinput="onSlot" placeholder="例如 成员小卡 01 / 别称" maxlength="80"/>
     <view class="label sub-label">通路 / 特典</view>
-    <input
-      class="box input"
-      value="{{channelQ}}"
-      bindinput="onChannelQ"
-      bindfocus="onChannelFocus"
-      placeholder="搜索 Weverse / 天猫 / 预购特典"
-      maxlength="40"
-    />
-    <view class="chips channel-hits">
-      <view
-        class="chip {{channelValue===item.value?'on':''}}"
-        wx:for="{{channelHits}}"
-        wx:key="key"
-        bindtap="pickChannel"
-        data-value="{{item.value}}"
-        data-label="{{item.label}}"
-      >{{item.label}}</view>
+    <view class="box channel-field" bindtap="openChannelPicker">
+      <text wx:if="{{channelDisplay}}">{{channelDisplay}}</text>
+      <text wx:else class="ph">点选库里的通路 / 特典</text>
     </view>
-    <input
-      wx:if="{{channelOther}}"
-      class="box input"
-      value="{{channelCustom}}"
-      bindinput="onChannelCustom"
-      placeholder="没有匹配时手填通路或特典名称"
-      maxlength="40"
+    <channel-picker
+      show="{{channelPickerOpen}}"
+      options="{{channelOptions}}"
+      value="{{channelValue}}"
+      label="{{channelLabel}}"
+      custom="{{channelCustom}}"
+      bind:close="closeChannelPicker"
+      bind:pick="onChannelPicked"
+      bind:custom="onChannelCustomEvt"
     />
   </view>
 

@@ -1,0 +1,39 @@
+<view wx:if="{{show}}" class="mask" catchtouchmove="noop" bindtap="onClose">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-head">
+      <view class="sheet-title">选择通路 / 特典</view>
+      <view class="sheet-done" bindtap="onClose">完成</view>
+    </view>
+    <view class="sheet-hint">仅显示图鉴库里已有的通路与特典</view>
+    <input
+      class="search"
+      value="{{query}}"
+      bindinput="onQuery"
+      placeholder="搜索 Weverse / 天猫 / 预购特典"
+      maxlength="40"
+      confirm-type="search"
+    />
+    <scroll-view scroll-y class="list">
+      <view
+        wx:for="{{hits}}"
+        wx:key="key"
+        class="opt {{value===item.value && label===item.label ? 'on' : ''}} {{item.kind==='other' && otherOn ? 'on' : ''}}"
+        bindtap="onPick"
+        data-value="{{item.value}}"
+        data-label="{{item.label}}"
+      >
+        <view class="opt-main">{{item.label}}</view>
+        <view wx:if="{{item.kind==='benefit'}}" class="opt-kind">图鉴特典</view>
+        <view wx:elif="{{item.kind==='channel'}}" class="opt-kind">通路</view>
+      </view>
+    </scroll-view>
+    <input
+      wx:if="{{otherOn}}"
+      class="search custom"
+      value="{{customText}}"
+      bindinput="onCustom"
+      placeholder="没有匹配时手填通路或特典名称"
+      maxlength="40"
+    />
+  </view>
+</view>
