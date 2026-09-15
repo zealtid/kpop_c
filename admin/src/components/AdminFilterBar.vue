@@ -58,10 +58,15 @@ const pageSizes = [...PAGE_SIZES];
 
 <style scoped>
 .filter-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-bottom: 14px;
+  padding-top: 8px;
+  background: var(--color-bg-page);
 }
 
 .filter-row {

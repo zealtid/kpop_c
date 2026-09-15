@@ -5,18 +5,19 @@ import {
   NCard,
   NDataTable,
   NSelect,
-  NSpace,
   NSpin,
   NTag,
   type DataTableColumns,
 } from "naive-ui";
 import { RouterLink, useRoute, useRouter } from "vue-router";
-import PageHeader from "../components/PageHeader.vue";
+import AdminEmptyState from "../components/AdminEmptyState.vue";
+import AdminFilterBar from "../components/AdminFilterBar.vue";
 import AuthMediaImg from "../components/AuthMediaImg.vue";
+import PageHeader from "../components/PageHeader.vue";
 import { loadCatalogLookups } from "../catalog/api";
+import { maxPage, parsePage, parsePageSize, parseQueryText, patchListQuery, slicePage } from "../listQuery";
 import { listSubmissions, type Submission } from "../submissions/api";
 import { useNarrow } from "../narrow";
-import { parseQueryText, patchListQuery } from "../listQuery";
 
 const route = useRoute();
 const router = useRouter();
@@ -29,6 +30,10 @@ const groups = ref<{ label: string; value: string }[]>([]);
 
 const statusFilter = computed(() => parseQueryText(route.query.status));
 const groupId = computed(() => parseQueryText(route.query.groupId));
+const page = computed(() => parsePage(route.query.page));
+const pageSize = computed(() => parsePageSize(route.query.pageSize));
+const itemCount = computed(() => rows.value.length);
+const pagedRows = computed(() => slicePage(rows.value, page.value, pageSize.value));
 
 const statusOptions = [
   { label: "全部状态", value: "" },
@@ -40,7 +45,7 @@ const statusOptions = [
 function statusTag(status: string) {
   const type = status === "pending_review" ? "warning" : status === "approved" ? "success" : "error";
   const label = status === "pending_review" ? "待审" : status === "approved" ? "通过" : "驳回";
-  return h(NTag, { size: "small", type }, { default: () => label });
+  return h(NTag, { size: "small", type, bordered: false }, { default: () => label });
 }
 
 const columns = computed<DataTableColumns<Submission>>(() => [
@@ -82,6 +87,22 @@ const columns = computed<DataTableColumns<Submission>>(() => [
   { title: "来源", key: "source", width: 120, render: (row) => (row.source === "from_custom_card" ? "私人卡" : "直投") },
 ]);
 
+function setQuery(patch: Record<string, string | number | undefined | null>) {
+  void patchListQuery(router, route.query, patch);
+}
+
+function onSearch() {
+  setQuery({ page: 1 });
+}
+
+function onReset() {
+  setQuery({ status: undefined, groupId: undefined, page: 1, pageSize: undefined });
+}
+
+function goDetail(row: Submission) {
+  void router.push({ name: "submission-detail", params: { id: row.id } });
+}
+
 async function refresh() {
   loading.value = true;
   const lookups = await loadCatalogLookups();
@@ -108,59 +129,118 @@ async function refresh() {
 onMounted(refresh);
 watch(() => [route.query.status, route.query.groupId], refresh);
 
-function onStatus(value: string) {
-  patchListQuery(router, route.query, { status: value || undefined, page: undefined });
-}
-function onGroup(value: string) {
-  patchListQuery(router, route.query, { groupId: value || undefined, page: undefined });
-}
+watch(
+  () => [itemCount.value, page.value, pageSize.value] as const,
+  ([count, current, size]) => {
+    const last = maxPage(count, size);
+    if (current > last) setQuery({ page: last });
+  },
+);
 </script>
 
 <template>
   <PageHeader title="投稿审核" hint="待审优先。通过后创建或合并公开模板；驳回删除待审图。" />
-  <n-alert v-if="deny" type="error" style="margin-bottom: 12px">{{ deny }}</n-alert>
-  <n-space style="margin-bottom: 12px">
-    <n-select :value="statusFilter" :options="statusOptions" style="min-width: 140px" @update:value="onStatus" />
-    <n-select :value="groupId" :options="groups" style="min-width: 180px" @update:value="onGroup" />
-  </n-space>
   <n-spin :show="loading">
-    <n-data-table v-if="!isNarrow" :columns="columns" :data="rows" :bordered="false" />
-    <div v-else class="cards">
-      <n-card v-for="row in rows" :key="row.id" size="small" @click="$router.push({ name: 'submission-detail', params: { id: row.id } })">
-        <div class="card-row">
-          <AuthMediaImg
-            v-if="row.status === 'pending_review'"
-            compact
-            :admin-media-path="`/admin/catalog-submissions/${row.id}/media/thumb`"
-            :src-path="row.imageFrontThumbUrl || row.imageFrontUrl || row.imageFrontThumb || row.imageFront"
-            alt=""
-          />
-          <div>
-            <div class="card-title">{{ row.slotLabel }}</div>
-            <div class="muted">{{ row.groupNameZh }} · {{ row.releaseTitle }}</div>
-          </div>
+    <n-card :bordered="false" class="ops-card">
+      <AdminFilterBar
+        :page="page"
+        :page-size="pageSize"
+        :item-count="itemCount"
+        :searching="loading"
+        @search="onSearch"
+        @reset="onReset"
+        @update:page="setQuery({ page: $event })"
+        @update:page-size="setQuery({ pageSize: $event, page: 1 })"
+      >
+        <n-select
+          :value="statusFilter"
+          :options="statusOptions"
+          style="width: 140px"
+          @update:value="setQuery({ status: $event || undefined, page: 1 })"
+        />
+        <n-select
+          :value="groupId"
+          :options="groups"
+          style="width: 180px"
+          @update:value="setQuery({ groupId: $event || undefined, page: 1 })"
+        />
+      </AdminFilterBar>
+
+      <n-alert v-if="deny" type="error" :show-icon="false" class="block">{{ deny }}</n-alert>
+
+      <template v-else>
+        <div v-if="isNarrow" class="cards">
+          <n-card
+            v-for="row in pagedRows"
+            :key="row.id"
+            size="small"
+            class="entity-card"
+            @click="goDetail(row)"
+          >
+            <div class="card-row">
+              <AuthMediaImg
+                v-if="row.status === 'pending_review'"
+                compact
+                :admin-media-path="`/admin/catalog-submissions/${row.id}/media/thumb`"
+                :src-path="row.imageFrontThumbUrl || row.imageFrontUrl || row.imageFrontThumb || row.imageFront"
+                alt=""
+              />
+              <div>
+                <div class="card-title">{{ row.slotLabel }}</div>
+                <div class="muted">{{ row.groupNameZh }} · {{ row.releaseTitle }}</div>
+              </div>
+            </div>
+          </n-card>
+          <AdminEmptyState v-if="!pagedRows.length" copy="暂无投稿" />
         </div>
-      </n-card>
-    </div>
+
+        <n-data-table
+          v-else-if="pagedRows.length"
+          :columns="columns"
+          :data="pagedRows"
+          :pagination="false"
+          striped
+          :scroll-x="800"
+          :row-key="(row: Submission) => row.id"
+          :row-props="(row: Submission) => ({ style: 'cursor: pointer', onClick: () => goDetail(row) })"
+        />
+        <AdminEmptyState v-else copy="暂无投稿" />
+      </template>
+    </n-card>
   </n-spin>
 </template>
 
 <style scoped>
+.ops-card {
+  overflow: visible;
+}
+
+.block {
+  margin-bottom: 12px;
+}
+
 .cards {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+
+.entity-card :deep(.n-card__content) {
+  padding: 12px;
+}
+
 .card-row {
   display: flex;
   gap: 10px;
   align-items: center;
 }
+
 .card-title {
   font-weight: 600;
 }
+
 .muted {
-  color: var(--n-text-color-3);
+  color: var(--color-text-secondary);
   font-size: 13px;
   margin-top: 4px;
 }

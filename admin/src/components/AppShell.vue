@@ -13,6 +13,7 @@ import {
 } from "naive-ui";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import { authUser, logout, userMenus } from "../auth";
+import { CATALOG_TABS } from "../catalog/types";
 import { useNarrow } from "../narrow";
 
 const { isNarrow } = useNarrow();
@@ -33,10 +34,17 @@ const who = computed(() => {
 
 const menus = computed(() => userMenus());
 
+function catalogTabFromMenu(id: string) {
+  if (id === "catalog" || id === "catalog-groups") return "groups";
+  const prefix = "catalog-";
+  if (id.startsWith(prefix)) return id.slice(prefix.length);
+  return "groups";
+}
+
 function menuTo(id: string) {
-  if (id === "catalog" || id === "catalog-groups") return { name: "catalog" as const, params: { tab: "groups" } };
-  if (id === "catalog-templates") return { name: "catalog" as const, params: { tab: "templates" } };
-  if (id === "catalog-benefits") return { name: "catalog" as const, params: { tab: "benefits" } };
+  if (id === "catalog" || id.startsWith("catalog-")) {
+    return { name: "catalog" as const, params: { tab: catalogTabFromMenu(id) } };
+  }
   if (id === "submissions") return { name: "submissions" as const };
   if (id === "users") return { name: "users" as const };
   if (id === "intel") return { name: "intel" as const };
@@ -53,13 +61,14 @@ function linkLabel(to: ReturnType<typeof menuTo>, text: string) {
     );
 }
 
+const catalogMenuLabel: Record<string, string> = {
+  import: "导入",
+};
+
 const activeKey = computed(() => {
   if (route.name === "catalog" || route.path.startsWith("/catalog")) {
     const tab = String(route.params.tab || "groups");
-    if (tab === "templates") return "catalog-templates";
-    if (tab === "benefits") return "catalog-benefits";
-    if (tab === "groups") return "catalog-groups";
-    return "catalog";
+    return `catalog-${tab}`;
   }
   if (route.name === "submissions" || route.name === "submission-detail") return "submissions";
   if (route.name === "users" || route.name === "user-detail") return "users";
@@ -78,11 +87,10 @@ const menuOptions = computed<MenuOption[]>(() =>
       return {
         key: "catalog",
         label: item.label,
-        children: [
-          { key: "catalog-groups", label: linkLabel(menuTo("catalog-groups"), "组合") },
-          { key: "catalog-templates", label: linkLabel(menuTo("catalog-templates"), "小卡模板/维护") },
-          { key: "catalog-benefits", label: linkLabel(menuTo("catalog-benefits"), "特典对照") },
-        ],
+        children: CATALOG_TABS.map((tab) => ({
+          key: `catalog-${tab.id}`,
+          label: linkLabel(menuTo(`catalog-${tab.id}`), catalogMenuLabel[tab.id] || tab.label),
+        })),
       };
     }
     return {
@@ -152,7 +160,7 @@ async function onLogout() {
 
 <style scoped>
 .shell {
-  min-height: 100vh;
+  height: 100%;
 }
 
 .brand {

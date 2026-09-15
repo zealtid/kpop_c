@@ -102,6 +102,7 @@ const hasMainImage = computed(() => !!form.mainImageUrl.trim());
 
 const modalStyle = computed(() => ({
   width: props.tab === "templates" ? "min(680px, calc(100vw - 24px))" : "min(520px, calc(100vw - 24px))",
+  maxHeight: "min(90vh, 880px)",
 }));
 
 const groupOptions = computed(() =>
@@ -279,7 +280,7 @@ function close() {
     :mask-closable="!submitting"
     @update:show="emit('update:show', $event)"
   >
-    <n-form @submit.prevent="onSubmit(false)">
+    <n-form class="modal-form" @submit.prevent="onSubmit(false)">
       <template v-if="tab === 'groups'">
         <n-form-item label="slug" required>
           <n-input v-model:value="form.slug" :input-props="{ name: 'slug' }" />
@@ -397,15 +398,16 @@ function close() {
         <p v-if="dedupeKey" class="muted">去重键 {{ dedupeKey }}</p>
       </template>
 
+    </n-form>
+    <template #footer>
       <n-space justify="end">
         <n-button :disabled="submitting" @click="close">取消</n-button>
-        <n-button type="primary" attr-type="submit" :loading="submitting">
+        <n-button type="primary" :loading="submitting" @click="onSubmit(false)">
           {{ editing ? "保存" : "保存草稿" }}
         </n-button>
         <n-button
           v-if="tab === 'templates'"
           type="success"
-          attr-type="button"
           :disabled="!hasMainImage"
           :loading="submitting"
           @click="onSubmit(true)"
@@ -413,11 +415,17 @@ function close() {
           保存并发布
         </n-button>
       </n-space>
-    </n-form>
+    </template>
   </n-modal>
 </template>
 
 <style scoped>
+.modal-form {
+  max-height: min(calc(90vh - 148px), 732px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .muted {
   color: var(--color-text-secondary);
   font-size: 13px;
