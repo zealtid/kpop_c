@@ -1,7 +1,6 @@
 const api = require("../../utils/api");
 const cardCondition = require("../../utils/cardCondition");
 const customCard = require("../../utils/customCard");
-const nav = require("../../utils/navigate");
 
 Page({
   data: {
@@ -94,7 +93,7 @@ Page({
   },
   applyCatalog() {
     if (!this.data.id) return;
-    nav.navigateTo({ url: `/pages/catalog-submit/index?customCardId=${this.data.id}` });
+    wx.navigateTo({ url: `/pages/catalog-submit/index?customCardId=${this.data.id}` });
   },
   remove() {
     if (this.data.missing || !this.data.id) return;
@@ -102,7 +101,7 @@ Page({
       .confirmDeleteCustomCard(this.data.id, api.request)
       .then((result) => {
         if (result.cancelled) return;
-        setTimeout(() => nav.navigateBack(), 400);
+        setTimeout(() => wx.navigateBack(), 400);
       })
       .catch(api.handleWriteError);
   },

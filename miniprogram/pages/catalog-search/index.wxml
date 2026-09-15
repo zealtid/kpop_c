@@ -15,7 +15,7 @@
     <view class="btn" bindtap="goFeedback">反馈缺卡</view>
   </view>
   <view class="grid3">
-    <view class="tile" wx:for="{{templates}}" wx:key="id" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="onTileTap" data-id="{{item.id}}">
+    <view class="tile" wx:for="{{templates}}" wx:key="id" bindtap="onTileTap" data-id="{{item.id}}">
       <view class="ph {{selectMode && item.on ? 'sel' : ''}}" style="background: {{item.memberColor}}">
         <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
       </view>

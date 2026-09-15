@@ -1,5 +1,4 @@
 const api = require("./api");
-const nav = require("./navigate");
 
 const STORAGE_KEY = "follow_onboarding_done";
 const ONBOARDING_ROUTE = "pages/follow-onboarding/index";
@@ -48,7 +47,7 @@ function openOnboarding({ force = false } = {}) {
       opening = false;
       return;
     }
-    nav.navigateTo({
+    wx.navigateTo({
       url,
       complete() {
         opening = false;
@@ -86,7 +85,7 @@ function maybePromptAfterLogin() {
 }
 
 function goCardbook() {
-  nav.switchTab({ url: "/pages/cardbook/index" });
+  wx.switchTab({ url: "/pages/cardbook/index" });
 }
 
 module.exports = {

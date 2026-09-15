@@ -13,11 +13,17 @@
       <view class="privacy-row">
         <view
           class="privacy-opt {{privateOn ? 'on' : ''}}"
+          hover-class="nav-hover"
+          hover-start-time="20"
+          hover-stay-time="80"
           bindtap="setPrivacy"
           data-v="private"
         >仅自己</view>
         <view
           class="privacy-opt {{publicOn ? 'on' : ''}}"
+          hover-class="nav-hover"
+          hover-start-time="20"
+          hover-stay-time="80"
           bindtap="setPrivacy"
           data-v="public"
         >公开</view>

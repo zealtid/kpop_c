@@ -5,7 +5,6 @@ const compressImage = require("../../utils/compressImage");
 const crop = require("../../utils/crop");
 const gridDetect = require("../../utils/gridDetect");
 const gridSession = require("../../utils/gridSession");
-const nav = require("../../utils/navigate");
 
 function readBase64(filePath) {
   return new Promise((resolve, reject) => {
@@ -416,7 +415,8 @@ Page({
             this.setData({ saving: false });
             return;
           }
-          nav.redirectTo({ url: "/pages/my-submissions/index" });
+          // 结束宫格确认：redirectTo 替换当前页，禁止 reLaunch
+          wx.redirectTo({ url: "/pages/my-submissions/index" });
         },
       });
     };

@@ -1,7 +1,6 @@
 const api = require("../../utils/api");
 const analytics = require("../../utils/analytics");
 const followPicker = require("../../utils/followPicker");
-const nav = require("../../utils/navigate");
 
 Page({
   data: { groups: [], q: "", pageLoading: true },
@@ -20,15 +19,15 @@ Page({
   },
   onSearch(e) {
     const q = e.detail.value || "";
-    nav.navigateTo({ url: `/pages/catalog-search/index?q=${encodeURIComponent(q)}` });
+    wx.navigateTo({ url: `/pages/catalog-search/index?q=${encodeURIComponent(q)}` });
   },
   openGroup(e) {
-    nav.navigateTo({ url: `/pages/catalog-group/index?id=${e.currentTarget.dataset.id}` });
+    wx.navigateTo({ url: `/pages/catalog-group/index?id=${e.currentTarget.dataset.id}` });
   },
   goSubmit() {
-    nav.navigateTo({ url: "/pages/catalog-submit/index" });
+    wx.navigateTo({ url: "/pages/catalog-submit/index" });
   },
   goGrid() {
-    nav.navigateTo({ url: "/pages/catalog-grid/index" });
+    wx.navigateTo({ url: "/pages/catalog-grid/index" });
   },
 });

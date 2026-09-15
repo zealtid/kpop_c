@@ -1,7 +1,6 @@
 const api = require("../../utils/api");
 const releaseDate = require("../../utils/releaseDate");
 const benefitMatrix = require("../../utils/benefitMatrix");
-const nav = require("../../utils/navigate");
 
 Page({
   data: {
@@ -74,11 +73,11 @@ Page({
     }
     const templateId = e.currentTarget.dataset.templateId;
     if (templateId) {
-      nav.navigateTo({ url: `/pages/card-detail/index?id=${templateId}&from=catalog` });
+      wx.navigateTo({ url: `/pages/card-detail/index?id=${templateId}&from=catalog` });
       return;
     }
     const q = e.currentTarget.dataset.q || "";
-    nav.navigateTo({
+    wx.navigateTo({
       url: `/pages/catalog-search/index?q=${encodeURIComponent(q)}`,
     });
   },
