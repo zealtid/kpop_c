@@ -23,6 +23,7 @@ test("maps dictionary and benefit-matrix rows", () => {
 test("searchable list always offers 其他/手填", () => {
   const hits = pick.filterOptions(channels, "");
   assert.ok(hits.some((h) => h.value === pick.OTHER_VALUE && h.label === "其他/手填"));
+  assert.ok(hits.every((h) => h.key));
   const wv = pick.filterOptions(channels, "wv");
   assert.ok(wv.some((h) => h.value === "weverse"));
   const none = pick.filterOptions(channels, "没有这个通路xyz");

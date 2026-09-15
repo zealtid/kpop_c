@@ -76,12 +76,43 @@ test("submit without agreement toasts", () => {
 
 test("wxml uses 名称/别称, agreement checkbox, and searchable 通路", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
+  const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
   assert.match(wxml, /名称\/别称/);
   assert.doesNotMatch(wxml, /卡位 \/ 名称/);
   assert.match(wxml, /class="agree/);
   assert.match(wxml, /bindtap="toggleAgree"/);
   assert.match(wxml, /bindinput="onChannelQ"/);
+  assert.match(wxml, /bindfocus="onChannelFocus"/);
   assert.match(wxml, /其他\/手填|channelOther/);
+  assert.match(wxml, /wx:key="key"/);
+  assert.match(wxml, /class="faces-row"/);
+  assert.match(wxml, /class="face-col"/);
+  assert.match(wxml, /class="card-face"/);
+  assert.match(wxss, /\.faces-row/);
+  assert.match(wxss, /display:\s*flex/);
+  assert.match(wxss, /\.chips/);
+  assert.match(wxss, /\.box/);
+});
+
+test("onChannelQ filters option list from the typed query in one setData", () => {
+  const page = pageWithData({
+    channelOptions: [
+      { value: "weverse", label: "Weverse Shop", aliases: ["WV"], kind: "channel" },
+      { value: "tmall", label: "天猫", aliases: ["天猫国际"], kind: "channel" },
+    ],
+    channelQ: "",
+    channelHits: [],
+  });
+  page.onChannelQ({ detail: { value: "wv" } });
+  assert.equal(page.data.channelQ, "wv");
+  assert.ok(page.data.channelHits.some((h) => h.value === "weverse"));
+  assert.equal(
+    page.data.channelHits.filter((h) => h.value === "tmall").length,
+    0,
+  );
+  assert.ok(page.data.channelHits.some((h) => h.label === "其他/手填"));
+  page.onChannelFocus({ detail: {} });
+  assert.ok(page.data.channelHits.some((h) => h.value === "weverse"));
 });
 
 test("app.json registers submit and my-submissions", () => {

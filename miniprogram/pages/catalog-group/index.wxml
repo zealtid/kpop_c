@@ -20,12 +20,15 @@
   </view>
 
   <view wx:for="{{releases}}" wx:key="id" class="card">
-    <view class="row">
+    <view class="release-head">
       <view>
-        <view>{{item.title}}</view>
-        <view class="muted">{{item.releasedOnLabel}} · {{item.kind}}</view>
+        <view class="release-title">{{item.title}}</view>
+        <view class="meta-chips">
+          <view wx:if="{{item.releasedOnLabel}}" class="meta-chip">{{item.releasedOnLabel}}</view>
+          <view wx:if="{{item.kind}}" class="meta-chip">{{item.kind}}</view>
+        </view>
       </view>
-      <view class="muted" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" catchtap="openRelease" data-id="{{item.id}}">特典对照 →</view>
+      <view class="release-link" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" catchtap="openRelease" data-id="{{item.id}}">特典对照 →</view>
     </view>
     <view class="grid3" style="margin-top:16rpx">
       <view class="tile" wx:for="{{item.templates}}" wx:for-item="t" wx:key="id" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="onTileTap" data-id="{{t.id}}">
@@ -33,8 +36,11 @@
           <image wx:if="{{t.mainImageUrl}}" src="{{t.mainImageUrl}}" mode="aspectFill"/>
           <view wx:if="{{t.isBenefit}}" class="benefit-badge">特典</view>
         </view>
-        <view class="muted">{{t.memberNameEn}}</view>
-        <view class="tag">{{t.version}}</view>
+        <view class="tile-name">{{t.memberNameEn}}</view>
+        <view class="meta-chips tile-chips">
+          <view wx:if="{{t.isBenefit}}" class="meta-chip benefit">特典</view>
+          <view wx:if="{{t.version}}" class="meta-chip">{{t.version}}</view>
+        </view>
         <view wx:if="{{!selectMode}}" class="row mini-actions">
           <text class="own" catchtap="ownOne" data-id="{{t.id}}">拥有</text>
           <text class="want" catchtap="wantOne" data-id="{{t.id}}">想要</text>

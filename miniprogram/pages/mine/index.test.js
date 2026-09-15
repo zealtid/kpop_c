@@ -102,7 +102,13 @@ test("UX-A3 wxml: avatar+nickname row; nickname fill only; no getUserProfile; ac
   assert.match(wxml, /type="nickname"/);
   assert.match(wxml, /同步微信昵称/);
   assert.match(wxml, /wx:if="\{\{nicknameUnset\}\}"/);
+  assert.match(wxml, /bindtap="armNicknameSync"/);
+  assert.match(wxml, /nicknameSyncArmed/);
+  assert.match(wxml, /bindinput="onWxNicknameFill"/);
   assert.match(wxml, /bindblur="onWxNicknameFill"/);
+  assert.match(js, /armNicknameSync/);
+  assert.match(js, /nicknameSyncArmed: false/);
+  assert.doesNotMatch(js, /onShow\(\)[\s\S]*nicknameSyncArmed:\s*true/);
   assert.match(wxml, /管理关注/);
   assert.match(wxml, /bindtap="goSettings"/);
   assert.doesNotMatch(wxml, /收藏家/);
@@ -229,6 +235,36 @@ test("UX-A2 WeChat nickname fill PATCHes /me; existing name is display-only", as
   await flush();
   assert.equal(typeof pageDef.saveNickname, "undefined");
   assert.equal(typeof pageDef.openNicknameEditor, "undefined");
+});
+
+test("entering 我的 does not arm nickname input; tap arms it for manual sync", async () => {
+  api.request = (opts) => {
+    if (opts.url === "/me") return Promise.resolve({ id: "u1", nickname: "收藏家", privacy: "private" });
+    if (opts.url === "/me/follows") return Promise.resolve({ groups: [] });
+    if (opts.url === "/analytics/events") return Promise.resolve({});
+    return Promise.reject(new Error(opts.url));
+  };
+  const page = pageWithData({ nicknameUnset: true, nicknameSyncArmed: true, needsLogin: false });
+  page.onShow();
+  assert.equal(page.data.nicknameSyncArmed, false);
+  await flush();
+  assert.equal(page.data.nicknameUnset, true);
+  assert.equal(page.data.nicknameSyncArmed, false);
+
+  page.armNicknameSync();
+  assert.equal(page.data.nicknameSyncArmed, true);
+  assert.equal(page.data.nicknameSyncFocus, true);
+
+  const guest = pageWithData({ needsLogin: true, nicknameUnset: true, nicknameSyncArmed: false });
+  guest.armNicknameSync();
+  assert.equal(guest.data.nicknameSyncArmed, false);
+
+  const named = pageWithData({ needsLogin: false, nicknameUnset: false, nicknameSyncArmed: false });
+  named.armNicknameSync();
+  assert.equal(named.data.nicknameSyncArmed, false);
+
+  page.onHide();
+  assert.equal(page.data.nicknameSyncArmed, false);
 });
 
 test("UX-A3 chooseAvatar uploads then PATCHes persistable URL; temp path is not PATCHed", async () => {

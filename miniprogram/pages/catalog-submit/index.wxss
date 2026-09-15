@@ -2,6 +2,20 @@
   min-height: 72rpx;
   height: 72rpx;
 }
+.box {
+  width: 100%;
+  background: var(--color-bg-muted);
+  border: 1rpx solid var(--color-border-subtle);
+  border-radius: 16rpx;
+  padding: 16rpx;
+  color: var(--color-text-primary);
+  box-sizing: border-box;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
 .label {
   font-size: 26rpx;
   color: var(--color-text-secondary);
@@ -13,17 +27,26 @@
 .warn {
   border: 1rpx solid var(--color-warning);
 }
+.faces-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+}
+.face-col {
+  flex: 1;
+  min-width: 0;
+}
 .pick-row {
   margin-top: 16rpx;
   gap: 16rpx;
   flex-wrap: wrap;
 }
 
-.pick-row .btn.slim {
+.face-col .pick-row .btn.slim {
   flex: 1;
-  min-width: 160rpx;
-  padding: 16rpx 24rpx;
-  font-size: 26rpx;
+  min-width: 0;
+  padding: 12rpx 8rpx;
+  font-size: 24rpx;
   box-sizing: border-box;
 }
 
@@ -33,8 +56,13 @@
 
 .channel-hits {
   margin-top: 12rpx;
-  max-height: 280rpx;
+  max-height: 320rpx;
   overflow-y: auto;
+  padding: 8rpx 4rpx 4rpx;
+  border: 1rpx solid var(--color-border-subtle);
+  border-radius: 16rpx;
+  background: var(--color-bg-page);
+  min-height: 80rpx;
 }
 
 .agree {

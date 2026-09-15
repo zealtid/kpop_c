@@ -81,6 +81,7 @@
       class="box input"
       value="{{channelQ}}"
       bindinput="onChannelQ"
+      bindfocus="onChannelFocus"
       placeholder="搜索 Weverse / 天猫 / 预购特典"
       maxlength="40"
     />
@@ -88,7 +89,7 @@
       <view
         class="chip {{selected.channelValue===item.value?'on':''}}"
         wx:for="{{channelHits}}"
-        wx:key="label"
+        wx:key="key"
         bindtap="pickChannel"
         data-value="{{item.value}}"
         data-label="{{item.label}}"

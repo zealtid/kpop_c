@@ -54,16 +54,24 @@ function withOther(options) {
   return [...(options || []), { value: OTHER_VALUE, label: OTHER_LABEL, aliases: ["其他", "手填"], kind: "other" }];
 }
 
+function optionKey(item, index) {
+  return `${item.kind || "x"}:${item.value}:${item.label}:${index}`;
+}
+
+function withKeys(list) {
+  return (list || []).map((item, index) => ({ ...item, key: optionKey(item, index) }));
+}
+
 function filterOptions(options, q) {
   const s = String(q || "").trim().toLowerCase();
   const other = { value: OTHER_VALUE, label: OTHER_LABEL, aliases: ["其他", "手填"], kind: "other" };
   const base = options || [];
-  if (!s) return [...base.slice(0, MAX_HITS - 1), other];
+  if (!s) return withKeys([...base.slice(0, MAX_HITS - 1), other]);
   const hits = base.filter((o) => {
     const blob = [o.label, o.value, ...(o.aliases || [])].join(" ").toLowerCase();
     return blob.includes(s);
   });
-  return [...hits.slice(0, MAX_HITS - 1), other];
+  return withKeys([...hits.slice(0, MAX_HITS - 1), other]);
 }
 
 function isOther(value) {
