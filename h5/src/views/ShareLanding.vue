@@ -101,6 +101,7 @@ function browse() {
         :title="summary.cta.title"
         :path="summary.mini.path"
         :url-scheme="summary.cta.urlScheme"
+        :url-link="summary.cta.urlLink"
         :hint="summary.cta.hint"
       />
       <button v-if="isWeChatBrowser()" class="btn-ghost" type="button" @click="browse">在微信中浏览图鉴</button>

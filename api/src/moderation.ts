@@ -1,6 +1,6 @@
-import { config } from "./config.js";
 import { query } from "./db.js";
 import { isPendingMediaPath, deleteStoredImage } from "./storage.js";
+import { getWxMiniAccessToken, isWxMiniConfigured } from "./wxAccess.js";
 
 export const MODERATION_PENDING = "pending";
 export const MODERATION_APPROVED = "approved";
@@ -8,37 +8,8 @@ export const MODERATION_REJECTED = "rejected";
 
 export type ModerationStatus = "pending" | "approved" | "rejected";
 
-type WxTokenCache = { token: string; expiresAt: number };
-let tokenCache: WxTokenCache | null = null;
-
 export function isWxModerationConfigured() {
-  return !!(config.wxAppId && config.wxSecret);
-}
-
-async function fetchAccessToken() {
-  if (!isWxModerationConfigured()) return null;
-  const now = Date.now();
-  if (tokenCache && tokenCache.expiresAt > now + 60_000) return tokenCache.token;
-  const url = new URL("https://api.weixin.qq.com/cgi-bin/token");
-  url.searchParams.set("grant_type", "client_credential");
-  url.searchParams.set("appid", config.wxAppId);
-  url.searchParams.set("secret", config.wxSecret);
-  const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 8000);
-  try {
-    const res = await fetch(url, { signal: ac.signal });
-    const data = (await res.json()) as { access_token?: string; expires_in?: number; errmsg?: string };
-    if (!data.access_token) return null;
-    tokenCache = {
-      token: data.access_token,
-      expiresAt: now + (data.expires_in || 7200) * 1000,
-    };
-    return tokenCache.token;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(t);
-  }
+  return isWxMiniConfigured();
 }
 
 /**
@@ -51,7 +22,7 @@ export async function submitMediaCheckAsync(opts: {
   if (!isWxModerationConfigured()) {
     return { submitted: false, reason: "wx_not_configured", hookReady: true };
   }
-  const token = await fetchAccessToken();
+  const token = await getWxMiniAccessToken();
   if (!token) {
     return { submitted: false, reason: "wx_token_failed", hookReady: true };
   }

@@ -96,6 +96,15 @@ export function mapSubmission(row: Row) {
   };
 }
 
+function withPublicMedia<T extends ReturnType<typeof mapSubmission>>(mapped: T) {
+  return {
+    ...mapped,
+    imageFrontUrl: absoluteMediaUrl(mapped.imageFront),
+    imageBackUrl: mapped.imageBack ? absoluteMediaUrl(mapped.imageBack) : null,
+    imageFrontThumbUrl: mapped.imageFrontThumb ? absoluteMediaUrl(mapped.imageFrontThumb) : null,
+  };
+}
+
 export async function purgePendingImages(paths: Array<string | null | undefined>) {
   for (const p of paths) {
     if (p && isPendingMediaPath(p)) await deleteStoredImage(p);
@@ -407,17 +416,25 @@ export async function adminList(opts: { status?: string; groupId?: string; relea
      LIMIT 200`,
     params,
   );
-  return r.rows.map(mapSubmission);
+  return r.rows.map((row) => withPublicMedia(mapSubmission(row)));
 }
 
 export async function adminGet(id: string) {
   const r = await query(`${SELECT_SQL} WHERE s.id = $1`, [id]);
   if (!r.rowCount) throw notFound("投稿不存在");
-  const mapped = mapSubmission(r.rows[0]);
+  const mapped = withPublicMedia(mapSubmission(r.rows[0]));
   const candidates = mapped.phashFront
     ? await findNearDuplicateTemplates(mapped.phashFront, mapped.groupId)
     : [];
   return { ...mapped, duplicateCandidates: candidates };
+}
+
+export async function adminMediaPath(id: string, side: string) {
+  const row = await adminGet(id);
+  if (side === "back") return row.imageBack;
+  if (side === "thumb") return row.imageFrontThumb || row.imageFront;
+  if (side === "front") return row.imageFront;
+  return null;
 }
 
 async function grantOwned(userId: string, templateId: string) {

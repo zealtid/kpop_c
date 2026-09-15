@@ -46,6 +46,7 @@ import {
   readStoredImage,
 } from "./storage.js";
 import * as catalogSubmissions from "./catalogSubmissions.js";
+import { jsSdkSignature, resolveMiniJump } from "./wxMiniJump.js";
 import * as feed from "./feed.js";
 import * as schedule from "./schedule.js";
 import { parseUtc } from "./time.js";
@@ -518,18 +519,53 @@ export function createApp() {
     }
   });
 
-  app.get("/h5/bootstrap", (_req, res) => {
-    res.json({
-      webOAuth: Boolean(config.wxWebAppId) || mockWxWebLoginEnabled,
-      mockAuth: mockWxWebLoginEnabled,
-      mini: {
-        appId: config.wxAppId || null,
-        ghId: config.wxMiniGhId || null,
-        urlScheme: config.wxUrlScheme || null,
-      },
-      cta: shareCta(),
-      publicBaseUrl: config.publicBaseUrl,
-    });
+  app.get("/h5/bootstrap", async (req, res, next) => {
+    try {
+      const rawPath = String(req.query.path || "pages/catalog/index");
+      const qIndex = rawPath.indexOf("?");
+      const page = (qIndex >= 0 ? rawPath.slice(0, qIndex) : rawPath) || "pages/catalog/index";
+      const query = qIndex >= 0 ? rawPath.slice(qIndex + 1) : "";
+      const jump = await resolveMiniJump({ page, query });
+      res.json({
+        webOAuth: Boolean(config.wxWebAppId) || mockWxWebLoginEnabled,
+        mockAuth: mockWxWebLoginEnabled,
+        mini: {
+          appId: jump.appId,
+          ghId: jump.ghId,
+          urlScheme: jump.urlScheme,
+          urlLink: jump.urlLink,
+        },
+        cta: {
+          ...shareCta(),
+          urlScheme: jump.urlScheme,
+          urlLink: jump.urlLink,
+          ghId: jump.ghId,
+          appId: jump.appId,
+          canJump: jump.canJump,
+          missing: jump.missing,
+        },
+        jsSdk: jump.jsSdk,
+        canJump: jump.canJump,
+        missing: jump.missing,
+        reason: jump.reason,
+        publicBaseUrl: config.publicBaseUrl,
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/h5/jssdk-config", async (req, res, next) => {
+    try {
+      const url = String(req.query.url || "");
+      if (!url) {
+        res.status(400).json({ error: { code: "BAD_REQUEST", message: "缺少 url" } });
+        return;
+      }
+      res.json(await jsSdkSignature(url));
+    } catch (e) {
+      next(e);
+    }
   });
 
   app.get("/share/summary", async (req, res, next) => {
@@ -1051,6 +1087,26 @@ export function createApp() {
           releaseId: req.query.releaseId as string | undefined,
         }),
       });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/catalog-submissions/:id/media/:side", requireAdmin, async (req, res, next) => {
+    try {
+      const publicPath = await catalogSubmissions.adminMediaPath(req.params.id, String(req.params.side || ""));
+      if (!publicPath) {
+        res.status(404).end();
+        return;
+      }
+      const img = await readStoredImage(publicPath);
+      if (!img) {
+        res.status(404).end();
+        return;
+      }
+      res.setHeader("Cache-Control", "private, max-age=60");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      res.type(img.contentType).send(img.body);
     } catch (e) {
       next(e);
     }
@@ -1593,6 +1649,7 @@ export function createApp() {
         return;
       }
       res.setHeader("Cache-Control", "public, max-age=86400");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       res.type(img.contentType).send(img.body);
     } catch (e) {
       next(e);
@@ -1612,6 +1669,7 @@ export function createApp() {
         return;
       }
       res.setHeader("Cache-Control", "private, max-age=300");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       res.type(img.contentType).send(img.body);
     } catch (e) {
       next(e);
@@ -1631,6 +1689,7 @@ export function createApp() {
         return;
       }
       res.setHeader("Cache-Control", "private, max-age=3600");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       res.type(img.contentType).send(img.body);
     } catch (e) {
       next(e);

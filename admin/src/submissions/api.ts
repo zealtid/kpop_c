@@ -15,6 +15,9 @@ export type Submission = {
   imageFront: string;
   imageBack?: string | null;
   imageFrontThumb?: string | null;
+  imageFrontUrl?: string | null;
+  imageBackUrl?: string | null;
+  imageFrontThumbUrl?: string | null;
   status: string;
   rejectReason?: string | null;
   source: string;

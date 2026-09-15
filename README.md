@@ -291,7 +291,7 @@ npm run build:admin   # 本地确认 dist/；需设置 VITE_API_BASE
 | 能力 | 说明 |
 | --- | --- |
 | 未登录落地 | `GET /share/summary` / `/share/landing` 仅已发布图鉴，不含私人卡册、待审 UGC、工单内部备注 |
-| 打开小程序 | CTA + 复制路径；可选 `WX_URL_SCHEME` / `WX_MINI_GH_ID`。卡册长图分享仍无独立公开链，本切片不接 |
+| 打开小程序 | 优先动态 URL Link / URL Scheme（`WX_APPID`+`WX_SECRET`）；可选 `WX_MINI_GH_ID` + 公众号 JS-SDK 开放标签；再退回静态 `WX_URL_SCHEME` 或复制路径/扫码 |
 | 非微信 | 只展示摘要与打开引导，无登录 UI、无写入口 |
 | 微信授权 | `POST /auth/wx-web-login` / `GET /auth/wx-web/start`；用 **unionid** 对齐小程序 `user_id`（需开放平台绑定） |
 | 图鉴浏览 | 复用现有 `/catalog/...`（published-only）；搜索走 `/catalog/search` |
