@@ -15,6 +15,7 @@ Page({
     custom: [],
     customLabel: "",
     list: [],
+    emptyTitle: "还没有卡",
   },
   onLoad(q) {
     this.setData({ id: q.id });
@@ -55,7 +56,12 @@ Page({
   },
   applyTab() {
     const lists = [this.data.owned, this.data.wanted, this.data.duplicates];
-    this.setData({ list: lists[this.data.tab] || [] });
+    const titles = ["还没有卡", "还没有想要", "还没有重复"];
+    const tab = this.data.tab;
+    this.setData({
+      list: lists[tab] || [],
+      emptyTitle: titles[tab] || "暂无卡片",
+    });
   },
   openCard(e) {
     if (this.data.tab === 1) return;
@@ -86,6 +92,9 @@ Page({
   },
   addFromCatalog() {
     wx.navigateTo({ url: "/pages/catalog-grid/index" });
+  },
+  goCatalog() {
+    wx.switchTab({ url: "/pages/catalog/index" });
   },
   unown(e) {
     const id = e.currentTarget.dataset.id;

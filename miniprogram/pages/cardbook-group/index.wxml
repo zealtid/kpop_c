@@ -1,11 +1,11 @@
-<view class="page">
+<view class="page album">
   <view class="head-row">
-    <view>
+    <view class="head-title">
       <view class="h1">{{group.nameZh}}</view>
-      <view class="sub tight">{{progress.ownedDistinct}} / {{progress.publishedCount}} · {{pct}}%</view>
+      <view class="head-count">{{progress.ownedDistinct}} / {{progress.publishedCount}} · {{pct}}%</view>
     </view>
   </view>
-  <view wx:if="{{group.scopeNote}}" class="footnote">{{group.scopeNote}}</view>
+  <view wx:if="{{group.scopeNote}}" class="footnote scope">{{group.scopeNote}}</view>
 
   <view class="row actions">
     <view class="btn slim" bindtap="share">生成长图</view>
@@ -19,32 +19,42 @@
   </view>
 
   <block wx:if="{{tab===0 && custom.length}}">
-    <view class="muted custom-head">历史私人卡 {{custom.length}}</view>
+    <view class="custom-head">历史私人卡 {{custom.length}}</view>
     <view class="grid3">
       <view class="tile" wx:for="{{custom}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
         <view class="ph" style="background: {{item.memberColor || '#EBEDF3'}}" catchtap="openPreview" data-id="{{item.id}}">
           <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
           <view class="badge">{{item.badge}}</view>
           <view wx:if="{{item.moderationLabel}}" class="badge warn">{{item.moderationLabel}}</view>
+          <view wx:if="{{item.quantity > 1}}" class="qty-badge">×{{item.quantity}}</view>
         </view>
-        <view class="muted">{{item.title || item.memberNameEn || '自定义卡'}}</view>
-        <view class="tag">×{{item.quantity}}</view>
-        <view class="mini" catchtap="removeCustom" data-id="{{item.id}}">删除</view>
+        <view class="tile-name">{{item.title || item.memberNameEn || '自定义卡'}}</view>
+        <view class="tile-act" catchtap="removeCustom" data-id="{{item.id}}">删除</view>
       </view>
     </view>
   </block>
 
-  <view wx:if="{{list.length===0 && !(tab===0 && custom.length)}}" class="empty">暂无卡片</view>
+  <view wx:if="{{list.length===0 && !(tab===0 && custom.length)}}" class="empty-state compact">
+    <view class="empty-title">{{emptyTitle}}</view>
+    <view class="empty-actions">
+      <view class="btn slim" bindtap="goCatalog">去图鉴</view>
+      <view class="btn ghost slim" bindtap="addFromCatalog">拍照加入卡册</view>
+    </view>
+  </view>
+
   <view class="grid3">
-    <view class="tile" wx:for="{{list}}" wx:key="id" bindtap="openCard" data-id="{{item.id}}">
+    <view class="tile" wx:for="{{list}}" wx:key="id" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="openCard" data-id="{{item.id}}">
       <view class="ph" style="background: {{item.memberColor}}">
         <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
+        <view wx:if="{{item.quantity > 1}}" class="qty-badge">×{{item.quantity}}</view>
       </view>
-      <view class="muted">{{item.memberNameEn}}</view>
-      <view class="tag">{{item.version}} <text wx:if="{{item.quantity}}">×{{item.quantity}}</text></view>
-      <view wx:if="{{item.conditionLabel}}" class="muted">{{item.conditionLabel}}</view>
-      <view wx:if="{{tab===0}}" class="mini" catchtap="unown" data-id="{{item.id}}">撤销拥有</view>
-      <view wx:if="{{tab===1}}" class="mini" catchtap="unwant" data-id="{{item.id}}">移除想要</view>
+      <view class="tile-name">{{item.memberNameEn}}</view>
+      <view class="tile-chips">
+        <view wx:if="{{item.version}}" class="tile-chip">{{item.version}}</view>
+        <view wx:if="{{item.conditionLabel}}" class="tile-chip mute">{{item.conditionLabel}}</view>
+      </view>
+      <view wx:if="{{tab===0}}" class="tile-act" catchtap="unown" data-id="{{item.id}}">撤销拥有</view>
+      <view wx:if="{{tab===1}}" class="tile-act" catchtap="unwant" data-id="{{item.id}}">移除想要</view>
     </view>
   </view>
 </view>

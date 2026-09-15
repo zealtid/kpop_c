@@ -1,39 +1,29 @@
-<view class="page">
+<view class="page album">
   <view class="head-row">
-    <view class="h1">我的卡册</view>
+    <view class="head-title">
+      <view class="h1">我的卡册</view>
+      <view wx:if="{{!needsLogin && !emptyFollows}}" class="head-count">{{groups.length}} 组</view>
+    </view>
     <view class="btn slim-add" bindtap="addFromCatalog">拍照加入卡册</view>
   </view>
 
   <view wx:if="{{needsLogin}}" class="empty-state">
-    <view class="empty-title">登录后查看进度</view>
-    <view class="empty-sub">可先打开「图鉴」。加入卡册时会提示登录。</view>
+    <view class="empty-title">登录后查看卡册</view>
+    <view class="empty-sub">可先浏览图鉴</view>
     <view wx:if="{{loginFailed}}" class="empty-sub">登录失败，请重试</view>
-    <view class="btn" bindtap="goCatalog">去图鉴</view>
-    <view class="btn ghost" bindtap="doLogin">{{loginBtnLabel}}</view>
+    <view class="empty-actions">
+      <view class="btn" bindtap="goCatalog">去图鉴</view>
+      <view class="btn ghost" bindtap="doLogin">{{loginBtnLabel}}</view>
+    </view>
   </view>
 
   <block wx:else>
-    <view wx:if="{{customCount > 0}}" class="custom-block">
-      <view class="custom-head">
-        <view class="muted">历史私人卡 {{customCount}}</view>
-      </view>
-      <view class="grid3">
-        <view class="tile" wx:for="{{customCards}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
-          <view class="ph" style="background: {{item.memberColor || '#EBEDF3'}}" catchtap="openPreview" data-id="{{item.id}}">
-            <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
-            <view class="badge">{{item.badge}}</view>
-            <view wx:if="{{item.moderationLabel}}" class="badge warn">{{item.moderationLabel}}</view>
-          </view>
-          <view class="muted">{{item.title || item.memberNameEn || '自定义卡'}}</view>
-          <view class="mini" catchtap="removeCustom" data-id="{{item.id}}">删除</view>
-        </view>
-      </view>
-    </view>
-
     <view wx:if="{{emptyFollows}}" class="empty-state">
-      <view class="empty-title">还没有关注组合</view>
-      <view class="empty-sub">选择关注后显示收集进度。</view>
-      <view class="btn" bindtap="goFollowPicker">去选择关注</view>
+      <view class="empty-title">先关注组合</view>
+      <view class="empty-actions">
+        <view class="btn" bindtap="goFollowPicker">去选择关注</view>
+        <view class="btn ghost" bindtap="goCatalog">去图鉴</view>
+      </view>
     </view>
 
     <block wx:else>
@@ -41,16 +31,34 @@
         <view class="left">
           <image wx:if="{{item.logoSrc}}" class="dot" src="{{item.logoSrc}}" mode="aspectFill"/>
           <view wx:else class="dot letter" style="background: {{item.logoColor}}">{{item.initial}}</view>
-          <view>
+          <view class="group-meta">
             <view class="name">{{item.nameZh}}</view>
+            <view class="bar">
+              <view class="bar-fill" style="width: {{item.pct}}%"></view>
+            </view>
             <view wx:if="{{item.scopeNote}}" class="footnote">{{item.scopeNote}}</view>
           </view>
         </view>
-        <view class="ring">
-          <view class="pct">{{item.pct}}%</view>
+        <view class="count-col">
           <view class="frac">{{item.progress.ownedDistinct}}/{{item.progress.publishedCount}}</view>
+          <view class="pct">{{item.pct}}%</view>
         </view>
       </view>
     </block>
+
+    <view wx:if="{{customCount > 0}}" class="custom-block">
+      <view class="custom-head">历史私人卡 {{customCount}}</view>
+      <view class="grid3">
+        <view class="tile" wx:for="{{customCards}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
+          <view class="ph" style="background: {{item.memberColor || '#EBEDF3'}}" catchtap="openPreview" data-id="{{item.id}}">
+            <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
+            <view class="badge">{{item.badge}}</view>
+            <view wx:if="{{item.moderationLabel}}" class="badge warn">{{item.moderationLabel}}</view>
+          </view>
+          <view class="tile-name">{{item.title || item.memberNameEn || '自定义卡'}}</view>
+          <view class="tile-act" catchtap="removeCustom" data-id="{{item.id}}">删除</view>
+        </view>
+      </view>
+    </view>
   </block>
 </view>

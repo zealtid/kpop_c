@@ -19,6 +19,9 @@ global.wx = {
   navigateTo(opts) {
     navigations.push(opts);
   },
+  switchTab(opts) {
+    navigations.push(opts);
+  },
 };
 
 global.getApp = () => ({ globalData: { token: "" } });
@@ -51,12 +54,16 @@ beforeEach(() => {
 
 test("wxml opens card detail from owned tiles and still catchtap unown", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
+  const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
   assert.match(wxml, /bindtap="openCard"/);
   assert.match(wxml, /catchtap="unown"/);
   assert.match(wxml, /item\.conditionLabel/);
   assert.doesNotMatch(wxml, /拍照加卡/);
   assert.match(wxml, /拍照加入卡册/);
   assert.match(wxml, /addFromCatalog/);
+  assert.match(wxml, /goCatalog/);
+  assert.match(wxml, /emptyTitle/);
+  assert.match(wxss, /padding-top:\s*150%/);
 });
 
 test("openCard navigates to card-detail for owned/duplicates, not 想要", () => {
@@ -128,4 +135,12 @@ test("custom tile image opens fullscreen preview for pending", () => {
   page.openPreview({ currentTarget: { dataset: { id: "c1" } } });
   assert.equal(navigations[navigations.length - 1].url, "/pages/image-preview/index");
   assert.equal(customCard.takePreviewSrc(), "/media/custom/x.jpg");
+});
+
+test("empty 去图鉴 switches to catalog tab; 拍照加入卡册 stays on grid", () => {
+  const page = pageWithData({});
+  page.goCatalog();
+  assert.equal(navigations[navigations.length - 1].url, "/pages/catalog/index");
+  page.addFromCatalog();
+  assert.equal(navigations[navigations.length - 1].url, "/pages/catalog-grid/index");
 });
