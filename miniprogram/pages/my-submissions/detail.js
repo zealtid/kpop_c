@@ -15,6 +15,7 @@ Page({
           ...s,
           statusLabel: STATUS[s.status] || s.status,
           imageFront: api.mediaUrl(s.imageFront),
+          imageBack: s.imageBack ? api.mediaUrl(s.imageBack) : "",
         },
       });
     });

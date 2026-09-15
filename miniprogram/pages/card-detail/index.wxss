@@ -5,9 +5,11 @@
   align-items: flex-start;
 }
 
-.hero-ph {
+.ph.hero-ph {
   width: 200rpx;
-  padding-top: 308rpx;
+  height: 300rpx;
+  padding-top: 0;
+  aspect-ratio: 2 / 3;
   flex-shrink: 0;
 }
 

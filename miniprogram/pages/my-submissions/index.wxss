@@ -1,0 +1,9 @@
+.sub-row {
+  align-items: center;
+  gap: 20rpx;
+}
+
+.sub-meta {
+  flex: 1;
+  min-width: 0;
+}

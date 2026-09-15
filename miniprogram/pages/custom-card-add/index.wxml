@@ -4,8 +4,10 @@
 
   <view class="card">
     <view class="label">正面照片（{{aspectLabel}}）</view>
-    <image wx:if="{{preview}}" class="preview" src="{{preview}}" mode="aspectFill"/>
-    <view wx:else class="ph pick">选图后必须裁剪，不可跳过</view>
+    <view class="card-face">
+      <image wx:if="{{preview}}" src="{{preview}}" mode="aspectFill"/>
+      <view wx:else class="card-face-hint">选图后必须裁剪，不可跳过</view>
+    </view>
     <view class="row pick-row">
       <view class="btn ghost slim" bindtap="pickAlbum">相册</view>
       <view class="btn ghost slim" bindtap="pickCamera">相机</view>
