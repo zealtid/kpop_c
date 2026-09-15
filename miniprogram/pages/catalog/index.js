@@ -2,10 +2,14 @@ const api = require("../../utils/api");
 const analytics = require("../../utils/analytics");
 
 Page({
-  data: { groups: [], q: "" },
+  data: { groups: [], q: "", pageLoading: true },
   onShow() {
     analytics.tabView("图鉴");
-    api.request({ url: "/catalog/groups", auth: false }).then((d) => this.setData({ groups: d.groups }));
+    this.setData({ pageLoading: true });
+    api
+      .request({ url: "/catalog/groups", auth: false })
+      .then((d) => this.setData({ groups: d.groups, pageLoading: false }))
+      .catch(() => this.setData({ pageLoading: false }));
   },
   onSearch(e) {
     const q = e.detail.value || "";

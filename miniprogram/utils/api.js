@@ -52,9 +52,15 @@ function handleWriteError(err) {
 
 function mediaUrl(path) {
   if (!path) return "";
-  // 微信 chooseAvatar 临时路径（http(s) / wxfile）原样用于 <image>，其余相对路径拼 API_BASE。
-  if (/^https?:\/\//.test(path) || /^wxfile:\/\//.test(path)) return path;
-  return API_BASE + path;
+  const s = String(path);
+  // 本地临时文件原样给 <image>；真机会拦截明文 HTTP 网络图。
+  if (/^(wxfile:\/\/|http:\/\/tmp\/|https:\/\/tmp\/|https:\/\/usr\/)/.test(s)) return s;
+  if (/^https:\/\//.test(s)) return s;
+  if (/^http:\/\//.test(s)) {
+    if (/^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(s)) return s;
+    return `https://${s.slice("http://".length)}`;
+  }
+  return API_BASE + (s.startsWith("/") ? s : `/${s}`);
 }
 
 /** Business code on HTTP 200 (or legacy error envelope). */

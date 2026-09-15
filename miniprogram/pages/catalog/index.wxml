@@ -4,6 +4,7 @@
   <input class="search" placeholder="搜索专辑 / 成员 / 版本" placeholder-style="color:#98A2B3" confirm-type="search" bindconfirm="onSearch" value="{{q}}"/>
   <view class="muted" style="margin-top:12rpx">搜索仅在图鉴，卡册总览不提供搜索。</view>
   <view class="btn ghost submit-entry" bindtap="goSubmit">投稿图鉴</view>
+  <view wx:if="{{pageLoading}}" class="page-loading">加载中…</view>
 
   <view wx:for="{{groups}}" wx:key="id" class="card" bindtap="openGroup" data-id="{{item.slug}}">
     <view class="row">

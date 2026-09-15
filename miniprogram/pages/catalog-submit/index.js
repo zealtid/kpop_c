@@ -28,6 +28,7 @@ Page({
     backPreview: "",
     agreed: false,
     saving: false,
+    pageLoading: true,
     warnings: [],
     aspectLabel: crop.CROP_ASPECT_LABEL,
     customCardId: "",
@@ -70,9 +71,9 @@ Page({
       .request({ url: "/catalog/groups?ugc_open=1", auth: false })
       .then((d) => {
         const groups = d.groups || [];
-        this.setData({ groups, groupsEmpty: groups.length === 0 });
+        this.setData({ groups, groupsEmpty: groups.length === 0, pageLoading: false });
       })
-      .catch(() => this.setData({ groups: [], groupsEmpty: true }));
+      .catch(() => this.setData({ groups: [], groupsEmpty: true, pageLoading: false }));
   },
   loadGroupExtras(groupId) {
     api.request({ url: `/catalog/groups/${groupId}/releases`, auth: false }).then((d) => {
@@ -180,14 +181,19 @@ Page({
       return;
     }
     this.setData({ saving: true, warnings: [] });
+    if (typeof wx.showLoading === "function") wx.showLoading({ title: "提交中", mask: true });
+    const hidePending = () => {
+      if (typeof wx.hideLoading === "function") wx.hideLoading();
+    };
     const finish = (req) => {
       req
         .then((d) => {
-          this.setData({ saving: false, warnings: d.warnings || [] });
+          this.setData({ warnings: d.warnings || [] });
           wx.showToast({ title: "已提交待审" });
           setTimeout(() => wx.redirectTo({ url: "/pages/my-submissions/index" }), 400);
         })
         .catch((err) => {
+          hidePending();
           this.setData({ saving: false });
           api.handleWriteError(err);
         });
@@ -210,6 +216,7 @@ Page({
       return;
     }
     if (!this._frontPath) {
+      hidePending();
       this.setData({ saving: false });
       wx.showToast({ title: "请上传卡面", icon: "none" });
       return;
@@ -242,11 +249,12 @@ Page({
         );
       })
       .then((d) => {
-        this.setData({ saving: false, warnings: d.warnings || [] });
+        this.setData({ warnings: d.warnings || [] });
         wx.showToast({ title: "已提交待审" });
         setTimeout(() => wx.redirectTo({ url: "/pages/my-submissions/index" }), 400);
       })
       .catch((err) => {
+        hidePending();
         this.setData({ saving: false });
         api.handleWriteError(err);
       });

@@ -1,7 +1,7 @@
 const api = require("../../utils/api");
 
 Page({
-  data: { q: "", templates: [], selected: [], empty: false },
+  data: { q: "", templates: [], selected: [], empty: false, pageLoading: false },
   onLoad(q) {
     this.setData({ q: decodeURIComponent(q.q || "") });
     this.search();
@@ -15,15 +15,25 @@ Page({
   },
   search() {
     const q = this.data.q;
-    api.request({ url: `/catalog/search?q=${encodeURIComponent(q)}`, auth: false }).then((d) => {
-      const templates = (d.templates || []).map((t) => ({
-        ...t,
-        mainImageUrl: api.mediaUrl(t.mainImageUrl),
-        imageBack: t.imageBack ? api.mediaUrl(t.imageBack) : "",
-        on: false,
-      }));
-      this.setData({ templates, empty: !!d.empty, selected: [] });
-    });
+    this.setData({ pageLoading: true });
+    if (typeof wx.showLoading === "function") wx.showLoading({ title: "加载中", mask: true });
+    api
+      .request({ url: `/catalog/search?q=${encodeURIComponent(q)}`, auth: false })
+      .then((d) => {
+        const templates = (d.templates || []).map((t) => ({
+          ...t,
+          mainImageUrl: api.mediaUrl(t.mainImageUrl),
+          imageBack: t.imageBack ? api.mediaUrl(t.imageBack) : "",
+          on: false,
+        }));
+        this.setData({ templates, empty: !!d.empty, selected: [], pageLoading: false });
+        if (typeof wx.hideLoading === "function") wx.hideLoading();
+      })
+      .catch((err) => {
+        this.setData({ pageLoading: false });
+        if (typeof wx.hideLoading === "function") wx.hideLoading();
+        api.handleWriteError(err);
+      });
   },
   toggle(e) {
     const id = e.currentTarget.dataset.id;

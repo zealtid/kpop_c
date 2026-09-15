@@ -66,6 +66,17 @@ page {
   margin-top: 16rpx;
 }
 
+.btn.off {
+  opacity: 0.5;
+}
+
+.page-loading {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 48rpx 0;
+  font-size: 26rpx;
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -100,9 +111,14 @@ page {
 
 .ph image {
   position: absolute;
-  inset: 0;
+  /* 真机 WXSS 不支持 inset；无 top/left 时 height:100% 相对 padding 盒为 0，图不显示 */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  display: block;
 }
 
 .tag {

@@ -103,7 +103,7 @@ export async function createShareImage(userId: string, groupKey: string) {
 
   for (let i = 0; i < cards.length; i++) {
     const card = cards[i];
-    if (card.kind !== "custom" || !card.main_image_url) continue;
+    if (!card.main_image_url) continue;
     const col = i % COLS;
     const row = Math.floor(i / COLS);
     const x = PAD + col * (CARD_W + GAP);
@@ -160,8 +160,20 @@ export async function createShareImage(userId: string, groupKey: string) {
   };
 }
 
+function toStoredMediaPath(publicPath: string) {
+  const s = String(publicPath || "");
+  if (s.startsWith("/media/")) return s;
+  try {
+    const u = new URL(s);
+    if (u.pathname.startsWith("/media/")) return u.pathname;
+  } catch {
+    /* keep raw */
+  }
+  return s;
+}
+
 async function loadShareCardImage(publicPath: string): Promise<Buffer | null> {
-  const img = await readStoredImage(publicPath);
+  const img = await readStoredImage(toStoredMediaPath(publicPath));
   return img ? img.body : null;
 }
 

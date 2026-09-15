@@ -1,5 +1,6 @@
 <view class="page">
   <view class="h1">{{release.title}}</view>
+  <view wx:if="{{pageLoading}}" class="page-loading">加载中…</view>
   <view class="muted">{{release.releasedOnLabel}} · {{release.kind}}</view>
 
   <scroll-view wx:if="{{versions.length}}" scroll-x class="ver-scroll" enable-flex>
