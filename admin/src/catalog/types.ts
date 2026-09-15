@@ -72,7 +72,7 @@ export const CATALOG_TABS: { id: CatalogTab; label: string; later?: boolean }[] 
   { id: "groups", label: "组合" },
   { id: "members", label: "成员" },
   { id: "releases", label: "发行" },
-  { id: "templates", label: "小卡模板" },
+  { id: "templates", label: "小卡模板/维护" },
   { id: "import", label: "图鉴导入" },
   { id: "completeness", label: "完整度" },
   { id: "benefits", label: "特典对照" },

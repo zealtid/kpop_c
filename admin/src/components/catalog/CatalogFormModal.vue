@@ -51,11 +51,12 @@ const props = defineProps<{
   members: Member[];
   releases: Release[];
   submitting: boolean;
+  defaultReleaseId?: string;
 }>();
 
 const emit = defineEmits<{
   "update:show": [value: boolean];
-  save: [payload: Record<string, unknown>];
+  save: [payload: Record<string, unknown>, publish?: boolean];
 }>();
 
 function emptyForm(): CatalogFormModel {
@@ -94,8 +95,10 @@ const title = computed(() => {
   if (props.tab === "groups") return editing ? "编辑组合" : "新建组合";
   if (props.tab === "members") return editing ? "编辑成员" : "新建成员";
   if (props.tab === "releases") return editing ? "编辑发行" : "新建发行";
-  return editing ? "维护小卡" : "新建模板（草稿）";
+  return editing ? "维护小卡" : "维护小卡 · 新建";
 });
+
+const hasMainImage = computed(() => !!form.mainImageUrl.trim());
 
 const modalStyle = computed(() => ({
   width: props.tab === "templates" ? "min(680px, calc(100vw - 24px))" : "min(520px, calc(100vw - 24px))",
@@ -109,10 +112,14 @@ const releaseOptions = computed(() =>
   props.releases.map((r) => ({ label: `${r.groupNameZh || ""} · ${r.title}`, value: r.id })),
 );
 
-const memberOptions = computed(() => [
-  { label: "（组合卡 / 无成员）", value: "" },
-  ...props.members.map((m) => ({ label: `${m.groupNameZh || ""} · ${m.nameEn}`, value: m.id })),
-]);
+const memberOptions = computed(() => {
+  const release = props.releases.find((r) => r.id === form.releaseId);
+  const members = release ? props.members.filter((m) => m.groupId === release.groupId) : props.members;
+  return [
+    { label: "（组合卡 / 无成员）", value: "" },
+    ...members.map((m) => ({ label: `${m.groupNameZh || ""} · ${m.nameEn}`, value: m.id })),
+  ];
+});
 
 const dedupeKey = computed(() => {
   if (props.tab !== "templates" || !props.editing) return "";
@@ -125,7 +132,9 @@ function hydrate() {
   if (!row) {
     if (props.tab === "members" && props.groups[0]) next.groupId = props.groups[0].id;
     if (props.tab === "releases" && props.groups[0]) next.groupId = props.groups[0].id;
-    if (props.tab === "templates" && props.releases[0]) next.releaseId = props.releases[0].id;
+    if (props.tab === "templates") {
+      next.releaseId = props.defaultReleaseId || props.releases[0]?.id || "";
+    }
     Object.assign(form, next);
     return;
   }
@@ -193,6 +202,17 @@ watch(
   },
 );
 
+watch(
+  () => form.releaseId,
+  () => {
+    if (props.tab !== "templates" || !props.show) return;
+    if (!form.memberId) return;
+    if (!memberOptions.value.some((opt) => opt.value === form.memberId)) {
+      form.memberId = "";
+    }
+  },
+);
+
 function toPayload(): Record<string, unknown> {
   if (props.tab === "groups") {
     return {
@@ -241,8 +261,8 @@ function toPayload(): Record<string, unknown> {
   };
 }
 
-function onSubmit() {
-  emit("save", toPayload());
+function onSubmit(publish = false) {
+  emit("save", toPayload(), publish);
 }
 
 function close() {
@@ -259,7 +279,7 @@ function close() {
     :mask-closable="!submitting"
     @update:show="emit('update:show', $event)"
   >
-    <n-form @submit.prevent="onSubmit">
+    <n-form @submit.prevent="onSubmit(false)">
       <template v-if="tab === 'groups'">
         <n-form-item label="slug" required>
           <n-input v-model:value="form.slug" :input-props="{ name: 'slug' }" />
@@ -344,9 +364,13 @@ function close() {
       </template>
 
       <template v-else>
+        <p class="muted">
+          官方图鉴小卡：先选发行/版本，再上传正面主图（发布必填）与卡背（可选）。图片走现有
+          <code>/media/cards</code> 上传。无主图不能发布。
+        </p>
         <div class="card-faces">
           <div class="face">
-            <div class="face-label">正面（2:3）</div>
+            <div class="face-label">正面主图（必填才能发布 · 2:3）</div>
             <MediaUploadField v-model="form.mainImageUrl" kind="cards" placeholder="/media/cards/xxx.png" />
           </div>
           <div class="face">
@@ -355,10 +379,11 @@ function close() {
           </div>
         </div>
         <n-form-item label="发行" required>
-          <n-select v-model:value="form.releaseId" :options="releaseOptions" />
+          <n-select v-model:value="form.releaseId" :options="releaseOptions" filterable />
         </n-form-item>
+        <p v-if="!releaseOptions.length" class="muted">请先在「发行」页创建并发布一条发行，再上传小卡。</p>
         <n-form-item label="成员">
-          <n-select v-model:value="form.memberId" :options="memberOptions" />
+          <n-select v-model:value="form.memberId" :options="memberOptions" filterable />
         </n-form-item>
         <n-form-item label="版本" required>
           <n-input v-model:value="form.version" :input-props="{ name: 'version' }" />
@@ -375,7 +400,17 @@ function close() {
       <n-space justify="end">
         <n-button :disabled="submitting" @click="close">取消</n-button>
         <n-button type="primary" attr-type="submit" :loading="submitting">
-          {{ editing ? "保存" : "创建为草稿" }}
+          {{ editing ? "保存" : "保存草稿" }}
+        </n-button>
+        <n-button
+          v-if="tab === 'templates'"
+          type="success"
+          attr-type="button"
+          :disabled="!hasMainImage"
+          :loading="submitting"
+          @click="onSubmit(true)"
+        >
+          保存并发布
         </n-button>
       </n-space>
     </n-form>
@@ -387,6 +422,9 @@ function close() {
   color: var(--color-text-secondary);
   font-size: 13px;
   margin: 0 0 12px;
+}
+.muted code {
+  font-size: 12px;
 }
 .card-faces {
   display: flex;

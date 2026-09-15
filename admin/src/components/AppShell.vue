@@ -34,7 +34,9 @@ const who = computed(() => {
 const menus = computed(() => userMenus());
 
 function menuTo(id: string) {
-  if (id === "catalog") return { name: "catalog" as const, params: { tab: "groups" } };
+  if (id === "catalog" || id === "catalog-groups") return { name: "catalog" as const, params: { tab: "groups" } };
+  if (id === "catalog-templates") return { name: "catalog" as const, params: { tab: "templates" } };
+  if (id === "catalog-benefits") return { name: "catalog" as const, params: { tab: "benefits" } };
   if (id === "submissions") return { name: "submissions" as const };
   if (id === "users") return { name: "users" as const };
   if (id === "intel") return { name: "intel" as const };
@@ -42,8 +44,23 @@ function menuTo(id: string) {
   return { path: `/${id}` };
 }
 
+function linkLabel(to: ReturnType<typeof menuTo>, text: string) {
+  return () =>
+    h(
+      RouterLink,
+      { to, class: "menu-link", onClick: onMenuNavigate },
+      { default: () => text },
+    );
+}
+
 const activeKey = computed(() => {
-  if (route.name === "catalog" || route.path.startsWith("/catalog")) return "catalog";
+  if (route.name === "catalog" || route.path.startsWith("/catalog")) {
+    const tab = String(route.params.tab || "groups");
+    if (tab === "templates") return "catalog-templates";
+    if (tab === "benefits") return "catalog-benefits";
+    if (tab === "groups") return "catalog-groups";
+    return "catalog";
+  }
   if (route.name === "submissions" || route.name === "submission-detail") return "submissions";
   if (route.name === "users" || route.name === "user-detail") return "users";
   if (route.name === "tickets" || route.name === "ticket-detail") return "tickets";
@@ -51,16 +68,28 @@ const activeKey = computed(() => {
   return String(route.name || "");
 });
 
+const expandedKeys = computed(() =>
+  menus.value.some((item) => item.id === "catalog") ? ["catalog"] : [],
+);
+
 const menuOptions = computed<MenuOption[]>(() =>
-  menus.value.map((item) => ({
-    key: item.id,
-    label: () =>
-      h(
-        RouterLink,
-        { to: menuTo(item.id), class: "menu-link", onClick: onMenuNavigate },
-        { default: () => item.label },
-      ),
-  })),
+  menus.value.map((item) => {
+    if (item.id === "catalog") {
+      return {
+        key: "catalog",
+        label: item.label,
+        children: [
+          { key: "catalog-groups", label: linkLabel(menuTo("catalog-groups"), "组合") },
+          { key: "catalog-templates", label: linkLabel(menuTo("catalog-templates"), "小卡模板/维护") },
+          { key: "catalog-benefits", label: linkLabel(menuTo("catalog-benefits"), "特典对照") },
+        ],
+      };
+    }
+    return {
+      key: item.id,
+      label: linkLabel(menuTo(item.id), item.label),
+    };
+  }),
 );
 
 function onMenuNavigate() {
@@ -68,6 +97,7 @@ function onMenuNavigate() {
 }
 
 function onMenuSelect(key: string) {
+  if (key === "catalog") return;
   onMenuNavigate();
   void router.push(menuTo(key));
 }
@@ -87,12 +117,18 @@ async function onLogout() {
       content-style="padding: 12px 10px;"
     >
       <RouterLink class="brand" :to="{ name: 'home' }">星卡 Admin</RouterLink>
-      <n-menu :value="activeKey" :options="menuOptions" :indent="12" />
+      <n-menu :value="activeKey" :expanded-keys="expandedKeys" :options="menuOptions" :indent="12" />
     </n-layout-sider>
 
     <n-drawer v-model:show="drawerOpen" :width="260" placement="left">
       <n-drawer-content title="星卡 Admin" closable>
-        <n-menu :value="activeKey" :options="menuOptions" :indent="12" @update:value="onMenuSelect" />
+        <n-menu
+          :value="activeKey"
+          :expanded-keys="expandedKeys"
+          :options="menuOptions"
+          :indent="12"
+          @update:value="onMenuSelect"
+        />
       </n-drawer-content>
     </n-drawer>
 

@@ -79,7 +79,10 @@ const headings: Record<CatalogTab, { title: string; hint: string }> = {
   groups: { title: "图鉴 · 组合", hint: "ArtistGroup → idol_groups。可上传公开团图标（icon_url）；无图标时 C 端回退主题色与首字。" },
   members: { title: "图鉴 · 成员", hint: "Member。草稿成员不出现在小程序组合页。" },
   releases: { title: "图鉴 · 发行", hint: "Release。演唱会特典用 kind=concert_md，没有独立 Event 表。" },
-  templates: { title: "图鉴 · 小卡模板", hint: "PhotocardTemplate（B1）。点名称或「维护」编辑信息/图片；正/背按 2:3 预览，上传到 /media/cards。无主图不能发布。" },
+  templates: {
+    title: "图鉴 · 小卡模板/维护",
+    hint: "在此添加官方图鉴小卡：点「新建小卡」填发行与版本，上传正面主图（必填）和卡背（可选）到 /media/cards，再发布。无主图不能发布。",
+  },
   completeness: { title: "图鉴 · 完整度", hint: "按组合查看发行闸门与缺图/缺成员。缺图可跳到模板维护。" },
   import: { title: "图鉴 · 导入校验", hint: "校验 CSV / Markdown / JSON，通过后再写入。" },
   benefits: { title: "图鉴 · 特典对照", hint: "通路词典可增改/停用（喂给 C 端特典搜索）。B2 CSV 导入不变；对照单行修补为次要。" },
@@ -376,27 +379,96 @@ function openEdit(row: AnyRow) {
   formShow.value = true;
 }
 
-async function onSave(payload: Record<string, unknown>) {
+async function onSave(payload: Record<string, unknown>, publish = false) {
   if (!isCrudTab(tab.value)) return;
+  const mainImage = typeof payload.mainImageUrl === "string" ? payload.mainImageUrl.trim() : "";
+  if (publish && tab.value === "templates" && !mainImage) {
+    message.error("未设置主图的模板不能发布");
+    return;
+  }
   const editingId = editing.value?.id || null;
   acting.value = true;
   const res = await saveCatalog(tab.value, editingId, payload);
-  acting.value = false;
   if (res.status !== 200) {
+    acting.value = false;
     const msg = errorMessage(res.body);
     pageNotice.value = msg;
     pageNoticeOk.value = false;
     message.error(msg);
     return;
   }
+  const savedId =
+    editingId || (typeof (res.body as { id?: unknown })?.id === "string" ? (res.body as { id: string }).id : "");
+
+  if (publish && tab.value === "templates" && savedId) {
+    const statusRes = await setCatalogStatus(tab.value, savedId, "published");
+    acting.value = false;
+    if (statusRes.status !== 200) {
+      const msg = errorMessage(statusRes.body);
+      pageNotice.value = msg;
+      pageNoticeOk.value = false;
+      message.error(msg);
+      formShow.value = false;
+      editing.value = null;
+      await refresh();
+      reopenTemplate(savedId, payload);
+      return;
+    }
+    pageNotice.value = "已保存并发布";
+    pageNoticeOk.value = true;
+    formShow.value = false;
+    editing.value = null;
+    message.success(pageNotice.value);
+    await refresh();
+    return;
+  }
+
+  acting.value = false;
+  const createdWithoutImage = tab.value === "templates" && !editingId && !mainImage && !!savedId;
   pageNotice.value = editingId ? "已保存" : "已创建为草稿";
   pageNoticeOk.value = true;
+  if (createdWithoutImage) {
+    message.success("已创建草稿，请上传正面主图后再发布");
+    await refresh();
+    reopenTemplate(savedId, payload);
+    return;
+  }
   formShow.value = false;
   editing.value = null;
   await nextTick();
   message.success(pageNotice.value);
   await refresh();
-  formShow.value = false;
+}
+
+function reopenTemplate(id: string, payload: Record<string, unknown>) {
+  const found = bundle.value.templates.find((t) => t.id === id);
+  if (found) {
+    openEdit(found);
+    return;
+  }
+  const releaseId = String(payload.releaseId || "");
+  const rel = bundle.value.releases.find((r) => r.id === releaseId);
+  const memberId = payload.memberId ? String(payload.memberId) : "";
+  const mem = bundle.value.members.find((m) => m.id === memberId);
+  openEdit({
+    id,
+    name: String(payload.name || ""),
+    version: String(payload.version || ""),
+    status: "draft",
+    catalogStatus: "draft",
+    isBenefit: !!payload.isBenefit,
+    mainImageUrl: mainImageFrom(payload),
+    imageBack: typeof payload.imageBack === "string" ? payload.imageBack : null,
+    releaseId,
+    releaseTitle: rel?.title,
+    memberId: memberId || null,
+    memberNameEn: mem?.nameEn || null,
+    groupNameZh: rel?.groupNameZh,
+  });
+}
+
+function mainImageFrom(payload: Record<string, unknown>) {
+  return typeof payload.mainImageUrl === "string" ? payload.mainImageUrl : null;
 }
 
 async function onStatus(row: AnyRow, status: "published" | "draft" | "deprecated") {
@@ -482,6 +554,14 @@ onMounted(() => {
       <template v-else>
         <n-alert v-if="pageNotice" :type="pageNoticeOk ? 'success' : 'error'" :show-icon="false" class="block">{{ pageNotice }}</n-alert>
         <n-alert
+          v-if="tab === 'templates'"
+          type="info"
+          :show-icon="false"
+          class="block"
+        >
+          官方图鉴小卡在此维护：点「新建小卡」上传正面（发布必填）和卡背（可选）。也可点行内「维护」改已有卡。
+        </n-alert>
+        <n-alert
           v-if="tab === 'templates' && templatesCapped"
           type="warning"
           :show-icon="false"
@@ -529,7 +609,7 @@ onMounted(() => {
             @update:value="setQuery({ releaseId: $event || undefined, page: 1 })"
           />
           <template #actions>
-            <n-button type="primary" @click="openCreate">新建</n-button>
+            <n-button type="primary" @click="openCreate">{{ tab === "templates" ? "新建小卡" : "新建" }}</n-button>
           </template>
         </AdminFilterBar>
 
@@ -551,7 +631,9 @@ onMounted(() => {
               <StatusActions :status="rowStatus(row)" :pending="acting" @act="(s) => onStatus(row, s)" />
             </n-space>
           </n-card>
-          <p v-if="!rows.length" class="muted">暂无数据</p>
+          <p v-if="!rows.length" class="muted">
+            {{ tab === "templates" ? "暂无小卡。点「新建小卡」上传官方图鉴正/背图。" : "暂无数据" }}
+          </p>
         </div>
 
         <n-data-table
@@ -575,6 +657,7 @@ onMounted(() => {
     :groups="bundle.groups"
     :members="bundle.members"
     :releases="bundle.releases"
+    :default-release-id="filterReleaseId"
     :submitting="acting"
     @save="onSave"
   />
