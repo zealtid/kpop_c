@@ -14,7 +14,6 @@ Page({
     needsLogin: false,
     loginFailed: false,
     loginBtnLabel: "登录",
-    copy: "进度 = 已拥有不重复模板数 / 范围内已发布模板数（含特典，不含已废弃）",
   },
   onShow() {
     analytics.tabView("卡册");
@@ -61,7 +60,6 @@ Page({
           customCards,
           customCount: data.customCount || customCards.length,
           customLabel: data.customLabel || customCard.customCountLabel(data.customCount || customCards.length),
-          copy: data.copy || this.data.copy,
         });
       })
       .catch((err) => {
@@ -108,12 +106,12 @@ Page({
       })
       .catch(api.handleWriteError);
   },
-  addCustomCard() {
+  addFromCatalog() {
     if (this.data.needsLogin) {
       this.doLogin();
       return;
     }
-    wx.navigateTo({ url: "/pages/custom-card-add/index" });
+    wx.navigateTo({ url: "/pages/catalog-grid/index" });
   },
   goFollowPicker() {
     onboarding.openOnboarding({ force: true });

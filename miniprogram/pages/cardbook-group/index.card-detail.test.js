@@ -54,6 +54,9 @@ test("wxml opens card detail from owned tiles and still catchtap unown", () => {
   assert.match(wxml, /bindtap="openCard"/);
   assert.match(wxml, /catchtap="unown"/);
   assert.match(wxml, /item\.conditionLabel/);
+  assert.doesNotMatch(wxml, /拍照加卡/);
+  assert.match(wxml, /拍照加入卡册/);
+  assert.match(wxml, /addFromCatalog/);
 });
 
 test("openCard navigates to card-detail for owned/duplicates, not 想要", () => {

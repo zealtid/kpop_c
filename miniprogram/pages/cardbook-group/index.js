@@ -7,7 +7,6 @@ Page({
     id: "",
     group: {},
     progress: {},
-    copy: "",
     pct: 0,
     tab: 0,
     owned: [],
@@ -40,7 +39,6 @@ Page({
       this.setData({
         group: data.group,
         progress: data.progress,
-        copy: data.copy,
         pct,
         owned,
         wanted,
@@ -86,11 +84,8 @@ Page({
       })
       .catch(api.handleWriteError);
   },
-  addCustom() {
-    const gid = (this.data.group && this.data.group.id) || "";
-    wx.navigateTo({
-      url: gid ? `/pages/custom-card-add/index?groupId=${gid}` : "/pages/custom-card-add/index",
-    });
+  addFromCatalog() {
+    wx.navigateTo({ url: "/pages/catalog-grid/index" });
   },
   unown(e) {
     const id = e.currentTarget.dataset.id;

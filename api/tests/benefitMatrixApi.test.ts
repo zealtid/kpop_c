@@ -251,3 +251,10 @@ test("H2H guest matrix does not 500 when table has only other-release maps", asy
   assert.equal((res.body as MatrixBody).empty, true);
   assert.equal((res.body as MatrixBody).release.id, THE_CHASE);
 });
+
+test("guest can list library benefits for MP picker", async () => {
+  const res = await api("/catalog/benefits");
+  assert.equal(res.status, 200);
+  const body = res.body as { rows: { channelCode: string; benefitNameZh: string; channelNameZh: string }[] };
+  assert.ok(Array.isArray(body.rows));
+});

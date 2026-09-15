@@ -1,12 +1,16 @@
 <view class="page">
-  <view class="h1">{{group.nameZh}}</view>
-  <view class="sub">{{progress.ownedDistinct}} / {{progress.publishedCount}} · {{pct}}%</view>
-  <view class="sub">{{copy}}</view>
-  <view wx:if="{{custom.length}}" class="tag custom-tag">{{customLabel}}（不计入官方进度）</view>
+  <view class="head-row">
+    <view>
+      <view class="h1">{{group.nameZh}}</view>
+      <view class="sub tight">{{progress.ownedDistinct}} / {{progress.publishedCount}} · {{pct}}%</view>
+    </view>
+  </view>
   <view wx:if="{{group.scopeNote}}" class="footnote">{{group.scopeNote}}</view>
 
-  <view class="btn" bindtap="share">生成卡册长图并保存</view>
-  <view class="btn ghost" bindtap="addCustom">拍照加卡</view>
+  <view class="row actions">
+    <view class="btn slim" bindtap="share">生成长图</view>
+    <view class="btn ghost slim" bindtap="addFromCatalog">拍照加入卡册</view>
+  </view>
 
   <view class="tabs">
     <view class="item {{tab===0?'on':''}}" bindtap="setTab" data-i="0">拥有</view>
@@ -15,7 +19,7 @@
   </view>
 
   <block wx:if="{{tab===0 && custom.length}}">
-    <view class="muted" style="margin-bottom:8rpx">自定义卡（审核中可预览原图）</view>
+    <view class="muted custom-head">历史私人卡 {{custom.length}}</view>
     <view class="grid3">
       <view class="tile" wx:for="{{custom}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
         <view class="ph" style="background: {{item.memberColor || '#EBEDF3'}}" catchtap="openPreview" data-id="{{item.id}}">

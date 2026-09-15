@@ -34,13 +34,12 @@ Page({
     aspectLabel: crop.CROP_ASPECT_LABEL,
     customCardId: "",
     channelOptions: [],
-    channelHits: [],
-    channelQ: "",
     channelValue: "",
     channelLabel: "",
+    channelDisplay: "",
     channelOther: false,
     channelCustom: "",
-    otherLabel: channelPick.OTHER_LABEL,
+    channelPickerOpen: false,
   },
   onLoad(q) {
     this._pickSide = "front";
@@ -60,7 +59,7 @@ Page({
     });
     if (prefill.frontPath) this._frontPath = prefill.frontPath;
     this.loadGroups();
-    this.loadChannels();
+    this.loadChannelLibrary();
     if (this.data.groupId) this.loadGroupExtras(this.data.groupId);
     if (customCardId) this.loadCustom(customCardId);
   },
@@ -85,51 +84,40 @@ Page({
       })
       .catch(() => this.setData({ groups: [], groupsEmpty: true, pageLoading: false }));
   },
-  refreshChannelHits(q, options) {
-    const query = q != null ? q : this.data.channelQ;
-    const list = options || this.data.channelOptions;
-    this.setData({ channelHits: channelPick.filterOptions(list, query) });
+  applyChannelDisplay(patch) {
+    const next = { ...this.data, ...patch };
+    return {
+      ...patch,
+      channelDisplay: channelPick.displayLabel(
+        next.channelValue,
+        next.channelLabel,
+        next.channelCustom,
+        next.channelOther,
+      ),
+    };
   },
-  loadChannels() {
-    api
+  loadChannelLibrary(groupId) {
+    const gid = groupId != null ? groupId : this.data.groupId;
+    const channelsReq = api
       .request({ url: "/catalog/channels", auth: false })
-      .then((d) => {
-        this._dictChannels = channelPick.mapChannels(d.channels);
-        const channelOptions = this._dictChannels;
-        this.setData({
-          channelOptions,
-          channelHits: channelPick.filterOptions(channelOptions, this.data.channelQ),
-        });
-        if (this.data.releaseId) this.loadBenefits(this.data.releaseId);
-      })
+      .then((d) => channelPick.mapChannels(d.channels))
+      .catch(() => []);
+    const benefitsReq = api
+      .request({ url: channelPick.benefitsQuery(gid), auth: false })
+      .then((d) => channelPick.mapBenefitRows(d.rows))
       .catch(() => {
-        this._dictChannels = [];
-        this.setData({
-          channelOptions: [],
-          channelHits: channelPick.filterOptions([], this.data.channelQ),
-        });
+        if (!this.data.releaseId) return [];
+        return api
+          .request({ url: `/catalog/releases/${this.data.releaseId}/benefit-matrix`, auth: false })
+          .then((m) => channelPick.mapBenefitRows(m.rows))
+          .catch(() => []);
       });
-  },
-  loadBenefits(releaseId) {
-    if (!releaseId) {
-      const channelOptions = this._dictChannels || [];
-      this.setData({
-        channelOptions,
-        channelHits: channelPick.filterOptions(channelOptions, this.data.channelQ),
-      });
-      return;
-    }
-    api
-      .request({ url: `/catalog/releases/${releaseId}/benefit-matrix`, auth: false })
-      .then((d) => {
-        const benefits = channelPick.mapBenefitRows(d.rows);
-        const channelOptions = channelPick.mergeOptions(this._dictChannels || [], benefits);
-        this.setData({
-          channelOptions,
-          channelHits: channelPick.filterOptions(channelOptions, this.data.channelQ),
-        });
-      })
-      .catch(() => this.refreshChannelHits());
+    Promise.all([channelsReq, benefitsReq]).then((results) => {
+      const channels = results[0];
+      const benefits = results[1];
+      this._dictChannels = channels;
+      this.setData({ channelOptions: channelPick.mergeOptions(benefits, channels) });
+    });
   },
   loadGroupExtras(groupId) {
     api.request({ url: `/catalog/groups/${groupId}/releases`, auth: false }).then((d) => {
@@ -150,25 +138,27 @@ Page({
         versionLabel: card.versionLabel || this.data.versionLabel,
         slotLabel: card.title || this.data.slotLabel,
         frontPreview: api.mediaUrl(card.imageFront),
-        channelValue: card.benefitName ? channelPick.OTHER_VALUE : this.data.channelValue,
-        channelOther: !!card.benefitName,
-        channelCustom: card.benefitName || this.data.channelCustom,
-        channelLabel: card.benefitName ? channelPick.OTHER_LABEL : this.data.channelLabel,
+        ...this.applyChannelDisplay({
+          channelValue: card.benefitName ? channelPick.OTHER_VALUE : this.data.channelValue,
+          channelOther: !!card.benefitName,
+          channelCustom: card.benefitName || this.data.channelCustom,
+          channelLabel: card.benefitName ? channelPick.OTHER_LABEL : this.data.channelLabel,
+        }),
       });
       if (card.groupId) this.loadGroupExtras(card.groupId);
-      if (card.releaseId) this.loadBenefits(card.releaseId);
+      this.loadChannelLibrary(card.groupId || this.data.groupId);
     });
   },
   pickGroup(e) {
     const groupId = e.currentTarget.dataset.id;
     this.setData({ groupId, releaseId: "", memberId: "" });
     this.loadGroupExtras(groupId);
-    this.loadBenefits("");
+    this.loadChannelLibrary(groupId);
   },
   pickRelease(e) {
     const releaseId = e.currentTarget.dataset.id || "";
     this.setData({ releaseId });
-    this.loadBenefits(releaseId);
+    this.loadChannelLibrary();
   },
   pickMember(e) {
     this.setData({ memberId: e.currentTarget.dataset.id || "" });
@@ -179,33 +169,31 @@ Page({
   onSlot(e) {
     this.setData({ slotLabel: e.detail.value || "" });
   },
-  onChannelQ(e) {
-    const channelQ = (e.detail && e.detail.value) || "";
-    this.setData({
-      channelQ,
-      channelHits: channelPick.filterOptions(this.data.channelOptions, channelQ),
-    });
+  openChannelPicker() {
+    this.setData({ channelPickerOpen: true });
+    if (!(this.data.channelOptions || []).length) this.loadChannelLibrary();
   },
-  onChannelFocus(e) {
-    const channelQ = (e.detail && e.detail.value) || this.data.channelQ || "";
-    this.setData({
-      channelQ,
-      channelHits: channelPick.filterOptions(this.data.channelOptions, channelQ),
-    });
+  closeChannelPicker() {
+    this.setData({ channelPickerOpen: false });
   },
-  pickChannel(e) {
-    const value = e.currentTarget.dataset.value || "";
-    const label = e.currentTarget.dataset.label || "";
-    const other = channelPick.isOther(value);
-    this.setData({
-      channelValue: value,
-      channelLabel: other ? channelPick.OTHER_LABEL : label,
-      channelOther: other,
-      channelCustom: other ? this.data.channelCustom : "",
-    });
+  onChannelPicked(e) {
+    const detail = (e && e.detail) || {};
+    const value = detail.value || "";
+    const label = detail.label || "";
+    const other = !!detail.other;
+    this.setData(
+      this.applyChannelDisplay({
+        channelValue: value,
+        channelLabel: other ? channelPick.OTHER_LABEL : label,
+        channelOther: other,
+        channelCustom: other ? this.data.channelCustom : "",
+        channelPickerOpen: other,
+      }),
+    );
   },
-  onChannelCustom(e) {
-    this.setData({ channelCustom: e.detail.value || "" });
+  onChannelCustomEvt(e) {
+    const custom = (e.detail && e.detail.custom) || "";
+    this.setData(this.applyChannelDisplay({ channelCustom: custom, channelOther: true }));
   },
   toggleAgree() {
     if (this.data.saving) return;

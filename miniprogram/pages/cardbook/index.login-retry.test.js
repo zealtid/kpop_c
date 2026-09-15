@@ -74,8 +74,8 @@ test("doLogin on failure keeps 重试 entry", async () => {
   assert.equal(page.data.loginBtnLabel, "重试");
 });
 
-test("拍照加卡 while logged out triggers login gate", () => {
+test("拍照加入卡册 while logged out triggers login gate", () => {
   const page = pageWithData({ needsLogin: true });
-  page.addCustomCard();
+  page.addFromCatalog();
   assert.equal(loginCalls, 1);
 });

@@ -77,6 +77,68 @@ async function loadConfirmedMaps(releaseId: string): Promise<MatrixMapRow[]> {
   }));
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type LibraryBenefitRow = {
+  channelCode: string;
+  channelNameZh: string;
+  benefitNameZh: string;
+};
+
+function optionalUuid(raw: unknown): string | null {
+  const s = String(raw || "").trim();
+  return UUID_RE.test(s) ? s : null;
+}
+
+/**
+ * Guest-readable confirmed 特典 rows for the MP picker (词典对照表之外的发行矩阵)。
+ * Optional groupId / releaseId narrow the list; invalid ids are ignored.
+ */
+export async function listLibraryBenefits(opts?: {
+  groupId?: string;
+  releaseId?: string;
+}): Promise<LibraryBenefitRow[]> {
+  const dict = await loadRuntimeChannelDictionary();
+  const nameByCode = new Map(dict.channels.map((c) => [c.code, c.name_zh]));
+  const params: string[] = [];
+  const conds = ["m.status = 'confirmed'", "r.status = 'published'", "g.status = 'published'"];
+  const releaseId = optionalUuid(opts?.releaseId);
+  const groupId = optionalUuid(opts?.groupId);
+  if (releaseId) {
+    params.push(releaseId);
+    conds.push(`m.release_id = $${params.length}::uuid`);
+  } else if (groupId) {
+    params.push(groupId);
+    conds.push(`m.group_id = $${params.length}::uuid`);
+  }
+  const r = await query(
+    `SELECT DISTINCT m.channel_code, m.benefit_name_zh
+     FROM release_benefit_map m
+     JOIN releases r ON r.id = m.release_id
+     JOIN idol_groups g ON g.id = m.group_id
+     WHERE ${conds.join(" AND ")}
+     ORDER BY m.channel_code, m.benefit_name_zh
+     LIMIT 400`,
+    params,
+  );
+  const seen = new Set<string>();
+  const rows: LibraryBenefitRow[] = [];
+  for (const row of r.rows) {
+    const channelCode = String(row.channel_code || "").trim();
+    const benefitNameZh = String(row.benefit_name_zh || "").trim();
+    if (!channelCode || !benefitNameZh) continue;
+    const key = `${channelCode}|${benefitNameZh}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({
+      channelCode,
+      channelNameZh: nameByCode.get(channelCode) || channelCode,
+      benefitNameZh,
+    });
+  }
+  return rows;
+}
+
 /**
  * Guest-readable version × confirmed-benefit matrix (刀 B).
  * Does not touch admin completeness / import / catalog publish.

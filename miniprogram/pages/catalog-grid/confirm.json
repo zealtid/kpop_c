@@ -1,4 +1,7 @@
 {
   "navigationBarTitleText": "确认宫格",
-  "disableScroll": false
+  "disableScroll": false,
+  "usingComponents": {
+    "channel-picker": "/components/channel-picker/index"
+  }
 }

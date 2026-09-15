@@ -30,6 +30,8 @@ test("confirm has adjust/delete/rotate and no private-only", () => {
   assert.match(wxml, /onHandleStart/);
   assert.match(wxml, /确认入册/);
   assert.match(wxml, /提交进度/);
+  assert.match(wxml, /channel-picker/);
+  assert.match(wxml, /openChannelPicker/);
   assert.doesNotMatch(wxml, /仅私人|私人保存/);
   assert.match(js, /matchOwnIfDuplicate:\s*true/);
   assert.match(js, /source:\s*"grid_page"/);
