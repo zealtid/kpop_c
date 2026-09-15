@@ -2,6 +2,12 @@
   padding: 10rpx 28rpx;
   width: auto;
 }
+.batch-bar {
+  margin: 20rpx 0;
+}
+.batch-bar .btn + .btn {
+  margin-top: 0;
+}
 .empty-state {
   margin-top: 40rpx;
 }

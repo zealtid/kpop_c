@@ -1,6 +1,7 @@
 const api = require("../../utils/api");
 const customCard = require("../../utils/customCard");
 const crop = require("../../utils/crop");
+const channelPick = require("../../utils/channelPick");
 
 function readBase64(filePath) {
   return new Promise((resolve, reject) => {
@@ -32,6 +33,14 @@ Page({
     warnings: [],
     aspectLabel: crop.CROP_ASPECT_LABEL,
     customCardId: "",
+    channelOptions: [],
+    channelHits: [],
+    channelQ: "",
+    channelValue: "",
+    channelLabel: "",
+    channelOther: false,
+    channelCustom: "",
+    otherLabel: channelPick.OTHER_LABEL,
   },
   onLoad(q) {
     this._pickSide = "front";
@@ -51,6 +60,7 @@ Page({
     });
     if (prefill.frontPath) this._frontPath = prefill.frontPath;
     this.loadGroups();
+    this.loadChannels();
     if (this.data.groupId) this.loadGroupExtras(this.data.groupId);
     if (customCardId) this.loadCustom(customCardId);
   },
@@ -75,6 +85,40 @@ Page({
       })
       .catch(() => this.setData({ groups: [], groupsEmpty: true, pageLoading: false }));
   },
+  refreshChannelHits() {
+    const hits = channelPick.filterOptions(this.data.channelOptions, this.data.channelQ);
+    this.setData({ channelHits: hits });
+  },
+  loadChannels() {
+    api
+      .request({ url: "/catalog/channels", auth: false })
+      .then((d) => {
+        this._dictChannels = channelPick.mapChannels(d.channels);
+        this.setData({ channelOptions: this._dictChannels });
+        this.refreshChannelHits();
+        if (this.data.releaseId) this.loadBenefits(this.data.releaseId);
+      })
+      .catch(() => {
+        this._dictChannels = [];
+        this.setData({ channelOptions: [] });
+        this.refreshChannelHits();
+      });
+  },
+  loadBenefits(releaseId) {
+    if (!releaseId) {
+      this.setData({ channelOptions: this._dictChannels || [] });
+      this.refreshChannelHits();
+      return;
+    }
+    api
+      .request({ url: `/catalog/releases/${releaseId}/benefit-matrix`, auth: false })
+      .then((d) => {
+        const benefits = channelPick.mapBenefitRows(d.rows);
+        this.setData({ channelOptions: channelPick.mergeOptions(this._dictChannels || [], benefits) });
+        this.refreshChannelHits();
+      })
+      .catch(() => this.refreshChannelHits());
+  },
   loadGroupExtras(groupId) {
     api.request({ url: `/catalog/groups/${groupId}/releases`, auth: false }).then((d) => {
       const releases = (d.releases || []).map(customCard.mapCatalogRelease).filter(Boolean);
@@ -94,17 +138,25 @@ Page({
         versionLabel: card.versionLabel || this.data.versionLabel,
         slotLabel: card.title || this.data.slotLabel,
         frontPreview: api.mediaUrl(card.imageFront),
+        channelValue: card.benefitName ? channelPick.OTHER_VALUE : this.data.channelValue,
+        channelOther: !!card.benefitName,
+        channelCustom: card.benefitName || this.data.channelCustom,
+        channelLabel: card.benefitName ? channelPick.OTHER_LABEL : this.data.channelLabel,
       });
       if (card.groupId) this.loadGroupExtras(card.groupId);
+      if (card.releaseId) this.loadBenefits(card.releaseId);
     });
   },
   pickGroup(e) {
     const groupId = e.currentTarget.dataset.id;
     this.setData({ groupId, releaseId: "", memberId: "" });
     this.loadGroupExtras(groupId);
+    this.loadBenefits("");
   },
   pickRelease(e) {
-    this.setData({ releaseId: e.currentTarget.dataset.id || "" });
+    const releaseId = e.currentTarget.dataset.id || "";
+    this.setData({ releaseId });
+    this.loadBenefits(releaseId);
   },
   pickMember(e) {
     this.setData({ memberId: e.currentTarget.dataset.id || "" });
@@ -115,7 +167,26 @@ Page({
   onSlot(e) {
     this.setData({ slotLabel: e.detail.value || "" });
   },
+  onChannelQ(e) {
+    this.setData({ channelQ: e.detail.value || "" });
+    this.refreshChannelHits();
+  },
+  pickChannel(e) {
+    const value = e.currentTarget.dataset.value || "";
+    const label = e.currentTarget.dataset.label || "";
+    const other = channelPick.isOther(value);
+    this.setData({
+      channelValue: value,
+      channelLabel: other ? channelPick.OTHER_LABEL : label,
+      channelOther: other,
+      channelCustom: other ? this.data.channelCustom : "",
+    });
+  },
+  onChannelCustom(e) {
+    this.setData({ channelCustom: e.detail.value || "" });
+  },
   toggleAgree() {
+    if (this.data.saving) return;
     this.setData({ agreed: !this.data.agreed });
   },
   pickFront() {
@@ -209,6 +280,7 @@ Page({
             memberId: this.data.memberId || null,
             versionLabel: this.data.versionLabel,
             slotLabel: this.data.slotLabel,
+            channelCode: channelPick.resolveChannelCode(this.data.channelValue, this.data.channelCustom),
             agreementAccepted: true,
           },
         }),
@@ -230,6 +302,7 @@ Page({
           memberId: this.data.memberId || null,
           versionLabel: this.data.versionLabel,
           slotLabel: this.data.slotLabel,
+          channelCode: channelPick.resolveChannelCode(this.data.channelValue, this.data.channelCustom),
           imageFront: front.path,
           imageFrontThumb: front.thumbPath,
           agreementAccepted: true,

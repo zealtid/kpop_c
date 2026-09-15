@@ -32,6 +32,7 @@
         wx:key="si"
         bindtap="openSlot"
         data-navigable="{{slot.navigable}}"
+        data-template-id="{{slot.templateId}}"
         data-q="{{slot.templateName || slot.label}}"
       >
         <view class="ph">

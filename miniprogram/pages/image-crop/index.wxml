@@ -1,6 +1,6 @@
 <view class="page crop-page">
   <view class="h1">裁剪卡面</view>
-  <view class="sub">固定 {{aspectLabel}} 竖图，不可跳过。双指缩放、拖动时边缘带阻尼。</view>
+  <view class="sub">固定 {{aspectLabel}} 竖图，不可跳过。确认后压缩到 150KB 以内。双指缩放、拖动时边缘带阻尼。</view>
 
   <view class="presets">
     <view class="chip {{aspectLocked ? 'on' : ''}}">{{aspectLabel}}</view>

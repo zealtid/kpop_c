@@ -5,8 +5,12 @@
   <view wx:if="{{pageLoading}}" class="page-loading">加载中…</view>
 
   <view class="row batch-bar">
-    <view class="muted">已选 {{selected.length}}</view>
-    <view class="btn slim" bindtap="batchOwn">批量拥有</view>
+    <block wx:if="{{selectMode}}">
+      <view class="muted">已选 {{selected.length}}</view>
+      <view class="btn slim" bindtap="batchOwn">批量拥有</view>
+      <view class="btn ghost slim" bindtap="exitSelect">完成</view>
+    </block>
+    <view wx:else class="btn ghost slim" bindtap="enterSelect">多选</view>
   </view>
 
   <view wx:for="{{releases}}" wx:key="id" class="card">
@@ -18,14 +22,14 @@
       <view class="muted" catchtap="openRelease" data-id="{{item.id}}">特典对照 →</view>
     </view>
     <view class="grid3" style="margin-top:16rpx">
-      <view class="tile" wx:for="{{item.templates}}" wx:for-item="t" wx:key="id" bindtap="toggle" data-id="{{t.id}}">
-        <view class="ph {{t.on ? 'sel' : ''}}" style="background: {{t.memberColor}}">
+      <view class="tile" wx:for="{{item.templates}}" wx:for-item="t" wx:key="id" bindtap="onTileTap" data-id="{{t.id}}">
+        <view class="ph {{selectMode && t.on ? 'sel' : ''}}" style="background: {{t.memberColor}}">
           <image wx:if="{{t.mainImageUrl}}" src="{{t.mainImageUrl}}" mode="aspectFill"/>
           <view wx:if="{{t.isBenefit}}" class="benefit-badge">特典</view>
         </view>
         <view class="muted">{{t.memberNameEn}}</view>
         <view class="tag">{{t.version}}</view>
-        <view class="row mini-actions">
+        <view wx:if="{{!selectMode}}" class="row mini-actions">
           <text class="own" catchtap="ownOne" data-id="{{t.id}}">拥有</text>
           <text class="want" catchtap="wantOne" data-id="{{t.id}}">想要</text>
         </view>

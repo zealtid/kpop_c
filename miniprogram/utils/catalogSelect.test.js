@@ -40,3 +40,11 @@ test("toBatchOwnItems matches POST /collection/cards/batch body", () => {
   ]);
   assert.deepEqual(catalogSelect.toBatchOwnItems([]), []);
 });
+
+test("clearSelected turns off all tiles", () => {
+  const releases = [{ id: "r1", templates: [{ id: "t1", on: true }, { id: "t2", on: true }] }];
+  const cleared = catalogSelect.clearSelected(releases);
+  assert.deepEqual(cleared.selected, []);
+  assert.equal(cleared.releases[0].templates[0].on, false);
+  assert.equal(cleared.releases[0].templates[1].on, false);
+});

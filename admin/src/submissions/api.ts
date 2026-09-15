@@ -57,6 +57,7 @@ export async function approveSubmission(
     slotLabel?: string;
     mergeTemplateId?: string | null;
     adoptSubmissionImage?: boolean;
+    channelCode?: string;
   },
 ) {
   return api<Submission>(`/admin/catalog-submissions/${id}/approve`, {

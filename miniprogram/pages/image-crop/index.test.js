@@ -24,6 +24,9 @@ global.wx = {
   getImageInfo(opts) {
     if (opts.success) opts.success({ width: 400, height: 300 });
   },
+  getFileInfo(opts) {
+    if (opts.success) opts.success({ size: 40 * 1024 });
+  },
   compressImage(opts) {
     compressCalls.push(opts);
     if (opts.success) opts.success({ tempFilePath: `${opts.src}.prev` });
@@ -78,6 +81,7 @@ test("PCX01 wxml has confirm crop, 2:3 preset highlight, no free-aspect", () => 
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   assert.match(wxml, /bindtap="confirm">确认裁剪/);
   assert.match(wxml, /不可跳过/);
+  assert.match(wxml, /150KB/);
   assert.match(wxml, /aspectLocked/);
   assert.match(wxml, /translate3d/);
   assert.doesNotMatch(wxml, /使用原图|自由比例|跳过裁剪/);

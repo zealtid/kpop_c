@@ -60,17 +60,19 @@ beforeEach(() => {
   };
 });
 
-test("wxml shows 特典 badge, multi-select toggle, and 批量拥有", () => {
+test("wxml shows 特典 badge; tap opens detail; 多选 is explicit", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   assert.match(wxml, /wx:if="\{\{t\.isBenefit\}\}"/);
   assert.match(wxml, /class="benefit-badge">特典</);
-  assert.match(wxml, /bindtap="toggle"/);
-  assert.match(wxml, /已选 \{\{selected\.length\}\}/);
+  assert.match(wxml, /bindtap="onTileTap"/);
+  assert.match(wxml, /bindtap="enterSelect">多选</);
+  assert.match(wxml, /wx:if="\{\{selectMode\}\}"/);
   assert.match(wxml, /bindtap="batchOwn">批量拥有</);
   assert.match(wxml, /catchtap="ownOne"/);
   assert.match(wxml, /catchtap="wantOne"/);
   assert.match(wxml, /item\.releasedOnLabel/);
   assert.doesNotMatch(wxml, /item\.released_on/);
+  assert.doesNotMatch(wxml, /bindtap="toggle"/);
 });
 
 test("wxss has Scheme A benefit corner badge and selected outline", () => {
@@ -82,6 +84,24 @@ test("wxss has Scheme A benefit corner badge and selected outline", () => {
   assert.match(wxss, /\.sel/);
   assert.doesNotMatch(wxss, /#121016|#ff6b9d|#f5c36b/i);
   assert.doesNotMatch(wxss, /rgba\(\s*18\s*,\s*16\s*,\s*22/);
+});
+
+test("default tap opens catalog detail; select mode toggles", () => {
+  const navigations = [];
+  const prev = global.wx.navigateTo;
+  global.wx.navigateTo = (opts) => navigations.push(opts);
+  const page = pageWithData({
+    selectMode: false,
+    releases: [{ id: "r1", templates: [{ id: "t1", on: false }] }],
+    selected: [],
+  });
+  page.onTileTap({ currentTarget: { dataset: { id: "t1" } } });
+  assert.equal(navigations[0].url, "/pages/card-detail/index?id=t1&from=catalog");
+  assert.equal(page.data.releases[0].templates[0].on, false);
+  page.enterSelect();
+  page.onTileTap({ currentTarget: { dataset: { id: "t1" } } });
+  assert.equal(page.data.selected[0], "t1");
+  global.wx.navigateTo = prev;
 });
 
 test("toggle updates selected across album sections", () => {

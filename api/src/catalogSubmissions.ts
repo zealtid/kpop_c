@@ -474,6 +474,7 @@ export async function approveSubmission(
   const member = await assertMember(memberId, groupId);
   const version = text(body.versionLabel ?? row.version_label, "versionLabel", true, VERSION_MAX)!;
   const name = text(body.slotLabel ?? body.name ?? row.slot_label, "name", true, SLOT_MAX)!;
+  const channelCode = text(body.channelCode ?? row.channel_code, "channelCode", false, CHANNEL_MAX);
   const adopt = !!body.adoptSubmissionImage;
   const memberEn = member?.name_en || "group";
 
@@ -545,12 +546,13 @@ export async function approveSubmission(
          member_id = $3,
          version_label = $4,
          slot_label = $5,
+         channel_code = $8,
          result_template_id = $6,
          reviewer_id = $7,
          reviewed_at = now(),
          updated_at = now()
        WHERE id = $1`,
-      [id, releaseId, memberId, version, name, resultId, reviewerId],
+      [id, releaseId, memberId, version, name, resultId, reviewerId, channelCode],
     );
     return resultId as string;
   });

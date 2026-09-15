@@ -15,6 +15,14 @@
   width: auto;
 }
 
+.batch-bar .btn.ghost.slim {
+  margin-left: auto;
+}
+
+.batch-bar .btn + .btn {
+  margin-top: 0;
+}
+
 .sel {
   outline: 6rpx solid var(--color-brand);
 }

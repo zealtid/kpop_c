@@ -39,6 +39,7 @@ const mergeId = ref<string | null>(null);
 const slotLabel = ref("");
 const versionLabel = ref("");
 const memberId = ref<string | null>(null);
+const channelCode = ref("");
 const members = ref<{ label: string; value: string }[]>([]);
 
 const id = computed(() => String(route.params.id || ""));
@@ -56,6 +57,7 @@ async function refresh() {
   item.value = res.body;
   slotLabel.value = res.body.slotLabel;
   versionLabel.value = res.body.versionLabel || "";
+  channelCode.value = res.body.channelCode || "";
   memberId.value = res.body.memberId;
   mergeId.value = res.body.duplicateOfTemplateId;
   const lookups = await loadCatalogLookups();
@@ -75,6 +77,7 @@ async function onApprove() {
   const res = await approveSubmission(item.value.id, {
     slotLabel: slotLabel.value,
     versionLabel: versionLabel.value,
+    channelCode: channelCode.value || undefined,
     memberId: memberId.value,
     mergeTemplateId: mergeId.value,
     adoptSubmissionImage: adopt.value,
@@ -124,28 +127,39 @@ async function onUnpublish() {
   <n-alert v-if="deny" type="error">{{ deny }}</n-alert>
   <n-spin :show="loading">
     <n-card v-if="item">
-      <n-space v-if="item.status === 'pending_review'">
-        <AuthMediaImg
-          :admin-media-path="`/admin/catalog-submissions/${item.id}/media/front`"
-          :src-path="item.imageFrontUrl || item.imageFront"
-          alt="卡面"
-        />
-        <AuthMediaImg
-          v-if="item.imageBack || item.imageBackUrl"
-          :admin-media-path="`/admin/catalog-submissions/${item.id}/media/back`"
-          :src-path="item.imageBackUrl || item.imageBack"
-          alt="卡背"
-        />
-        <div v-else class="muted">无卡背</div>
-      </n-space>
+      <div v-if="item.status === 'pending_review'" class="pair">
+        <div class="face">
+          <div class="face-label">卡面</div>
+          <AuthMediaImg
+            fill
+            :admin-media-path="`/admin/catalog-submissions/${item.id}/media/front`"
+            :src-path="item.imageFrontUrl || item.imageFront"
+            alt="卡面"
+          />
+        </div>
+        <div class="face">
+          <div class="face-label">卡背</div>
+          <AuthMediaImg
+            v-if="item.imageBack || item.imageBackUrl"
+            fill
+            :admin-media-path="`/admin/catalog-submissions/${item.id}/media/back`"
+            :src-path="item.imageBackUrl || item.imageBack"
+            alt="卡背"
+          />
+          <div v-else class="empty-back">未提交卡背</div>
+        </div>
+      </div>
       <p v-else class="muted">通过/驳回后待审原图会删除；公开主图请到图鉴模板里查看。</p>
       <p class="muted">{{ item.groupNameZh }} · {{ item.releaseTitle }} · {{ item.source }} · {{ item.status }}</p>
       <n-form>
-        <n-form-item label="卡位/名称">
+        <n-form-item label="名称/别称">
           <n-input v-model:value="slotLabel" />
         </n-form-item>
         <n-form-item label="版本">
           <n-input v-model:value="versionLabel" />
+        </n-form-item>
+        <n-form-item label="通路/特典">
+          <n-input v-model:value="channelCode" placeholder="词典 code 或手填" />
         </n-form-item>
         <n-form-item label="成员">
           <n-select v-model:value="memberId" clearable :options="members" />
@@ -178,5 +192,35 @@ async function onUnpublish() {
 .muted {
   color: var(--n-text-color-3);
   margin: 12px 0;
+}
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-width: 560px;
+  margin-bottom: 8px;
+}
+.face-label {
+  font-size: 13px;
+  color: var(--n-text-color-3);
+  margin-bottom: 8px;
+}
+.empty-back {
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  background: #eee;
+  color: #8a8494;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+}
+@media (max-width: 720px) {
+  .pair {
+    grid-template-columns: 1fr;
+    max-width: 280px;
+  }
 }
 </style>

@@ -72,3 +72,17 @@
 .btn.off {
   opacity: 0.5;
 }
+
+.catalog-actions {
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.catalog-actions .btn.slim {
+  flex: 1;
+  padding: 16rpx 24rpx;
+}
+
+.catalog-actions .btn + .btn {
+  margin-top: 0;
+}

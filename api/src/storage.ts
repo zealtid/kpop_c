@@ -8,6 +8,8 @@ import { badRequest } from "./errors.js";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_EDGE = 2000;
+/** 投稿 / 加卡上传上限（#13）；超过则转 JPEG 再压。 */
+export const MAX_CARD_BYTES = 150 * 1024;
 
 const MIME_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -88,6 +90,25 @@ export function parseImagePayload(input: {
   return { buffer: buf, mimeType: mime || "image/jpeg" };
 }
 
+export async function jpegUnderLimit(buffer: Buffer, maxBytes = MAX_CARD_BYTES) {
+  let quality = 82;
+  let edge = MAX_EDGE;
+  let last = Buffer.alloc(0);
+  for (let i = 0; i < 8; i++) {
+    last = await sharp(buffer)
+      .rotate()
+      .resize(edge, edge, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality })
+      .toBuffer();
+    if (last.length <= maxBytes) {
+      return { buffer: last, contentType: "image/jpeg", ext: "jpg" };
+    }
+    if (quality > 42) quality -= 12;
+    else edge = Math.max(480, Math.round(edge * 0.82));
+  }
+  return { buffer: last, contentType: "image/jpeg", ext: "jpg" };
+}
+
 export async function normalizeImage(buffer: Buffer, mimeType: string) {
   let meta: sharp.Metadata;
   try {
@@ -105,16 +126,26 @@ export async function normalizeImage(buffer: Buffer, mimeType: string) {
   if (w > MAX_EDGE || h > MAX_EDGE) {
     pipeline = pipeline.resize(MAX_EDGE, MAX_EDGE, { fit: "inside", withoutEnlargement: true });
   }
+  let out: Buffer;
+  let contentType: string;
+  let ext: string;
   if (format === "png") {
-    const out = await pipeline.png({ compressionLevel: 8 }).toBuffer();
-    return { buffer: out, contentType: "image/png", ext: "png" };
+    out = await pipeline.png({ compressionLevel: 8 }).toBuffer();
+    contentType = "image/png";
+    ext = "png";
+  } else if (format === "webp") {
+    out = await pipeline.webp({ quality: 85 }).toBuffer();
+    contentType = "image/webp";
+    ext = "webp";
+  } else {
+    out = await pipeline.jpeg({ quality: 85 }).toBuffer();
+    contentType = "image/jpeg";
+    ext = "jpg";
   }
-  if (format === "webp") {
-    const out = await pipeline.webp({ quality: 85 }).toBuffer();
-    return { buffer: out, contentType: "image/webp", ext: "webp" };
+  if (out.length <= MAX_CARD_BYTES) {
+    return { buffer: out, contentType, ext };
   }
-  const out = await pipeline.jpeg({ quality: 85 }).toBuffer();
-  return { buffer: out, contentType: "image/jpeg", ext: "jpg" };
+  return jpegUnderLimit(buffer);
 }
 
 export async function saveCustomImage(opts: {

@@ -1,7 +1,7 @@
 const api = require("../../utils/api");
 
 Page({
-  data: { q: "", templates: [], selected: [], empty: false, pageLoading: false },
+  data: { q: "", templates: [], selected: [], empty: false, pageLoading: false, selectMode: false },
   onLoad(q) {
     this.setData({ q: decodeURIComponent(q.q || "") });
     this.search();
@@ -12,6 +12,22 @@ Page({
   },
   goFeedback() {
     wx.navigateTo({ url: "/pages/feedback/index" });
+  },
+  enterSelect() {
+    this.setData({ selectMode: true });
+  },
+  exitSelect() {
+    const templates = (this.data.templates || []).map((t) => ({ ...t, on: false }));
+    this.setData({ templates, selected: [], selectMode: false });
+  },
+  onTileTap(e) {
+    if (this.data.selectMode) {
+      this.toggle(e);
+      return;
+    }
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/card-detail/index?id=${id}&from=catalog` });
   },
   search() {
     const q = this.data.q;
