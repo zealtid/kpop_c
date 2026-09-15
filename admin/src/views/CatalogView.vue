@@ -12,6 +12,7 @@ import {
   NTabPane,
   NTabs,
   NTag,
+  useDialog,
   useMessage,
   type DataTableColumns,
 } from "naive-ui";
@@ -34,6 +35,7 @@ import {
   type Release,
   type Template,
 } from "../catalog/types";
+import AdminEmptyState from "../components/AdminEmptyState.vue";
 import AdminFilterBar from "../components/AdminFilterBar.vue";
 import CatalogFormModal from "../components/catalog/CatalogFormModal.vue";
 import PageHeader from "../components/PageHeader.vue";
@@ -58,7 +60,9 @@ const STATUS_OPTIONS = [
 const route = useRoute();
 const router = useRouter();
 const message = useMessage();
+const dialog = useDialog();
 const { isNarrow } = useNarrow();
+const checkedRowKeys = ref<Array<string | number>>([]);
 
 const tab = computed(() => parseCatalogTab(route.params.tab));
 const crudTab = computed<CatalogCrudTab>(() => (isCrudTab(tab.value) ? tab.value : "groups"));
@@ -227,9 +231,15 @@ function actionsCell(row: AnyRow) {
   ]);
 }
 
+const selectionColumn: DataTableColumns<AnyRow>[number] = {
+  type: "selection",
+  disabled: () => acting.value,
+};
+
 const columns = computed<DataTableColumns<AnyRow>>(() => {
   if (tab.value === "members") {
     return [
+      selectionColumn,
       { title: "英文", key: "nameEn", render: (row) => nameButton((row as Member).nameEn, row) },
       { title: "中文", key: "nameZh", render: (row) => (row as Member).nameZh || "" },
       { title: "组合", key: "groupNameZh", render: (row) => (row as Member).groupNameZh || "" },
@@ -239,6 +249,7 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
   }
   if (tab.value === "releases") {
     return [
+      selectionColumn,
       { title: "标题", key: "title", render: (row) => nameButton((row as Release).title, row) },
       { title: "组合", key: "groupNameZh", render: (row) => (row as Release).groupNameZh || "" },
       {
@@ -256,6 +267,7 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
   }
   if (tab.value === "templates") {
     return [
+      selectionColumn,
       { title: "名称", key: "name", render: (row) => nameButton((row as Template).name, row) },
       { title: "发行", key: "releaseTitle", render: (row) => (row as Template).releaseTitle || "" },
       { title: "成员", key: "memberNameEn", render: (row) => (row as Template).memberNameEn || "group" },
@@ -277,6 +289,7 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
     ];
   }
   return [
+    selectionColumn,
     {
       title: "名称",
       key: "nameZh",
@@ -489,10 +502,68 @@ async function onStatus(row: AnyRow, status: "published" | "draft" | "deprecated
   await refresh();
 }
 
+const emptyCopy = computed(() => {
+  if (tab.value === "templates") return "暂无小卡。点「新建小卡」上传官方图鉴正/背图。";
+  if (tab.value === "members") return "暂无成员";
+  if (tab.value === "releases") return "暂无发行";
+  return "暂无组合";
+});
+
+const selectedIds = computed(() => checkedRowKeys.value.map(String));
+
+function confirmBatchDeprecate() {
+  if (!isCrudTab(tab.value)) return;
+  const targets = filteredRows.value.filter(
+    (row) => selectedIds.value.includes(row.id) && rowStatus(row) !== "deprecated",
+  );
+  if (!targets.length) {
+    message.warning("请先勾选未废弃的记录");
+    return;
+  }
+  dialog.warning({
+    title: "批量废弃",
+    content: `将软废弃已选 ${targets.length} 条（不会硬删除）。确定继续？`,
+    positiveText: "废弃",
+    negativeText: "取消",
+    onPositiveClick: () => onBatchDeprecate(targets),
+  });
+}
+
+async function onBatchDeprecate(targets: AnyRow[]) {
+  if (!isCrudTab(tab.value)) return;
+  acting.value = true;
+  let ok = 0;
+  let fail = 0;
+  let lastError = "";
+  for (const row of targets) {
+    const res = await setCatalogStatus(crudTab.value, row.id, "deprecated");
+    if (res.status === 200) {
+      ok += 1;
+    } else {
+      fail += 1;
+      lastError = errorMessage(res.body);
+    }
+  }
+  acting.value = false;
+  checkedRowKeys.value = [];
+  if (fail) {
+    const msg = lastError || `有 ${fail} 条废弃失败`;
+    pageNotice.value = ok ? `已废弃 ${ok} 条，失败 ${fail} 条` : msg;
+    pageNoticeOk.value = false;
+    message.error(pageNotice.value);
+  } else {
+    pageNotice.value = `已废弃 ${ok} 条`;
+    pageNoticeOk.value = true;
+    message.success(pageNotice.value);
+  }
+  await refresh();
+}
+
 watch(tab, () => {
   formShow.value = false;
   editing.value = null;
   pageNotice.value = "";
+  checkedRowKeys.value = [];
   message.destroyAll();
 });
 
@@ -532,7 +603,7 @@ onMounted(() => {
 <template>
   <PageHeader :title="headings[tab].title" :hint="headings[tab].hint" :crumbs="[{ label: '图鉴' }, { label: headings[tab].title.replace('图鉴 · ', '') }]" />
   <n-spin :show="loading">
-    <n-card :bordered="false">
+    <n-card :bordered="false" class="ops-card">
       <n-tabs class="catalog-tabs" :value="tab" type="line" @update:value="onTab">
         <n-tab-pane v-for="item in CATALOG_TABS" :key="item.id" :name="item.id" :tab="item.label" />
       </n-tabs>
@@ -609,6 +680,13 @@ onMounted(() => {
             @update:value="setQuery({ releaseId: $event || undefined, page: 1 })"
           />
           <template #actions>
+            <n-button
+              type="error"
+              :disabled="!selectedIds.length || acting"
+              @click="confirmBatchDeprecate"
+            >
+              批量废弃{{ selectedIds.length ? ` (${selectedIds.length})` : "" }}
+            </n-button>
             <n-button type="primary" @click="openCreate">{{ tab === "templates" ? "新建小卡" : "新建" }}</n-button>
           </template>
         </AdminFilterBar>
@@ -631,20 +709,24 @@ onMounted(() => {
               <StatusActions :status="rowStatus(row)" :pending="acting" @act="(s) => onStatus(row, s)" />
             </n-space>
           </n-card>
-          <p v-if="!rows.length" class="muted">
-            {{ tab === "templates" ? "暂无小卡。点「新建小卡」上传官方图鉴正/背图。" : "暂无数据" }}
-          </p>
+          <AdminEmptyState v-if="!rows.length" :copy="emptyCopy">
+            <n-button type="primary" @click="openCreate">{{ tab === "templates" ? "新建小卡" : "新建" }}</n-button>
+          </AdminEmptyState>
         </div>
 
         <n-data-table
-          v-else
+          v-else-if="rows.length"
+          v-model:checked-row-keys="checkedRowKeys"
           :columns="columns"
           :data="rows"
           :pagination="false"
           striped
-          :scroll-x="tab === 'templates' ? 1080 : 800"
+          :scroll-x="tab === 'templates' ? 1120 : 840"
           :row-key="(row: AnyRow) => row.id"
         />
+        <AdminEmptyState v-else :copy="emptyCopy">
+          <n-button type="primary" @click="openCreate">{{ tab === "templates" ? "新建小卡" : "新建" }}</n-button>
+        </AdminEmptyState>
       </template>
     </n-card>
   </n-spin>
@@ -664,6 +746,10 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.ops-card {
+  overflow: visible;
+}
+
 .catalog-tabs {
   margin-bottom: 8px;
 }

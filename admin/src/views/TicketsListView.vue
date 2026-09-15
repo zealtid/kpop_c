@@ -150,7 +150,7 @@ watch(
     :crumbs="[{ label: '反馈 / 工单' }]"
   />
   <n-spin :show="loading">
-    <n-card :bordered="false">
+    <n-card :bordered="false" class="ops-card">
       <AdminFilterBar
         :page="page"
         :page-size="pageSize"
@@ -215,6 +215,10 @@ watch(
 </template>
 
 <style scoped>
+.ops-card {
+  overflow: visible;
+}
+
 .block {
   margin-bottom: 12px;
 }

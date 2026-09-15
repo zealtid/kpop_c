@@ -13,6 +13,7 @@ import {
   NSelect,
   NSpace,
   NTag,
+  useDialog,
   useMessage,
   type DataTableColumns,
 } from "naive-ui";
@@ -35,6 +36,7 @@ import {
   type BenefitReport,
 } from "../catalog/benefits";
 import type { Group, Release } from "../catalog/types";
+import AdminEmptyState from "../components/AdminEmptyState.vue";
 import { useNarrow } from "../narrow";
 
 const props = defineProps<{
@@ -43,7 +45,13 @@ const props = defineProps<{
 }>();
 
 const message = useMessage();
+const dialog = useDialog();
 const { isNarrow } = useNarrow();
+const mapCheckedKeys = ref<Array<string | number>>([]);
+const mapModalStyle = {
+  width: "min(520px, calc(100vw - 24px))",
+  maxHeight: "min(90vh, 880px)",
+};
 
 const text = ref("");
 const tagsStrict = ref(false);
@@ -128,6 +136,7 @@ const issueColumns: DataTableColumns<BenefitIssue> = [
 ];
 
 const mapColumns: DataTableColumns<BenefitMapRow> = [
+  { type: "selection" },
   { title: "组合", key: "groupSlug", width: 88 },
   { title: "发行", key: "releaseTitle", minWidth: 140 },
   { title: "版本", key: "versionLabel", width: 100 },
@@ -402,7 +411,83 @@ async function onDeleteMap(row: BenefitMapRow) {
   await refreshMaps();
 }
 
+const selectedMaps = computed(() => {
+  const ids = new Set(mapCheckedKeys.value.map(String));
+  return maps.value.filter((row) => ids.has(row.id));
+});
+
+function confirmBatchDeleteMaps() {
+  const targets = selectedMaps.value;
+  if (!targets.length) {
+    message.warning("请先勾选要删除的对照");
+    return;
+  }
+  dialog.error({
+    title: "批量删除对照",
+    content: `将删除已选 ${targets.length} 条对照，不可恢复。确定继续？`,
+    positiveText: "删除",
+    negativeText: "取消",
+    onPositiveClick: () => onBatchDeleteMaps(targets),
+  });
+}
+
+function confirmBatchRetireMaps() {
+  const targets = selectedMaps.value.filter((row) => row.status !== "retired");
+  if (!targets.length) {
+    message.warning("请先勾选未停用的对照");
+    return;
+  }
+  dialog.warning({
+    title: "批量停用对照",
+    content: `将停用已选 ${targets.length} 条对照。确定继续？`,
+    positiveText: "停用",
+    negativeText: "取消",
+    onPositiveClick: () => onBatchRetireMaps(targets),
+  });
+}
+
+async function onBatchDeleteMaps(targets: BenefitMapRow[]) {
+  formBusy.value = true;
+  let ok = 0;
+  let fail = 0;
+  let lastError = "";
+  for (const row of targets) {
+    const res = await deleteBenefitMap(row.id);
+    if (res.status === 200) ok += 1;
+    else {
+      fail += 1;
+      lastError = errorMessage(res.body, "删除失败");
+    }
+  }
+  formBusy.value = false;
+  mapCheckedKeys.value = [];
+  if (fail) message.error(lastError || `已删除 ${ok} 条，失败 ${fail} 条`);
+  else message.success(`已删除 ${ok} 条对照`);
+  await refreshMaps();
+}
+
+async function onBatchRetireMaps(targets: BenefitMapRow[]) {
+  formBusy.value = true;
+  let ok = 0;
+  let fail = 0;
+  let lastError = "";
+  for (const row of targets) {
+    const res = await retireBenefitMap(row.id);
+    if (res.status === 200) ok += 1;
+    else {
+      fail += 1;
+      lastError = errorMessage(res.body, "停用失败");
+    }
+  }
+  formBusy.value = false;
+  mapCheckedKeys.value = [];
+  if (fail) message.error(lastError || `已停用 ${ok} 条，失败 ${fail} 条`);
+  else message.success(`已停用 ${ok} 条对照`);
+  await refreshMaps();
+}
+
 watch([releaseFilter, groupFilter], () => {
+  mapCheckedKeys.value = [];
   void refreshMaps();
 });
 
@@ -506,7 +591,26 @@ onMounted(() => {
         <n-select v-model:value="groupFilter" :options="groupOptions" />
       </div>
     </div>
-    <n-button size="small" type="primary" class="block" @click="openMap(null)">新增对照行</n-button>
+    <n-space class="map-toolbar" :size="8" :wrap="true">
+      <n-button size="small" type="primary" @click="openMap(null)">新增对照行</n-button>
+      <n-button
+        size="small"
+        type="error"
+        :disabled="!mapCheckedKeys.length || formBusy"
+        :loading="formBusy"
+        @click="confirmBatchDeleteMaps"
+      >
+        批量删除{{ mapCheckedKeys.length ? ` (${mapCheckedKeys.length})` : "" }}
+      </n-button>
+      <n-button
+        size="small"
+        :disabled="!mapCheckedKeys.length || formBusy"
+        :loading="formBusy"
+        @click="confirmBatchRetireMaps"
+      >
+        批量停用
+      </n-button>
+    </n-space>
     <n-alert v-if="mapsDeny" type="error" :show-icon="false" class="block">{{ mapsDeny }}</n-alert>
     <p v-else-if="mapsLoading" class="muted">加载对照表…</p>
     <div v-if="maps.length" class="map-cards narrow-only">
@@ -523,9 +627,19 @@ onMounted(() => {
       </n-card>
     </div>
     <div v-if="maps.length" class="table-wrap wide-only">
-      <n-data-table :columns="mapColumns" :data="maps" :pagination="false" :scroll-x="1140" :row-key="(row: BenefitMapRow) => row.id" />
+      <n-data-table
+        v-model:checked-row-keys="mapCheckedKeys"
+        :columns="mapColumns"
+        :data="maps"
+        :pagination="false"
+        striped
+        :scroll-x="1180"
+        :row-key="(row: BenefitMapRow) => row.id"
+      />
     </div>
-    <p v-if="!mapsDeny && !mapsLoading && !maps.length" class="muted">还没有对照。可校验 CSV 后写入，或点「新增对照行」。</p>
+    <AdminEmptyState v-if="!mapsDeny && !mapsLoading && !maps.length" copy="还没有对照。可校验 CSV 后写入，或点「新增对照行」。">
+      <n-button type="primary" @click="openMap(null)">新增对照行</n-button>
+    </AdminEmptyState>
   </n-card>
 
   <n-modal
@@ -559,10 +673,10 @@ onMounted(() => {
     :show="mapShow"
     preset="card"
     :title="mapEditing ? '编辑对照' : '新增对照行'"
-    :style="{ width: 'min(520px, calc(100vw - 24px))' }"
+    :style="mapModalStyle"
     @update:show="mapShow = $event"
   >
-    <n-form>
+    <n-form class="modal-form">
       <n-form-item label="组合" required>
         <n-select v-model:value="mapForm.groupId" :options="groupOptions.filter((o) => o.value)" />
       </n-form-item>
@@ -593,16 +707,26 @@ onMounted(() => {
       <n-form-item label="tags_hint">
         <n-input v-model:value="mapForm.tagsHint" />
       </n-form-item>
+    </n-form>
+    <template #footer>
       <n-space justify="end">
         <n-button :disabled="formBusy" @click="mapShow = false">取消</n-button>
         <n-button type="primary" :loading="formBusy" @click="onSaveMap">保存</n-button>
       </n-space>
-    </n-form>
+    </template>
   </n-modal>
   </div>
 </template>
 
 <style scoped>
+.modal-form {
+  max-height: min(calc(90vh - 148px), 732px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.map-toolbar {
+  margin: 12px 0;
+}
 .muted {
   color: var(--color-text-secondary);
   margin: 0 0 12px;
