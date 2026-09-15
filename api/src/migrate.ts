@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { seedChannelDictionaryFromFixture } from "./channelDictionary.js";
 import { pool, query } from "./db.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -22,6 +23,8 @@ export async function runMigrations() {
     await query("INSERT INTO schema_migrations (id) VALUES ($1)", [file]);
     console.log(`applied ${file}`);
   }
+  // 迁移后把 fixture 通路写入 DB（ON CONFLICT DO NOTHING），避免空表被 Admin 插入一条后丢掉 JSON 词典
+  await seedChannelDictionaryFromFixture();
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);

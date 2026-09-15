@@ -134,6 +134,9 @@ button.avatar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--color-bg-muted);
+  overflow: hidden;
+  object-fit: cover;
 }
 
 .action-list {

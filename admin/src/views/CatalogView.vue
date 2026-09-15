@@ -7,6 +7,7 @@ import {
   NDataTable,
   NInput,
   NSelect,
+  NSpace,
   NSpin,
   NTabPane,
   NTabs,
@@ -15,7 +16,7 @@ import {
   type DataTableColumns,
 } from "naive-ui";
 import { useRoute, useRouter } from "vue-router";
-import { errorMessage } from "../api";
+import { errorMessage, mediaUrl } from "../api";
 import { loadAdminTemplates, loadCatalogLookups, saveCatalog, setCatalogStatus } from "../catalog/api";
 import {
   CATALOG_TABS,
@@ -75,13 +76,13 @@ const keywordDraft = ref("");
 const templatesCapped = ref(false);
 
 const headings: Record<CatalogTab, { title: string; hint: string }> = {
-  groups: { title: "图鉴 · 组合", hint: "ArtistGroup → idol_groups。新建为草稿；发布后才出现在小程序图鉴。" },
+  groups: { title: "图鉴 · 组合", hint: "ArtistGroup → idol_groups。可上传公开 logo；无 logo 时 C 端回退主题色与首字。" },
   members: { title: "图鉴 · 成员", hint: "Member。草稿成员不出现在小程序组合页。" },
   releases: { title: "图鉴 · 发行", hint: "Release。演唱会特典用 kind=concert_md，没有独立 Event 表。" },
-  templates: { title: "图鉴 · 小卡模板", hint: "PhotocardTemplate。无主图不能发布。去重键 = slug:发行标题:成员:version。" },
-  completeness: { title: "图鉴 · 完整度", hint: "按组合查看发行闸门与缺图/缺成员。" },
+  templates: { title: "图鉴 · 小卡模板", hint: "PhotocardTemplate。列表点名称或「维护」编辑信息/图片；可上传正面与卡背到 /media/cards。无主图不能发布。" },
+  completeness: { title: "图鉴 · 完整度", hint: "按组合查看发行闸门与缺图/缺成员。缺图可跳到模板维护。" },
   import: { title: "图鉴 · 导入校验", hint: "校验 CSV / Markdown / JSON，通过后再写入。" },
-  benefits: { title: "图鉴 · 特典对照", hint: "校验通路词典与卡槽，只写入 confirmed 行。" },
+  benefits: { title: "图鉴 · 特典对照", hint: "CSV 导入仍可用；通路词典与对照行也可在本页单行增改。" },
 };
 
 const pageNotice = ref("");
@@ -208,11 +209,19 @@ function nameButton(label: string, row: AnyRow) {
 }
 
 function actionsCell(row: AnyRow) {
-  return h(StatusActions, {
-    status: rowStatus(row),
-    pending: acting.value,
-    onAct: (status: "published" | "draft" | "deprecated") => void onStatus(row, status),
-  });
+  const maintain = h(
+    NButton,
+    { size: "tiny", type: "primary", onClick: () => openEdit(row) },
+    { default: () => "维护" },
+  );
+  return h("div", { class: "row-actions" }, [
+    maintain,
+    h(StatusActions, {
+      status: rowStatus(row),
+      pending: acting.value,
+      onAct: (status: "published" | "draft" | "deprecated") => void onStatus(row, status),
+    }),
+  ]);
 }
 
 const columns = computed<DataTableColumns<AnyRow>>(() => {
@@ -252,18 +261,33 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
       {
         title: "图",
         key: "mainImageUrl",
-        width: 88,
-        render: (row) =>
-          (row as Template).mainImageUrl
-            ? "有图"
-            : h("span", { style: "color: var(--color-warning)" }, "无主图"),
+        width: 72,
+        render: (row) => {
+          const t = row as Template;
+          const src = mediaUrl(t.mainImageUrl);
+          if (src) return h("img", { class: "tpl-thumb", src, alt: "" });
+          return h("span", { style: "color: var(--color-warning)" }, "无主图");
+        },
       },
       { title: "状态", key: "status", width: 88, render: (row) => statusTag(rowStatus(row)) },
       { title: "", key: "actions", width: 220, render: (row) => actionsCell(row) },
     ];
   }
   return [
-    { title: "名称", key: "nameZh", render: (row) => nameButton((row as Group).nameZh, row) },
+    {
+      title: "名称",
+      key: "nameZh",
+      render: (row) => {
+        const g = row as Group;
+        const src = mediaUrl(g.logoUrl);
+        return h("div", { class: "name-with-logo" }, [
+          src
+            ? h("img", { class: "group-thumb", src, alt: "" })
+            : h("span", { class: "group-letter", style: { background: g.logoColor || "#ff6b9d" } }, (g.nameZh || "?").slice(0, 1)),
+          nameButton(g.nameZh, row),
+        ]);
+      },
+    },
     { title: "slug", key: "slug", render: (row) => (row as Group).slug },
     {
       title: "UGC",
@@ -291,6 +315,17 @@ function cardMeta(row: AnyRow) {
     return `${t.releaseTitle || ""} · ${t.version}${t.mainImageUrl ? "" : " · 无主图"}`;
   }
   return (row as Group).slug;
+}
+
+function cardThumb(row: AnyRow) {
+  if (tab.value === "templates") return mediaUrl((row as Template).mainImageUrl);
+  if (tab.value === "groups") return mediaUrl((row as Group).logoUrl);
+  return "";
+}
+
+function cardLetter(row: AnyRow) {
+  const g = row as Group;
+  return { color: g.logoColor || "#ff6b9d", text: (g.nameZh || "?").slice(0, 1) };
 }
 
 async function refreshLookups() {
@@ -501,13 +536,20 @@ onMounted(() => {
         <div v-if="isNarrow" class="cards">
           <n-card v-for="row in rows" :key="row.id" size="small" class="entity-card">
             <div class="card-head">
-              <n-button text type="primary" @click="openEdit(row)">{{ cardTitle(row) }}</n-button>
+              <div class="name-with-logo">
+                <img v-if="cardThumb(row)" :class="tab === 'templates' ? 'tpl-thumb' : 'group-thumb'" :src="cardThumb(row)" alt="" />
+                <span v-else-if="tab === 'groups'" class="group-letter" :style="{ background: cardLetter(row).color }">{{ cardLetter(row).text }}</span>
+                <n-button text type="primary" @click="openEdit(row)">{{ cardTitle(row) }}</n-button>
+              </div>
               <n-tag size="small" :type="rowStatus(row) === 'published' ? 'success' : rowStatus(row) === 'deprecated' ? 'error' : 'default'" :bordered="false">
                 {{ statusLabel(rowStatus(row)) }}
               </n-tag>
             </div>
             <p class="card-meta">{{ cardMeta(row) }}</p>
-            <StatusActions :status="rowStatus(row)" :pending="acting" @act="(s) => onStatus(row, s)" />
+            <n-space :size="6" :wrap="true">
+              <n-button size="tiny" type="primary" @click="openEdit(row)">维护</n-button>
+              <StatusActions :status="rowStatus(row)" :pending="acting" @act="(s) => onStatus(row, s)" />
+            </n-space>
           </n-card>
           <p v-if="!rows.length" class="muted">暂无数据</p>
         </div>
@@ -518,7 +560,7 @@ onMounted(() => {
           :data="rows"
           :pagination="false"
           striped
-          :scroll-x="tab === 'templates' ? 960 : 720"
+          :scroll-x="tab === 'templates' ? 1080 : 800"
           :row-key="(row: AnyRow) => row.id"
         />
       </template>
@@ -578,5 +620,64 @@ onMounted(() => {
   margin: 0 0 10px;
   color: var(--color-text-secondary);
   font-size: 12px;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tpl-thumb,
+.group-thumb {
+  width: 40px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #eee;
+  display: block;
+}
+
+.group-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.name-with-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-letter {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+</style>
+
+<style>
+.tpl-thumb,
+.group-thumb {
+  width: 40px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #eee;
+  display: block;
+}
+.group-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
 }
 </style>

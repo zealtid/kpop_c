@@ -115,6 +115,31 @@ h1 {
   padding: 14px;
 }
 
+.group-ident {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.group-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #e8e6f2;
+  flex-shrink: 0;
+}
+
+.group-logo.letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+}
+
 .thumb {
   width: 100%;
   border-radius: 12px;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from "vue";
-import { NAlert, NCard, NDataTable, NTag, type DataTableColumns } from "naive-ui";
+import { NAlert, NButton, NCard, NDataTable, NTag, type DataTableColumns } from "naive-ui";
+import { useRouter } from "vue-router";
 import {
   gateLabel,
   gateTagType,
@@ -14,18 +15,39 @@ import { statusLabel } from "../catalog/types";
 import { useNarrow } from "../narrow";
 
 const { isNarrow } = useNarrow();
+const router = useRouter();
 const loading = ref(true);
 const deny = ref("");
 const groups = ref<CompletenessGroup[]>([]);
 
-const releaseColumns: DataTableColumns<CompletenessRelease> = [
-  {
-    title: "发行",
-    key: "title",
-    minWidth: 160,
-    render: (row) =>
-      h("div", [h("div", row.title), h("div", { class: "xk-cell-muted" }, `${row.kind} · ${row.releasedOn || ""}`)]),
-  },
+function goMaintain(group: CompletenessGroup, rel?: CompletenessRelease) {
+  void router.push({
+    name: "catalog",
+    params: { tab: "templates" },
+    query: {
+      groupId: group.id,
+      releaseId: rel?.id,
+    },
+  });
+}
+
+function releaseColumnsFor(group: CompletenessGroup): DataTableColumns<CompletenessRelease> {
+  return [
+    {
+      title: "发行",
+      key: "title",
+      minWidth: 180,
+      render: (row) =>
+        h("div", [
+          h("div", row.title),
+          h("div", { class: "xk-cell-muted" }, `${row.kind} · ${row.releasedOn || ""}`),
+          h(
+            NButton,
+            { text: true, type: "primary", size: "tiny", onClick: () => goMaintain(group, row) },
+            { default: () => (row.missingMainImage ? `维护缺图（${row.missingMainImage}）` : "维护模板") },
+          ),
+        ]),
+    },
   {
     title: "状态",
     key: "status",
@@ -65,7 +87,8 @@ const releaseColumns: DataTableColumns<CompletenessRelease> = [
     minWidth: 220,
     render: (row) => gateCell(row.publishGate),
   },
-];
+  ];
+}
 
 function statusTag(status: string) {
   const type = status === "published" ? "success" : status === "deprecated" ? "error" : "default";
@@ -114,7 +137,7 @@ onMounted(() => {
 <template>
   <div class="b2-page" :class="{ narrow: isNarrow }">
   <p class="muted">
-    按组合 / 发行统计草稿与已发布、缺主图、缺成员。扩展专辑的发布闸门只展示状态，<strong>不</strong>接入签署人流程。本页只读。
+    按组合 / 发行统计草稿与已发布、缺主图、缺成员。扩展专辑的发布闸门只展示状态，<strong>不</strong>接入签署人流程。点「维护模板」进入该发行的小卡维护。
   </p>
   <n-alert v-if="deny" type="error" :show-icon="false" class="block">{{ deny }}</n-alert>
   <p v-else-if="loading" class="muted">加载完整度…</p>
@@ -128,6 +151,7 @@ onMounted(() => {
         <n-tag size="small" :type="group.status === 'published' ? 'success' : group.status === 'deprecated' ? 'error' : 'default'" :bordered="false">
           {{ statusLabel(group.status) }}
         </n-tag>
+        <n-button text type="primary" size="tiny" @click="goMaintain(group)">维护模板</n-button>
       </div>
     </template>
     <p class="stats">
@@ -171,11 +195,14 @@ onMounted(() => {
         <ul v-if="rel.publishGate.blockers.length" class="blockers">
           <li v-for="b in rel.publishGate.blockers" :key="b.code">{{ b.message }}</li>
         </ul>
+        <n-button text type="primary" size="tiny" @click="goMaintain(group, rel)">
+          {{ rel.missingMainImage ? `维护缺图（${rel.missingMainImage}）` : "维护模板" }}
+        </n-button>
       </n-card>
     </div>
     <div v-if="group.releases.length" class="table-wrap wide-only">
       <n-data-table
-        :columns="releaseColumns"
+        :columns="releaseColumnsFor(group)"
         :data="group.releases"
         :pagination="false"
         :scroll-x="880"

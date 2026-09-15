@@ -20,6 +20,7 @@ export type ShareSummary = {
     nameZh: string;
     nameEn: string;
     logoColor: string;
+    logoUrl?: string | null;
     scopeNote: string | null;
     publishedReleaseCount: number;
     publishedTemplateCount: number;
@@ -132,6 +133,7 @@ export async function groupShareSummary(idOrSlug: string): Promise<ShareSummary>
       nameZh: String(group.nameZh),
       nameEn: String(group.nameEn),
       logoColor: String(group.logoColor || "#6b5cff"),
+      logoUrl: group.logoUrl ? String(group.logoUrl) : null,
       scopeNote: group.scopeNote ? String(group.scopeNote) : null,
       publishedReleaseCount: releases.length,
       publishedTemplateCount,

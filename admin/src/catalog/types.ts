@@ -9,6 +9,7 @@ export type Group = {
   nameKo?: string;
   aliases?: string;
   logoColor?: string;
+  logoUrl?: string | null;
   scopeNote?: string | null;
   isPilot?: boolean;
   ugcOpen?: boolean;
@@ -50,6 +51,7 @@ export type Template = {
   isBenefit?: boolean;
   isDeprecated?: boolean;
   mainImageUrl?: string | null;
+  imageBack?: string | null;
   dedupeKey?: string;
   releaseId: string;
   releaseTitle?: string;

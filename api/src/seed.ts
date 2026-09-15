@@ -7,6 +7,7 @@ import { writePlaceholderCard } from "./placeholders.js";
 import { config } from "./config.js";
 import { shanghaiDayUtcRange } from "./time.js";
 import { seedDefaultOpsUser } from "./opsAuth.js";
+import { seedChannelDictionaryFromFixture } from "./channelDictionary.js";
 
 type MemberDef = { en: string; zh: string; ko: string; aliases: string; color: string };
 
@@ -90,6 +91,7 @@ const BTS_RELEASE = {
 
 export async function seed() {
   await runMigrations();
+  await seedChannelDictionaryFromFixture();
 
   await query(
     `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, ugc_open)

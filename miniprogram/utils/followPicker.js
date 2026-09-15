@@ -75,15 +75,30 @@ function groupInitial(group) {
   return String(name).slice(0, 1);
 }
 
-function followSummary(groups, previewLimit) {
+function withLogo(group, mediaUrlFn) {
+  if (!group) return group;
+  const raw = group.logoUrl || group.logo_url || "";
+  const logoSrc = raw ? (typeof mediaUrlFn === "function" ? mediaUrlFn(raw) : raw) : group.logoSrc || "";
+  return {
+    ...group,
+    logoSrc,
+    initial: group.initial || groupInitial(group),
+  };
+}
+
+function followSummary(groups, previewLimit, mediaUrlFn) {
   const followed = groups || [];
   const limit = previewLimit || 5;
-  const preview = followed.slice(0, limit).map((g) => ({
-    id: g.id,
-    nameZh: g.nameZh,
-    logoColor: g.logoColor,
-    initial: groupInitial(g),
-  }));
+  const preview = followed.slice(0, limit).map((g) => {
+    const decorated = withLogo(g, mediaUrlFn);
+    return {
+      id: g.id,
+      nameZh: g.nameZh,
+      logoColor: g.logoColor,
+      logoSrc: decorated.logoSrc,
+      initial: decorated.initial,
+    };
+  });
   return {
     count: followed.length,
     preview,
@@ -106,6 +121,7 @@ module.exports = {
   canComplete,
   countLabel,
   groupInitial,
+  withLogo,
   followSummary,
   privacyOptionClass,
 };

@@ -55,7 +55,7 @@ Page({
 
   applyProfile(user, follows) {
     const followed = (follows && follows.groups) || this.data.follows || [];
-    const summary = followPicker.followSummary(followed, 5);
+    const summary = followPicker.followSummary(followed, 5, api.mediaUrl);
     const nicknameUnset = displayName.isUnsetNickname(user && user.nickname);
     const avatarSrc = resolveAvatarSrc(user);
     this.setData({

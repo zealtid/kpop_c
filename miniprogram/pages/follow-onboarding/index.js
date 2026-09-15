@@ -26,10 +26,9 @@ Page({
       const catalog = results[0];
       const follows = results[1];
       const followed = new Set(((follows && follows.groups) || []).map((g) => g.id));
-      const groups = ((catalog && catalog.groups) || []).map((g) => ({
-        ...g,
-        selected: followed.has(g.id),
-      }));
+      const groups = ((catalog && catalog.groups) || []).map((g) =>
+        followPicker.withLogo({ ...g, selected: followed.has(g.id) }, api.mediaUrl),
+      );
       this.applySelection(groups);
     });
   },

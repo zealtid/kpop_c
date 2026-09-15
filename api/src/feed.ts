@@ -66,7 +66,7 @@ async function replaceFeedGroups(client: PoolClient, feedId: string, groupIds: s
 async function hydrateGroups(groupIds: string[]) {
   if (!groupIds.length) return [];
   const r = await query(
-    `SELECT id, slug, name_zh, name_en, name_ko, logo_color, scope_note, is_pilot
+    `SELECT id, slug, name_zh, name_en, name_ko, aliases, logo_color, logo_url, scope_note, is_pilot, status, ugc_open
      FROM idol_groups WHERE id = ANY($1::uuid[]) ORDER BY slug`,
     [groupIds],
   );

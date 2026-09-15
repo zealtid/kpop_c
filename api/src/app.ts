@@ -29,8 +29,19 @@ import { renderShareLandingHtml } from "./shareLanding.js";
 import * as admin from "./admin.js";
 import * as adminCatalog from "./adminCatalog.js";
 import { previewOrCommitImport } from "./importValidate.js";
-import { loadChannelDictionary } from "./channelDictionary.js";
-import { listBenefitMaps, previewOrCommitBenefitMap } from "./versionBenefit.js";
+import {
+  createChannelEntry,
+  disableChannelEntry,
+  loadRuntimeChannelDictionary,
+  updateChannelEntry,
+} from "./channelDictionary.js";
+import {
+  deleteBenefitMapRow,
+  listBenefitMaps,
+  previewOrCommitBenefitMap,
+  retireBenefitMapRow,
+  upsertBenefitMapRow,
+} from "./versionBenefit.js";
 import { getReleaseBenefitMatrix } from "./benefitMatrix.js";
 import { getCompletenessDashboard } from "./completeness.js";
 import * as tickets from "./tickets.js";
@@ -39,11 +50,13 @@ import { query } from "./db.js";
 import * as customCards from "./customCards.js";
 import { applyMediaCheckResult } from "./moderation.js";
 import {
+  isPublicMediaKind,
   isSafeCardsMediaFile,
   isSafeCustomMediaParams,
   isSafePendingMediaParams,
   readCustomImage,
   readStoredImage,
+  savePublicCatalogImage,
 } from "./storage.js";
 import * as catalogSubmissions from "./catalogSubmissions.js";
 import { jsSdkSignature, resolveMiniJump } from "./wxMiniJump.js";
@@ -611,6 +624,7 @@ export function createApp() {
             nameZh: "星卡",
             nameEn: "Xingka",
             logoColor: "#6B5CFF",
+            logoUrl: null,
             scopeNote: null,
             publishedReleaseCount: 0,
             publishedTemplateCount: 0,
@@ -889,7 +903,55 @@ export function createApp() {
   // ---- version × benefit map (刀 A; does not touch catalog import / completeness) ----
   app.get("/admin/version-benefit/channels", requireAdmin, async (_req, res, next) => {
     try {
-      res.json(loadChannelDictionary());
+      res.json(await loadRuntimeChannelDictionary({ includeDisabled: true }));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/version-benefit/channels", requireAdmin, async (req, res, next) => {
+    try {
+      const channel = await createChannelEntry(req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "channel.create",
+        entityType: "channel_dictionary",
+        entityId: channel.code,
+        payload: { code: channel.code },
+      });
+      res.json(channel);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/admin/version-benefit/channels/:code", requireAdmin, async (req, res, next) => {
+    try {
+      const channel = await updateChannelEntry(req.params.code, req.body || {});
+      await writeAuditLog({
+        actor: req.ops,
+        action: "channel.update",
+        entityType: "channel_dictionary",
+        entityId: channel.code,
+        payload: { enabled: channel.enabled },
+      });
+      res.json(channel);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/version-benefit/channels/:code/disable", requireAdmin, async (req, res, next) => {
+    try {
+      const channel = await disableChannelEntry(req.params.code);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "channel.disable",
+        entityType: "channel_dictionary",
+        entityId: channel.code,
+        payload: { enabled: false },
+      });
+      res.json(channel);
     } catch (e) {
       next(e);
     }
@@ -945,6 +1007,94 @@ export function createApp() {
         });
       }
       res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/version-benefit/maps", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await upsertBenefitMapRow(req.body || {}, req.ops?.username || null);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "version_benefit.map.create",
+        entityType: "release_benefit_map",
+        entityId: result.map.id,
+        payload: { status: result.map.status, channelCode: result.map.channelCode },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.patch("/admin/version-benefit/maps/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await upsertBenefitMapRow(req.body || {}, req.ops?.username || null, {
+        id: req.params.id,
+      });
+      await writeAuditLog({
+        actor: req.ops,
+        action: "version_benefit.map.update",
+        entityType: "release_benefit_map",
+        entityId: result.map.id,
+        payload: { status: result.map.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/version-benefit/maps/:id/retire", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await retireBenefitMapRow(req.params.id, req.ops?.username || null);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "version_benefit.map.retire",
+        entityType: "release_benefit_map",
+        entityId: result.map.id,
+        payload: { status: result.map.status },
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.delete("/admin/version-benefit/maps/:id", requireAdmin, async (req, res, next) => {
+    try {
+      const result = await deleteBenefitMapRow(req.params.id);
+      await writeAuditLog({
+        actor: req.ops,
+        action: "version_benefit.map.delete",
+        entityType: "release_benefit_map",
+        entityId: result.id,
+      });
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/media/:kind", requireAdmin, async (req, res, next) => {
+    try {
+      const kind = String(req.params.kind || "");
+      if (!isPublicMediaKind(kind)) throw new AppError(400, "BAD_REQUEST", "kind 必须是 cards 或 logos");
+      const saved = await savePublicCatalogImage({
+        kind,
+        base64: req.body?.imageBase64 || req.body?.base64,
+        mimeType: req.body?.mimeType,
+        fileStem: req.body?.fileStem ? String(req.body.fileStem) : undefined,
+      });
+      await writeAuditLog({
+        actor: req.ops,
+        action: `media.${kind}.upload`,
+        entityType: kind === "logos" ? "idol_group" : "template",
+        entityId: saved.fileName,
+        payload: { path: saved.publicPath },
+      });
+      res.json({ path: saved.publicPath, contentType: saved.contentType });
     } catch (e) {
       next(e);
     }
@@ -1644,6 +1794,25 @@ export function createApp() {
         return;
       }
       const img = await readStoredImage(`/media/cards/${file}`);
+      if (!img) {
+        res.status(404).end();
+        return;
+      }
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      res.type(img.contentType).send(img.body);
+    } catch (e) {
+      next(e);
+    }
+  });
+  app.get("/media/logos/:file", async (req, res, next) => {
+    try {
+      const file = path.basename(req.params.file);
+      if (!isSafeCardsMediaFile(file)) {
+        res.status(404).end();
+        return;
+      }
+      const img = await readStoredImage(`/media/logos/${file}`);
       if (!img) {
         res.status(404).end();
         return;

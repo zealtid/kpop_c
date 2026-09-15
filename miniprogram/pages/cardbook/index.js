@@ -46,6 +46,8 @@ Page({
                   : 0,
                 customBadge: g.customCount ? customCard.CUSTOM_BADGE : "",
                 customLabel: g.customCount ? customCard.customCountLabel(g.customCount) : "",
+                logoSrc: g.logoUrl ? api.mediaUrl(g.logoUrl) : "",
+                initial: (g.nameZh || g.nameEn || "?").slice(0, 1),
               }));
         const customCards = (data.customCards || []).map((c) =>
           customCard.decorateCustomCard(c, api.mediaUrl),

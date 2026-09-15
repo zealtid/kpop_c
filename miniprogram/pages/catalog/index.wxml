@@ -8,10 +8,14 @@
 
   <view wx:for="{{groups}}" wx:key="id" class="card" bindtap="openGroup" data-id="{{item.slug}}">
     <view class="row">
-      <view>
-        <view class="h1" style="font-size:32rpx">{{item.nameZh}}</view>
-        <view class="muted">{{item.nameEn}}</view>
-        <view wx:if="{{item.scopeNote}}" class="footnote">{{item.scopeNote}}</view>
+      <view class="group-ident">
+        <image wx:if="{{item.logoSrc}}" class="group-logo" src="{{item.logoSrc}}" mode="aspectFill"/>
+        <view wx:else class="group-logo letter" style="background: {{item.logoColor}}">{{item.initial}}</view>
+        <view>
+          <view class="h1" style="font-size:32rpx">{{item.nameZh}}</view>
+          <view class="muted">{{item.nameEn}}</view>
+          <view wx:if="{{item.scopeNote}}" class="footnote">{{item.scopeNote}}</view>
+        </view>
       </view>
       <view class="muted">浏览 →</view>
     </view>

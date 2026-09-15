@@ -12,9 +12,9 @@ import {
   NSelect,
   NSpace,
 } from "naive-ui";
-import { mediaUrl } from "../../api";
 import type { CatalogCrudTab, Group, Member, Release, Template } from "../../catalog/types";
 import { RELEASE_KINDS } from "../../catalog/types";
+import MediaUploadField from "./MediaUploadField.vue";
 
 export type CatalogFormModel = {
   slug: string;
@@ -23,6 +23,7 @@ export type CatalogFormModel = {
   nameKo: string;
   aliases: string;
   logoColor: string;
+  logoUrl: string;
   scopeNote: string;
   isPilot: boolean;
   ugcOpen: boolean;
@@ -38,6 +39,7 @@ export type CatalogFormModel = {
   version: string;
   name: string;
   mainImageUrl: string;
+  imageBack: string;
   isBenefit: boolean;
 };
 
@@ -64,6 +66,7 @@ function emptyForm(): CatalogFormModel {
     nameKo: "",
     aliases: "",
     logoColor: "#ff6b9d",
+    logoUrl: "",
     scopeNote: "",
     isPilot: true,
     ugcOpen: false,
@@ -79,6 +82,7 @@ function emptyForm(): CatalogFormModel {
     version: "",
     name: "",
     mainImageUrl: "",
+    imageBack: "",
     isBenefit: false,
   };
 }
@@ -111,8 +115,6 @@ const dedupeKey = computed(() => {
   return (props.editing as Template).dedupeKey || "";
 });
 
-const mainImagePreview = computed(() => mediaUrl(form.mainImageUrl));
-
 function hydrate() {
   const next = emptyForm();
   const row = props.editing;
@@ -133,6 +135,7 @@ function hydrate() {
       nameKo: g.nameKo || "",
       aliases: g.aliases || "",
       logoColor: g.logoColor || "#ff6b9d",
+      logoUrl: g.logoUrl || "",
       scopeNote: g.scopeNote || "",
       isPilot: g.isPilot !== false,
       ugcOpen: !!g.ugcOpen,
@@ -174,6 +177,7 @@ function hydrate() {
     version: t.version || "",
     name: t.name || "",
     mainImageUrl: t.mainImageUrl || "",
+    imageBack: t.imageBack || "",
     isBenefit: !!t.isBenefit,
   });
 }
@@ -194,6 +198,7 @@ function toPayload(): Record<string, unknown> {
       nameKo: form.nameKo.trim(),
       aliases: form.aliases.trim(),
       logoColor: form.logoColor.trim(),
+      logoUrl: form.logoUrl.trim() || null,
       scopeNote: form.scopeNote.trim(),
       isPilot: form.isPilot,
       ugcOpen: form.ugcOpen,
@@ -226,6 +231,7 @@ function toPayload(): Record<string, unknown> {
     version: form.version.trim(),
     name: form.name.trim() || undefined,
     mainImageUrl: form.mainImageUrl.trim() || null,
+    imageBack: form.imageBack.trim() || null,
     isBenefit: form.isBenefit,
   };
 }
@@ -244,7 +250,7 @@ function close() {
     :show="show"
     preset="card"
     :title="title"
-    :style="{ width: 'min(440px, calc(100vw - 24px))' }"
+    :style="{ width: 'min(520px, calc(100vw - 24px))' }"
     :mask-closable="!submitting"
     @update:show="emit('update:show', $event)"
   >
@@ -267,6 +273,9 @@ function close() {
         </n-form-item>
         <n-form-item label="主题色">
           <n-input v-model:value="form.logoColor" />
+        </n-form-item>
+        <n-form-item label="组合图标">
+          <MediaUploadField v-model="form.logoUrl" kind="logos" compact placeholder="/media/logos/xxx.png" />
         </n-form-item>
         <n-form-item label="范围说明">
           <n-input v-model:value="form.scopeNote" />
@@ -342,10 +351,12 @@ function close() {
         <n-form-item label="名称">
           <n-input v-model:value="form.name" />
         </n-form-item>
-        <n-form-item label="主图 URL">
-          <n-input v-model:value="form.mainImageUrl" placeholder="/media/cards/xxx.png" />
+        <n-form-item label="正面主图">
+          <MediaUploadField v-model="form.mainImageUrl" kind="cards" placeholder="/media/cards/xxx.png" />
         </n-form-item>
-        <img v-if="mainImagePreview" class="preview" :src="mainImagePreview" alt="主图预览" />
+        <n-form-item label="卡背（可选）">
+          <MediaUploadField v-model="form.imageBack" kind="cards" placeholder="/media/cards/xxx-back.png" />
+        </n-form-item>
         <n-form-item>
           <n-checkbox v-model:checked="form.isBenefit">特典</n-checkbox>
         </n-form-item>
@@ -366,14 +377,6 @@ function close() {
 .muted {
   color: var(--color-text-secondary);
   font-size: 13px;
-  margin: 0 0 12px;
-}
-.preview {
-  width: 140px;
-  height: 196px;
-  object-fit: cover;
-  border-radius: 8px;
-  background: #eee;
   margin: 0 0 12px;
 }
 </style>

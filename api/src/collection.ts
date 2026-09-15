@@ -88,7 +88,7 @@ function toProgress(row: {
 
 export async function overview(userId: string | null) {
   const groups = await query(
-    `SELECT id, slug, name_zh, name_en, name_ko, logo_color, scope_note, is_pilot
+    `SELECT id, slug, name_zh, name_en, name_ko, aliases, logo_color, logo_url, scope_note, is_pilot, status, ugc_open
      FROM idol_groups WHERE is_pilot = true AND status = 'published' ORDER BY slug`,
   );
   const ids = groups.rows.map((g) => g.id as string);
@@ -349,7 +349,7 @@ export async function removeWant(userId: string, templateId: string) {
 
 export async function getFollows(userId: string) {
   const r = await query(
-    `SELECT g.id, g.slug, g.name_zh, g.name_en, g.name_ko, g.logo_color, g.scope_note, g.is_pilot
+    `SELECT g.id, g.slug, g.name_zh, g.name_en, g.name_ko, g.aliases, g.logo_color, g.logo_url, g.scope_note, g.is_pilot, g.status, g.ugc_open
      FROM user_follows f
      JOIN idol_groups g ON g.id = f.group_id
      WHERE f.user_id = $1

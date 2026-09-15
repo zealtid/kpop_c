@@ -2,7 +2,7 @@ import { query } from "./db.js";
 import { track } from "./analytics.js";
 import { notFound } from "./errors.js";
 
-const GROUP_SELECT = `id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, status, ugc_open`;
+const GROUP_SELECT = `id, slug, name_zh, name_en, name_ko, aliases, logo_color, logo_url, scope_note, is_pilot, status, ugc_open`;
 const MEMBER_SELECT = `id, group_id, name_zh, name_en, name_ko, aliases, color, sort_order, status`;
 
 export type CatalogStatus = "draft" | "published" | "deprecated";
@@ -222,6 +222,7 @@ export function mapGroup(row: Record<string, unknown>) {
     nameKo: row.name_ko,
     aliases: row.aliases == null ? "" : String(row.aliases),
     logoColor: row.logo_color,
+    logoUrl: row.logo_url == null || row.logo_url === "" ? null : String(row.logo_url),
     scopeNote: row.scope_note,
     isPilot: row.is_pilot,
     status: (row.status as CatalogStatus) || "published",

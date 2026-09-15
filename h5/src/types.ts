@@ -6,6 +6,7 @@ export type ShareSummary = {
     nameZh: string;
     nameEn: string;
     logoColor: string;
+    logoUrl?: string | null;
     scopeNote: string | null;
     publishedReleaseCount: number;
     publishedTemplateCount: number;
@@ -56,6 +57,7 @@ export type CatalogGroup = {
   nameZh: string;
   nameEn: string;
   logoColor: string;
+  logoUrl?: string | null;
   scopeNote: string | null;
 };
 
