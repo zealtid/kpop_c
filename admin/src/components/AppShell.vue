@@ -36,6 +36,7 @@ const menus = computed(() => userMenus());
 function menuTo(id: string) {
   if (id === "catalog") return { name: "catalog" as const, params: { tab: "groups" } };
   if (id === "submissions") return { name: "submissions" as const };
+  if (id === "users") return { name: "users" as const };
   if (id === "intel") return { name: "intel" as const };
   if (id === "tickets") return { name: "tickets" as const };
   return { path: `/${id}` };
@@ -44,6 +45,7 @@ function menuTo(id: string) {
 const activeKey = computed(() => {
   if (route.name === "catalog" || route.path.startsWith("/catalog")) return "catalog";
   if (route.name === "submissions" || route.name === "submission-detail") return "submissions";
+  if (route.name === "users" || route.name === "user-detail") return "users";
   if (route.name === "tickets" || route.name === "ticket-detail") return "tickets";
   if (route.name === "intel") return "intel";
   return String(route.name || "");

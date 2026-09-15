@@ -90,6 +90,7 @@ test("UX-A3 wxml: avatar+nickname row; nickname fill only; no getUserProfile; ac
   assert.match(wxml, /wx:if="\{\{hasAvatar\}\}"/);
   assert.match(wxml, /class="avatar-ph"/);
   assert.match(wxml, /class="profile-name/);
+  assert.match(wxml, /贡献积分 \{\{contributionPoints\}\}/);
   assert.match(wxss, /\.profile-row/);
   assert.match(wxss, /align-items:\s*center/);
   assert.match(wxss, /\.avatar-clip\s*\{[^}]*flex-shrink:\s*0/s);
@@ -311,6 +312,20 @@ test("UX-A3 chooseAvatar uploads then PATCHes persistable URL; temp path is not 
   await flush();
   assert.match(hosted.data.avatarSrc, /\/media\/custom\/u1\/a\.jpg$/);
   assert.equal(hosted.data.hasAvatar, true);
+});
+
+test("P3 #9 我的页只读展示 GET /me 贡献积分", async () => {
+  api.request = (opts) => {
+    if (opts.url === "/me") {
+      return Promise.resolve({ id: "u1", nickname: "星卡用户", contributionPoints: 3, privacy: "private" });
+    }
+    if (opts.url === "/me/follows") return Promise.resolve({ groups: [] });
+    return Promise.reject(new Error(opts.url));
+  };
+  const page = pageWithData({});
+  page.load();
+  await flush();
+  assert.equal(page.data.contributionPoints, 3);
 });
 
 test("ME05 empty follows nudges to 管理关注; unified entries navigate", () => {

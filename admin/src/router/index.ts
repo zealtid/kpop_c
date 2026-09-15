@@ -31,6 +31,16 @@ export const router = createRouter({
           component: () => import("../views/SubmissionDetailView.vue"),
         },
         {
+          path: "users",
+          name: "users",
+          component: () => import("../views/UsersListView.vue"),
+        },
+        {
+          path: "users/:id",
+          name: "user-detail",
+          component: () => import("../views/UserDetailView.vue"),
+        },
+        {
           path: "catalog/:tab?",
           name: "catalog",
           component: () => import("../views/CatalogView.vue"),

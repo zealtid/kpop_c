@@ -419,3 +419,76 @@ test("U1-11 report + unpublish", async () => {
   assert.equal(unpub.status, 200);
   assert.equal((unpub.body as { status: string }).status, "draft");
 });
+
+test("P3-04/05/06 first approval +1, reject 0, no historical backfill needed", async () => {
+  const meBefore = await api("/me");
+  const beforePts = Number((meBefore.body as { contributionPoints?: number }).contributionPoints) || 0;
+
+  const frontOk = await uploadFront(91);
+  const createdOk = await api("/catalog/submissions", {
+    method: "POST",
+    body: JSON.stringify({
+      groupId: GROUP_H2H,
+      releaseId: CHASE,
+      memberId: CARMEN,
+      versionLabel: "P3-Points-Ok",
+      slotLabel: "P3 Points Card",
+      imageFront: frontOk.path,
+      agreementAccepted: true,
+    }),
+  });
+  assert.equal(createdOk.status, 200, JSON.stringify(createdOk.body));
+  const idOk = (createdOk.body as { id: string }).id;
+  const approved = await api(`/admin/catalog-submissions/${idOk}/approve`, {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({}),
+  });
+  assert.equal(approved.status, 200, JSON.stringify(approved.body));
+  assert.equal((approved.body as { pointsAwarded: number }).pointsAwarded, 1);
+
+  const meAfterApprove = await api("/me");
+  assert.equal((meAfterApprove.body as { contributionPoints: number }).contributionPoints, beforePts + 1);
+
+  const frontNo = await uploadFront(92);
+  const createdNo = await api("/catalog/submissions", {
+    method: "POST",
+    body: JSON.stringify({
+      groupId: GROUP_H2H,
+      releaseId: CHASE,
+      memberId: CARMEN,
+      versionLabel: "P3-Points-No",
+      slotLabel: "P3 Reject Card",
+      imageFront: frontNo.path,
+      agreementAccepted: true,
+    }),
+  });
+  const idNo = (createdNo.body as { id: string }).id;
+  const rejected = await api(`/admin/catalog-submissions/${idNo}/reject`, {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({ reason: "不计分" }),
+  });
+  assert.equal(rejected.status, 200, JSON.stringify(rejected.body));
+  assert.equal((rejected.body as { pointsAwarded: number }).pointsAwarded, 0);
+
+  const meAfterReject = await api("/me");
+  assert.equal((meAfterReject.body as { contributionPoints: number }).contributionPoints, beforePts + 1);
+
+  const listed = await api(`/admin/users?q=${encodeURIComponent(userId)}`, { headers: adminHeaders });
+  assert.equal(listed.status, 200, JSON.stringify(listed.body));
+  const users = (listed.body as { users: { id: string; contributionPoints: number }[] }).users;
+  const row = users.find((u) => u.id === userId);
+  assert.ok(row);
+  assert.equal(row!.contributionPoints, beforePts + 1);
+
+  const detail = await api(`/admin/users/${userId}`, { headers: adminHeaders });
+  assert.equal(detail.status, 200);
+  assert.equal((detail.body as { contributionPoints: number }).contributionPoints, beforePts + 1);
+
+  const hist = await api(`/admin/users/${userId}/submissions`, { headers: adminHeaders });
+  assert.equal(hist.status, 200);
+  const subs = (hist.body as { submissions: { id: string; pointsAwarded: number }[] }).submissions;
+  assert.ok(subs.some((s) => s.id === idOk && s.pointsAwarded === 1));
+  assert.ok(subs.some((s) => s.id === idNo && s.pointsAwarded === 0));
+});

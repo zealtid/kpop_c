@@ -27,10 +27,11 @@ type UserRow = {
   nickname: string;
   avatar_url: string | null;
   privacy: string;
+  contribution_points?: number | string | null;
 };
 
 const USER_COLUMNS =
-  "id, wx_openid, wx_unionid, wx_web_openid, nickname, avatar_url, privacy";
+  "id, wx_openid, wx_unionid, wx_web_openid, nickname, avatar_url, privacy, contribution_points";
 
 export function signToken(user: { id: string; wx_openid: string }) {
   return jwt.sign({ sub: user.id, openid: user.wx_openid } satisfies JwtPayload, config.jwtSecret, {
@@ -356,12 +357,14 @@ export function publicUser(user: {
   nickname: string;
   avatar_url: string | null;
   privacy: string;
+  contribution_points?: number | string | null;
 }) {
   return {
     id: user.id,
     nickname: user.nickname,
     avatarUrl: user.avatar_url,
     privacy: user.privacy,
+    contributionPoints: Number(user.contribution_points) || 0,
   };
 }
 

@@ -3,6 +3,7 @@ import { api, errorMessage } from "../api";
 export type Submission = {
   id: string;
   userId: string;
+  userNickname?: string | null;
   groupId: string;
   groupNameZh?: string | null;
   releaseId?: string | null;
@@ -24,6 +25,7 @@ export type Submission = {
   duplicateOfTemplateId?: string | null;
   duplicateCandidates?: { id: string; name: string; version: string }[];
   resultTemplateId?: string | null;
+  pointsAwarded?: number;
   createdAt?: string | null;
 };
 
@@ -31,11 +33,17 @@ function denied(status: number, body: unknown) {
   return errorMessage(body, status === 403 ? "没有权限访问运营接口" : "请求失败");
 }
 
-export async function listSubmissions(opts?: { status?: string; groupId?: string; releaseId?: string }) {
+export async function listSubmissions(opts?: {
+  status?: string;
+  groupId?: string;
+  releaseId?: string;
+  userId?: string;
+}) {
   const qs = new URLSearchParams();
   if (opts?.status) qs.set("status", opts.status);
   if (opts?.groupId) qs.set("groupId", opts.groupId);
   if (opts?.releaseId) qs.set("releaseId", opts.releaseId);
+  if (opts?.userId) qs.set("userId", opts.userId);
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   const res = await api<{ submissions: Submission[] }>(`/admin/catalog-submissions${suffix}`);
   if (res.status !== 200) {

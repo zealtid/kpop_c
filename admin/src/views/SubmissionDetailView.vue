@@ -13,7 +13,7 @@ import {
   NSpin,
   useMessage,
 } from "naive-ui";
-import { useRoute, useRouter } from "vue-router";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import PageHeader from "../components/PageHeader.vue";
 import AuthMediaImg from "../components/AuthMediaImg.vue";
 import { errorMessage } from "../api";
@@ -150,7 +150,16 @@ async function onUnpublish() {
         </div>
       </div>
       <p v-else class="muted">通过/驳回后待审原图会删除；公开主图请到图鉴模板里查看。</p>
-      <p class="muted">{{ item.groupNameZh }} · {{ item.releaseTitle }} · {{ item.source }} · {{ item.status }}</p>
+      <p class="muted">
+        {{ item.groupNameZh }} · {{ item.releaseTitle }} · {{ item.source }} · {{ item.status }}
+        <template v-if="item.userId">
+          · 投稿人
+          <RouterLink :to="{ name: 'user-detail', params: { id: item.userId } }">
+            {{ item.userNickname || item.userId }}
+          </RouterLink>
+        </template>
+        <template v-if="item.status === 'approved'"> · 积分 {{ item.pointsAwarded ?? 0 }}</template>
+      </p>
       <n-form>
         <n-form-item label="名称/别称">
           <n-input v-model:value="slotLabel" />

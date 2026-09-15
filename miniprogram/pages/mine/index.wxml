@@ -23,6 +23,7 @@
         </view>
         <view class="profile-meta">
           <view class="profile-name {{nicknameUnset ? 'placeholder' : ''}}">{{displayName}}</view>
+          <view class="profile-points">贡献积分 {{contributionPoints}}</view>
           <view wx:if="{{nicknameUnset}}" class="nickname-sync-wrap">
             <view class="btn nickname-sync-btn">同步微信昵称</view>
             <input
