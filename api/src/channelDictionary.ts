@@ -98,6 +98,23 @@ export function isUnknownChannel(code: string | null | undefined) {
   return (code || "").trim().toLowerCase() === "unknown";
 }
 
+/** Expand a C-end search token with matching enabled-channel code / 中文名 / aliases. */
+export function expandChannelSearchTokens(token: string, dict: ChannelDictionary): string[] {
+  const key = token.trim().toLowerCase();
+  if (key.length < 2) return [];
+  const extra: string[] = [];
+  for (const ch of dict.channels) {
+    if (ch.enabled === false) continue;
+    const names = [ch.code, ch.name_zh, ...(ch.aliases || [])].map((n) => String(n || "").trim()).filter(Boolean);
+    const hit = names.some((n) => {
+      const s = n.toLowerCase();
+      return s === key || s.includes(key) || (s.length >= 2 && key.includes(s));
+    });
+    if (hit) extra.push(...names);
+  }
+  return extra;
+}
+
 const CODE_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function isPgUniqueViolation(err: unknown): boolean {

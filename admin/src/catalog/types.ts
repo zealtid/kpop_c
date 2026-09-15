@@ -9,6 +9,7 @@ export type Group = {
   nameKo?: string;
   aliases?: string;
   logoColor?: string;
+  iconUrl?: string | null;
   logoUrl?: string | null;
   scopeNote?: string | null;
   isPilot?: boolean;

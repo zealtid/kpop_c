@@ -57,8 +57,8 @@ export function renderShareLandingHtml(summary: ShareSummary, opts?: { catalogUr
     summary.template?.mainImageUrl
       ? `<img class="card" alt="" src="${escapeHtml(summary.template.mainImageUrl)}"/>`
       : "";
-  const groupLogo = summary.group?.logoUrl
-    ? `<img class="logo" alt="" src="${escapeHtml(summary.group.logoUrl)}"/>`
+  const groupLogo = summary.group?.iconUrl || summary.group?.logoUrl
+    ? `<img class="logo" alt="" src="${escapeHtml(String(summary.group.iconUrl || summary.group.logoUrl))}"/>`
     : summary.group
       ? `<span class="logo letter" style="background:${escapeHtml(summary.group.logoColor || "#6b5cff")}">${escapeHtml((summary.group.nameZh || "?").slice(0, 1))}</span>`
       : "";

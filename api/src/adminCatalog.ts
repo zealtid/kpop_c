@@ -28,13 +28,19 @@ function text(value: unknown, field: string, required = false) {
   return v;
 }
 
-/** 相对媒体路径或 http(s) URL；空串表示清空。 */
 function optionalMediaPath(value: unknown, field: string) {
   const v = value == null ? "" : String(value).trim();
   if (!v) return null;
   if (v.startsWith("/media/")) return v;
   if (/^https?:\/\//i.test(v)) return v;
   throw badRequest(`${field} 必须是 /media/... 或 http(s) URL`);
+}
+
+function groupIconPath(body: Record<string, unknown>, fallback: unknown) {
+  if (body.iconUrl !== undefined) return optionalMediaPath(body.iconUrl, "iconUrl");
+  if (body.logoUrl !== undefined) return optionalMediaPath(body.logoUrl, "logoUrl");
+  const v = fallback == null ? "" : String(fallback).trim();
+  return v || null;
 }
 
 function slugify(raw: string) {
@@ -73,7 +79,7 @@ async function loadReleaseRow(id: string) {
 
 export async function listAdminGroups() {
   const r = await query(
-    `SELECT id, slug, name_zh, name_en, name_ko, aliases, logo_color, logo_url, scope_note, is_pilot, status, ugc_open
+    `SELECT id, slug, name_zh, name_en, name_ko, aliases, logo_color, icon_url, logo_url, scope_note, is_pilot, status, ugc_open
      FROM idol_groups ORDER BY slug`,
   );
   return r.rows.map(mapGroup);
@@ -89,8 +95,8 @@ export async function createGroup(body: Record<string, unknown>) {
   const id = randomUUID();
   try {
     await query(
-      `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, logo_url, scope_note, is_pilot, status, ugc_open)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'draft',$11)`,
+      `INSERT INTO idol_groups (id, slug, name_zh, name_en, name_ko, aliases, logo_color, icon_url, logo_url, scope_note, is_pilot, status, ugc_open)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9,$10,'draft',$11)`,
       [
         id,
         slug,
@@ -99,7 +105,7 @@ export async function createGroup(body: Record<string, unknown>) {
         text(body.nameKo, "nameKo") || text(body.nameEn, "nameEn"),
         text(body.aliases, "aliases"),
         text(body.logoColor, "logoColor") || "#ff6b9d",
-        optionalMediaPath(body.logoUrl, "logoUrl"),
+        groupIconPath(body, null),
         text(body.scopeNote, "scopeNote") || null,
         body.isPilot !== false,
         !!body.ugcOpen,
@@ -119,7 +125,7 @@ export async function updateGroup(id: string, body: Record<string, unknown>) {
     await query(
       `UPDATE idol_groups SET
          slug = $2, name_zh = $3, name_en = $4, name_ko = $5, aliases = $6,
-         logo_color = $7, logo_url = $8, scope_note = $9, is_pilot = $10, ugc_open = $11
+         logo_color = $7, icon_url = $8, logo_url = $8, scope_note = $9, is_pilot = $10, ugc_open = $11
        WHERE id = $1`,
       [
         id,
@@ -129,7 +135,7 @@ export async function updateGroup(id: string, body: Record<string, unknown>) {
         body.nameKo != null ? text(body.nameKo, "nameKo") : row.name_ko,
         body.aliases != null ? text(body.aliases, "aliases") : row.aliases,
         body.logoColor != null ? text(body.logoColor, "logoColor") : row.logo_color,
-        body.logoUrl !== undefined ? optionalMediaPath(body.logoUrl, "logoUrl") : row.logo_url,
+        groupIconPath(body, row.icon_url || row.logo_url),
         body.scopeNote !== undefined ? text(body.scopeNote, "scopeNote") || null : row.scope_note,
         body.isPilot != null ? !!body.isPilot : row.is_pilot,
         body.ugcOpen != null ? !!body.ugcOpen : !!row.ugc_open,

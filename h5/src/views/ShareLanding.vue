@@ -75,7 +75,7 @@ function browse() {
     <p v-else-if="error" class="warn">{{ error }}</p>
     <template v-else-if="summary">
       <div v-if="summary.group" class="group-ident" style="margin: 12px 0 8px">
-        <img v-if="summary.group.logoUrl" class="group-logo" :src="mediaUrl(summary.group.logoUrl)" alt="" />
+        <img v-if="summary.group.iconUrl || summary.group.logoUrl" class="group-logo" :src="mediaUrl(summary.group.iconUrl || summary.group.logoUrl)" alt="" />
         <span v-else class="group-logo letter" :style="{ background: summary.group.logoColor || '#6b5cff' }">{{ (summary.group.nameZh || "?").slice(0, 1) }}</span>
         <h1 style="margin: 0">{{ title }}</h1>
       </div>

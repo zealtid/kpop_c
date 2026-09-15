@@ -40,7 +40,7 @@ function search() {
     <div class="list" style="margin-top: 16px">
       <a v-for="g in groups" :key="g.id" class="row" :href="`#/catalog/groups/${g.slug || g.id}`">
         <div class="group-ident">
-          <img v-if="g.logoUrl" class="group-logo" :src="mediaUrl(g.logoUrl)" alt="" />
+          <img v-if="g.iconUrl || g.logoUrl" class="group-logo" :src="mediaUrl(g.iconUrl || g.logoUrl)" alt="" />
           <span v-else class="group-logo letter" :style="{ background: g.logoColor || '#6b5cff' }">{{ (g.nameZh || g.nameEn || "?").slice(0, 1) }}</span>
           <div>
             <strong>{{ g.nameZh }}</strong>

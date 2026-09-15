@@ -76,13 +76,13 @@ const keywordDraft = ref("");
 const templatesCapped = ref(false);
 
 const headings: Record<CatalogTab, { title: string; hint: string }> = {
-  groups: { title: "图鉴 · 组合", hint: "ArtistGroup → idol_groups。可上传公开 logo；无 logo 时 C 端回退主题色与首字。" },
+  groups: { title: "图鉴 · 组合", hint: "ArtistGroup → idol_groups。可上传公开团图标（icon_url）；无图标时 C 端回退主题色与首字。" },
   members: { title: "图鉴 · 成员", hint: "Member。草稿成员不出现在小程序组合页。" },
   releases: { title: "图鉴 · 发行", hint: "Release。演唱会特典用 kind=concert_md，没有独立 Event 表。" },
-  templates: { title: "图鉴 · 小卡模板", hint: "PhotocardTemplate。列表点名称或「维护」编辑信息/图片；可上传正面与卡背到 /media/cards。无主图不能发布。" },
+  templates: { title: "图鉴 · 小卡模板", hint: "PhotocardTemplate（B1）。点名称或「维护」编辑信息/图片；正/背按 2:3 预览，上传到 /media/cards。无主图不能发布。" },
   completeness: { title: "图鉴 · 完整度", hint: "按组合查看发行闸门与缺图/缺成员。缺图可跳到模板维护。" },
   import: { title: "图鉴 · 导入校验", hint: "校验 CSV / Markdown / JSON，通过后再写入。" },
-  benefits: { title: "图鉴 · 特典对照", hint: "CSV 导入仍可用；通路词典与对照行也可在本页单行增改。" },
+  benefits: { title: "图鉴 · 特典对照", hint: "通路词典可增改/停用（喂给 C 端特典搜索）。B2 CSV 导入不变；对照单行修补为次要。" },
 };
 
 const pageNotice = ref("");
@@ -279,7 +279,7 @@ const columns = computed<DataTableColumns<AnyRow>>(() => {
       key: "nameZh",
       render: (row) => {
         const g = row as Group;
-        const src = mediaUrl(g.logoUrl);
+        const src = mediaUrl(g.iconUrl || g.logoUrl);
         return h("div", { class: "name-with-logo" }, [
           src
             ? h("img", { class: "group-thumb", src, alt: "" })
@@ -319,7 +319,7 @@ function cardMeta(row: AnyRow) {
 
 function cardThumb(row: AnyRow) {
   if (tab.value === "templates") return mediaUrl((row as Template).mainImageUrl);
-  if (tab.value === "groups") return mediaUrl((row as Group).logoUrl);
+  if (tab.value === "groups") return mediaUrl((row as Group).iconUrl || (row as Group).logoUrl);
   return "";
 }
 

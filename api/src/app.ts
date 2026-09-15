@@ -293,6 +293,14 @@ export function createApp() {
     }
   });
 
+  app.get("/catalog/channels", async (_req, res, next) => {
+    try {
+      res.json(await loadRuntimeChannelDictionary());
+    } catch (e) {
+      next(e);
+    }
+  });
+
   app.post("/catalog/templates/:id/report", requireAuth, async (req, res, next) => {
     try {
       res.json(
@@ -624,6 +632,7 @@ export function createApp() {
             nameZh: "星卡",
             nameEn: "Xingka",
             logoColor: "#6B5CFF",
+            iconUrl: null,
             logoUrl: null,
             scopeNote: null,
             publishedReleaseCount: 0,

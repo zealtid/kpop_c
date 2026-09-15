@@ -77,7 +77,7 @@ function groupInitial(group) {
 
 function withLogo(group, mediaUrlFn) {
   if (!group) return group;
-  const raw = group.logoUrl || group.logo_url || "";
+  const raw = group.iconUrl || group.logoUrl || group.icon_url || group.logo_url || "";
   const logoSrc = raw ? (typeof mediaUrlFn === "function" ? mediaUrlFn(raw) : raw) : group.logoSrc || "";
   return {
     ...group,

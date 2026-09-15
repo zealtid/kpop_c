@@ -415,13 +415,22 @@ onMounted(() => {
 <template>
   <div class="b2-page" :class="{ narrow: isNarrow }">
   <p class="muted">
-    上传运营 Sheet/CSV，按行校验通路词典与卡槽。只把校验通过的
-    <code>confirmed</code> 行落库；<strong>不会</strong>自动 published 无图 Template。
-    也可在下方单行维护通路词典与对照表（同一套校验语义）。
+    <strong>通路词典</strong>优先：增改 / 软禁用后，C 端图鉴搜索可用通路中文名与别名找特典。
+    B2 的 CSV 校验与写入路径不变；对照单行修补为次要，不是矩阵 CMS。
   </p>
   <n-alert v-if="notice" :type="noticeType" :show-icon="false" class="block">{{ notice }}</n-alert>
 
+  <n-card size="small" title="通路词典" class="report">
+    <p class="muted">启用中的通路参与 CSV 校验与 C 端特典搜索；停用后新校验不再认该 code，已落库对照保留。</p>
+    <n-button size="small" type="primary" class="block" @click="openChannel(null)">新增通路</n-button>
+    <div v-if="channels.length" class="table-wrap">
+      <n-data-table :columns="channelColumns" :data="channels" :pagination="false" :scroll-x="720" :row-key="(row: BenefitChannel) => row.code" />
+    </div>
+    <p v-else class="muted">还没有通路词条。</p>
+  </n-card>
+
   <div class="benefit-form">
+    <p class="muted"><strong>CSV 导入（B2）</strong>：按行校验通路词典与卡槽。只把校验通过的 <code>confirmed</code> 行落库；不会自动 published 无图 Template。</p>
     <label class="label">CSV 文件</label>
     <div class="file-row">
       <input
@@ -459,15 +468,6 @@ onMounted(() => {
     </n-space>
   </div>
 
-  <n-card size="small" title="通路词典" class="report">
-    <p class="muted">启用中的通路参与 CSV / 单行校验；停用后新校验不再认该 code，已落库对照保留。</p>
-    <n-button size="small" type="primary" class="block" @click="openChannel(null)">新增通路</n-button>
-    <div v-if="channels.length" class="table-wrap">
-      <n-data-table :columns="channelColumns" :data="channels" :pagination="false" :scroll-x="720" :row-key="(row: BenefitChannel) => row.code" />
-    </div>
-    <p v-else class="muted">还没有通路词条。</p>
-  </n-card>
-
   <n-card v-if="report" size="small" title="校验报告" class="report">
     <p>
       <span :class="report.ok && report.errorCount === 0 ? 'ok' : 'bad'">
@@ -494,7 +494,8 @@ onMounted(() => {
     <p v-else class="muted">没有问题项</p>
   </n-card>
 
-  <n-card size="small" title="已落库对照" class="report">
+  <n-card size="small" title="已落库对照（次要）" class="report">
+    <p class="muted">浏览 CSV 写入结果。单行增改不是主路径，勿当矩阵 CMS 使用。</p>
     <div class="filters" :class="{ stacked: isNarrow }">
       <div class="filter">
         <label class="label">按发行过滤</label>

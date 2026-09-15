@@ -70,6 +70,7 @@ function clear() {
     </div>
     <p v-if="err" class="err">{{ err }}</p>
     <img v-if="preview" class="preview" :class="{ compact }" :src="preview" alt="预览" />
+    <div v-else class="preview ph" :class="{ compact }">{{ compact ? "无图标" : "无图" }}</div>
   </div>
 </template>
 
@@ -105,5 +106,14 @@ function clear() {
   width: 72px;
   height: 72px;
   border-radius: 16px;
+}
+.ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a8494;
+  font-size: 12px;
+  text-align: center;
+  padding: 8px;
 }
 </style>
