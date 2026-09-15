@@ -77,7 +77,7 @@ watch(userId, refresh);
 <template>
   <PageHeader
     title="用户详情"
-    hint="只读资料与投稿/上传历史。贡献积分仅在审核通过时计入，驳回为 0。"
+    hint="只读资料与投稿/上传历史。贡献积分：首次通过 +1（含合并已有模板）；驳回为 0；不回填历史通过。"
     :crumbs="[{ label: '用户', to: { name: 'users' } }, { label: user?.nickname || '详情' }]"
   />
   <n-spin :show="loading">
