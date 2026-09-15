@@ -1,8 +1,9 @@
 import { query } from "./db.js";
 import { track } from "./analytics.js";
 import { notFound } from "./errors.js";
+import { expandChannelSearchTokens, loadRuntimeChannelDictionary } from "./channelDictionary.js";
 
-const GROUP_SELECT = `id, slug, name_zh, name_en, name_ko, aliases, logo_color, scope_note, is_pilot, status, ugc_open`;
+const GROUP_SELECT = `id, slug, name_zh, name_en, name_ko, aliases, logo_color, icon_url, logo_url, scope_note, is_pilot, status, ugc_open`;
 const MEMBER_SELECT = `id, group_id, name_zh, name_en, name_ko, aliases, color, sort_order, status`;
 
 export type CatalogStatus = "draft" | "published" | "deprecated";
@@ -163,7 +164,8 @@ export async function searchTemplates(opts: SearchOpts) {
   }
   if (opts.q) {
     const tokens = opts.q.split(/\s+/).filter(Boolean);
-    // C02: en/zh + name_ko + lightweight aliases (comma-separated TEXT)
+    const dict = await loadRuntimeChannelDictionary();
+    // C02: en/zh + name_ko + lightweight aliases；P2A：通路词典别名 / 特典对照也可搜
     const searchFields = [
       "t.name",
       "t.code",
@@ -181,10 +183,28 @@ export async function searchTemplates(opts: SearchOpts) {
       "g.aliases",
     ];
     for (const token of tokens) {
-      params.push(`%${token}%`);
-      conds.push(
-        `(${searchFields.map((f) => `${f} ILIKE $${params.length}`).join(" OR ")})`,
+      const variants = [token, ...expandChannelSearchTokens(token, dict)].filter(
+        (v, i, arr) => v && arr.indexOf(v) === i,
       );
+      const parts: string[] = [];
+      for (const variant of variants) {
+        params.push(`%${variant}%`);
+        const n = params.length;
+        parts.push(searchFields.map((f) => `${f} ILIKE $${n}`).join(" OR "));
+        parts.push(
+          `EXISTS (
+             SELECT 1 FROM release_benefit_map bm
+             WHERE bm.release_id = t.release_id
+               AND bm.status = 'confirmed'
+               AND (
+                 bm.benefit_name_zh ILIKE $${n}
+                 OR bm.channel_code ILIKE $${n}
+                 OR COALESCE(bm.maps_to_slot_labels, '') ILIKE $${n}
+               )
+           )`,
+        );
+      }
+      conds.push(`(${parts.join(" OR ")})`);
     }
   }
 
@@ -214,6 +234,9 @@ export async function searchTemplates(opts: SearchOpts) {
 }
 
 export function mapGroup(row: Record<string, unknown>) {
+  const icon =
+    (row.icon_url != null && String(row.icon_url) !== "" ? String(row.icon_url) : null) ||
+    (row.logo_url != null && String(row.logo_url) !== "" ? String(row.logo_url) : null);
   return {
     id: row.id,
     slug: row.slug,
@@ -222,6 +245,8 @@ export function mapGroup(row: Record<string, unknown>) {
     nameKo: row.name_ko,
     aliases: row.aliases == null ? "" : String(row.aliases),
     logoColor: row.logo_color,
+    iconUrl: icon,
+    logoUrl: icon,
     scopeNote: row.scope_note,
     isPilot: row.is_pilot,
     status: (row.status as CatalogStatus) || "published",

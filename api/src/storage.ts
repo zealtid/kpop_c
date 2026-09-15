@@ -1,4 +1,5 @@
 import "./shareFont.js";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
@@ -83,7 +84,7 @@ export function parseImagePayload(input: {
       buf = Buffer.from(raw, "base64");
     }
   }
-  if (!buf || buf.length === 0) throw badRequest("请上传正面卡图");
+  if (!buf || buf.length === 0) throw badRequest("请上传图片");
   if (buf.length > MAX_BYTES) throw badRequest("图片不能超过 8MB");
   if (mime === "image/jpg") mime = "image/jpeg";
   if (mime && !MIME_EXT[mime]) throw badRequest("仅支持 jpeg / png / webp");
@@ -248,6 +249,9 @@ function storageKey(publicPath: string) {
   if (publicPath.startsWith("/media/cards/")) {
     return `cards/${publicPath.replace(/^\/media\/cards\//, "")}`;
   }
+  if (publicPath.startsWith("/media/logos/")) {
+    return `logos/${publicPath.replace(/^\/media\/logos\//, "")}`;
+  }
   return publicPath.replace(/^\//, "");
 }
 
@@ -260,6 +264,9 @@ function localFile(publicPath: string) {
   }
   if (publicPath.startsWith("/media/cards/")) {
     return path.join(config.dataDir, "cards", path.basename(publicPath));
+  }
+  if (publicPath.startsWith("/media/logos/")) {
+    return path.join(config.dataDir, "logos", path.basename(publicPath));
   }
   return path.join(config.dataDir, publicPath.replace(/^\//, ""));
 }
@@ -282,9 +289,17 @@ async function putObject(publicPath: string, body: Buffer, contentType: string) 
   fs.writeFileSync(dest, body);
 }
 
+function isPublicCatalogMediaPath(publicPath: string) {
+  return (
+    publicPath.startsWith("/media/ugc-pending/") ||
+    publicPath.startsWith("/media/cards/") ||
+    publicPath.startsWith("/media/logos/")
+  );
+}
+
 export async function readStoredImage(publicPath: string): Promise<{ body: Buffer; contentType: string } | null> {
   if (publicPath.startsWith("/media/custom/")) return readCustomImage(publicPath);
-  if (!publicPath.startsWith("/media/ugc-pending/") && !publicPath.startsWith("/media/cards/")) {
+  if (!isPublicCatalogMediaPath(publicPath)) {
     return null;
   }
   const client = getS3();
@@ -316,7 +331,7 @@ export async function deleteStoredImage(publicPath: string | null | undefined) {
     await deleteCustomImage(publicPath);
     return;
   }
-  if (!publicPath.startsWith("/media/ugc-pending/") && !publicPath.startsWith("/media/cards/")) {
+  if (!isPublicCatalogMediaPath(publicPath)) {
     return;
   }
   const client = getS3();
@@ -391,7 +406,35 @@ export function isPendingMediaPath(publicPath: string) {
   return publicPath.startsWith("/media/ugc-pending/");
 }
 
-/** 公开图鉴主图文件名：仅 basename，禁止路径穿越。 */
+/** 公开图鉴主图 / 组合 logo 文件名：仅 basename，禁止路径穿越。 */
 export function isSafeCardsMediaFile(file: string) {
   return file === path.basename(file) && /^[A-Za-z0-9._-]+\.(jpe?g|png|webp)$/i.test(file);
+}
+
+export const PUBLIC_MEDIA_KINDS = ["cards", "logos"] as const;
+export type PublicMediaKind = (typeof PUBLIC_MEDIA_KINDS)[number];
+
+export function isPublicMediaKind(value: string): value is PublicMediaKind {
+  return (PUBLIC_MEDIA_KINDS as readonly string[]).includes(value);
+}
+
+/** Admin 上传公开可读图鉴卡图或组合 logo，写入现有 cards / logos 媒体桶。 */
+export async function savePublicCatalogImage(opts: {
+  kind: PublicMediaKind;
+  buffer?: Buffer;
+  base64?: string;
+  mimeType?: string;
+  fileStem?: string;
+}) {
+  const parsed = parseImagePayload({
+    buffer: opts.buffer,
+    base64: opts.base64,
+    mimeType: opts.mimeType,
+  });
+  const normalized = await normalizeImage(parsed.buffer, parsed.mimeType);
+  const stem = (opts.fileStem || randomUUID()).replace(/[^A-Za-z0-9._-]/g, "_");
+  const fileName = `${stem}.${normalized.ext}`;
+  const publicPath = opts.kind === "logos" ? `/media/logos/${fileName}` : `/media/cards/${fileName}`;
+  await putObject(publicPath, normalized.buffer, normalized.contentType);
+  return { publicPath, contentType: normalized.contentType, fileName };
 }

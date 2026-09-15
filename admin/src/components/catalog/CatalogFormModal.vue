@@ -12,9 +12,9 @@ import {
   NSelect,
   NSpace,
 } from "naive-ui";
-import { mediaUrl } from "../../api";
 import type { CatalogCrudTab, Group, Member, Release, Template } from "../../catalog/types";
 import { RELEASE_KINDS } from "../../catalog/types";
+import MediaUploadField from "./MediaUploadField.vue";
 
 export type CatalogFormModel = {
   slug: string;
@@ -23,6 +23,7 @@ export type CatalogFormModel = {
   nameKo: string;
   aliases: string;
   logoColor: string;
+  logoUrl: string;
   scopeNote: string;
   isPilot: boolean;
   ugcOpen: boolean;
@@ -38,6 +39,7 @@ export type CatalogFormModel = {
   version: string;
   name: string;
   mainImageUrl: string;
+  imageBack: string;
   isBenefit: boolean;
 };
 
@@ -64,6 +66,7 @@ function emptyForm(): CatalogFormModel {
     nameKo: "",
     aliases: "",
     logoColor: "#ff6b9d",
+    logoUrl: "",
     scopeNote: "",
     isPilot: true,
     ugcOpen: false,
@@ -79,6 +82,7 @@ function emptyForm(): CatalogFormModel {
     version: "",
     name: "",
     mainImageUrl: "",
+    imageBack: "",
     isBenefit: false,
   };
 }
@@ -90,8 +94,12 @@ const title = computed(() => {
   if (props.tab === "groups") return editing ? "编辑组合" : "新建组合";
   if (props.tab === "members") return editing ? "编辑成员" : "新建成员";
   if (props.tab === "releases") return editing ? "编辑发行" : "新建发行";
-  return editing ? "编辑模板" : "新建模板（草稿）";
+  return editing ? "维护小卡" : "新建模板（草稿）";
 });
+
+const modalStyle = computed(() => ({
+  width: props.tab === "templates" ? "min(680px, calc(100vw - 24px))" : "min(520px, calc(100vw - 24px))",
+}));
 
 const groupOptions = computed(() =>
   props.groups.map((g) => ({ label: `${g.nameZh} (${g.slug})`, value: g.id })),
@@ -110,8 +118,6 @@ const dedupeKey = computed(() => {
   if (props.tab !== "templates" || !props.editing) return "";
   return (props.editing as Template).dedupeKey || "";
 });
-
-const mainImagePreview = computed(() => mediaUrl(form.mainImageUrl));
 
 function hydrate() {
   const next = emptyForm();
@@ -133,6 +139,7 @@ function hydrate() {
       nameKo: g.nameKo || "",
       aliases: g.aliases || "",
       logoColor: g.logoColor || "#ff6b9d",
+      logoUrl: g.iconUrl || g.logoUrl || "",
       scopeNote: g.scopeNote || "",
       isPilot: g.isPilot !== false,
       ugcOpen: !!g.ugcOpen,
@@ -174,6 +181,7 @@ function hydrate() {
     version: t.version || "",
     name: t.name || "",
     mainImageUrl: t.mainImageUrl || "",
+    imageBack: t.imageBack || "",
     isBenefit: !!t.isBenefit,
   });
 }
@@ -194,6 +202,8 @@ function toPayload(): Record<string, unknown> {
       nameKo: form.nameKo.trim(),
       aliases: form.aliases.trim(),
       logoColor: form.logoColor.trim(),
+      iconUrl: form.logoUrl.trim() || null,
+      logoUrl: form.logoUrl.trim() || null,
       scopeNote: form.scopeNote.trim(),
       isPilot: form.isPilot,
       ugcOpen: form.ugcOpen,
@@ -226,6 +236,7 @@ function toPayload(): Record<string, unknown> {
     version: form.version.trim(),
     name: form.name.trim() || undefined,
     mainImageUrl: form.mainImageUrl.trim() || null,
+    imageBack: form.imageBack.trim() || null,
     isBenefit: form.isBenefit,
   };
 }
@@ -244,7 +255,7 @@ function close() {
     :show="show"
     preset="card"
     :title="title"
-    :style="{ width: 'min(440px, calc(100vw - 24px))' }"
+    :style="modalStyle"
     :mask-closable="!submitting"
     @update:show="emit('update:show', $event)"
   >
@@ -267,6 +278,9 @@ function close() {
         </n-form-item>
         <n-form-item label="主题色">
           <n-input v-model:value="form.logoColor" />
+        </n-form-item>
+        <n-form-item label="团图标">
+          <MediaUploadField v-model="form.logoUrl" kind="logos" compact placeholder="/media/logos/xxx.png" />
         </n-form-item>
         <n-form-item label="范围说明">
           <n-input v-model:value="form.scopeNote" />
@@ -330,6 +344,16 @@ function close() {
       </template>
 
       <template v-else>
+        <div class="card-faces">
+          <div class="face">
+            <div class="face-label">正面（2:3）</div>
+            <MediaUploadField v-model="form.mainImageUrl" kind="cards" placeholder="/media/cards/xxx.png" />
+          </div>
+          <div class="face">
+            <div class="face-label">卡背（可选 · 2:3）</div>
+            <MediaUploadField v-model="form.imageBack" kind="cards" placeholder="/media/cards/xxx-back.png" />
+          </div>
+        </div>
         <n-form-item label="发行" required>
           <n-select v-model:value="form.releaseId" :options="releaseOptions" />
         </n-form-item>
@@ -342,10 +366,6 @@ function close() {
         <n-form-item label="名称">
           <n-input v-model:value="form.name" />
         </n-form-item>
-        <n-form-item label="主图 URL">
-          <n-input v-model:value="form.mainImageUrl" placeholder="/media/cards/xxx.png" />
-        </n-form-item>
-        <img v-if="mainImagePreview" class="preview" :src="mainImagePreview" alt="主图预览" />
         <n-form-item>
           <n-checkbox v-model:checked="form.isBenefit">特典</n-checkbox>
         </n-form-item>
@@ -368,12 +388,18 @@ function close() {
   font-size: 13px;
   margin: 0 0 12px;
 }
-.preview {
-  width: 140px;
-  height: 196px;
-  object-fit: cover;
-  border-radius: 8px;
-  background: #eee;
-  margin: 0 0 12px;
+.card-faces {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.face {
+  flex: 0 0 auto;
+}
+.face-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
 }
 </style>

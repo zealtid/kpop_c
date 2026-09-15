@@ -1,6 +1,6 @@
 import { query } from "./db.js";
 import { getRelease } from "./catalog.js";
-import { loadChannelDictionary } from "./channelDictionary.js";
+import { loadRuntimeChannelDictionary } from "./channelDictionary.js";
 import {
   buildBenefitMatrix,
   type BenefitMatrix,
@@ -103,6 +103,6 @@ export async function getReleaseBenefitMatrix(releaseId: string): Promise<Benefi
     versions,
     maps,
     templates,
-    dict: loadChannelDictionary(),
+    dict: await loadRuntimeChannelDictionary(),
   });
 }

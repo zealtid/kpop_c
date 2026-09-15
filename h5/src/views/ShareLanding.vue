@@ -74,7 +74,12 @@ function browse() {
     <p v-if="loading" class="muted">加载中…</p>
     <p v-else-if="error" class="warn">{{ error }}</p>
     <template v-else-if="summary">
-      <h1>{{ title }}</h1>
+      <div v-if="summary.group" class="group-ident" style="margin: 12px 0 8px">
+        <img v-if="summary.group.iconUrl || summary.group.logoUrl" class="group-logo" :src="mediaUrl(summary.group.iconUrl || summary.group.logoUrl)" alt="" />
+        <span v-else class="group-logo letter" :style="{ background: summary.group.logoColor || '#6b5cff' }">{{ (summary.group.nameZh || "?").slice(0, 1) }}</span>
+        <h1 style="margin: 0">{{ title }}</h1>
+      </div>
+      <h1 v-else>{{ title }}</h1>
       <p v-if="summary.group" class="muted">
         {{ summary.group.publishedReleaseCount }} 个已发行 · {{ summary.group.publishedTemplateCount }} 张已发布小卡
       </p>

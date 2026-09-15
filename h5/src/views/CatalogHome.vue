@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { api, errorMessage } from "../api";
+import { api, errorMessage, mediaUrl } from "../api";
 import { isWeChatBrowser } from "../wechat";
 import AuthBanner from "../components/AuthBanner.vue";
 import WeChatGate from "../components/WeChatGate.vue";
@@ -39,9 +39,13 @@ function search() {
     <p v-if="error" class="warn">{{ error }}</p>
     <div class="list" style="margin-top: 16px">
       <a v-for="g in groups" :key="g.id" class="row" :href="`#/catalog/groups/${g.slug || g.id}`">
-        <div>
-          <strong>{{ g.nameZh }}</strong>
-          <div class="muted">{{ g.nameEn }}</div>
+        <div class="group-ident">
+          <img v-if="g.iconUrl || g.logoUrl" class="group-logo" :src="mediaUrl(g.iconUrl || g.logoUrl)" alt="" />
+          <span v-else class="group-logo letter" :style="{ background: g.logoColor || '#6b5cff' }">{{ (g.nameZh || g.nameEn || "?").slice(0, 1) }}</span>
+          <div>
+            <strong>{{ g.nameZh }}</strong>
+            <div class="muted">{{ g.nameEn }}</div>
+          </div>
         </div>
         <span class="muted">查看</span>
       </a>

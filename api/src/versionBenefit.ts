@@ -1,9 +1,10 @@
 import { query } from "./db.js";
-import { AppError } from "./errors.js";
-import { loadChannelDictionary, type ChannelDictionary } from "./channelDictionary.js";
+import { AppError, badRequest } from "./errors.js";
+import { loadRuntimeChannelDictionary, type ChannelDictionary } from "./channelDictionary.js";
 import { parseBenefitCsv, type BenefitMapRow } from "./versionBenefitParse.js";
 import {
   compileBenefitReport,
+  validateBenefitRow,
   validateBenefitRows,
   type BenefitReport,
   type BenefitRowResult,
@@ -108,7 +109,7 @@ export async function previewOrCommitBenefitMap(
 ): Promise<BenefitValidateOutput> {
   const parsed = parseBenefitCsv(String(body.text || ""));
   const catalog = await loadCatalogSnapshot(!!body.tagsStrict);
-  const dictionary = dict || loadChannelDictionary();
+  const dictionary = dict || (await loadRuntimeChannelDictionary());
   const results = validateBenefitRows(parsed.rows, { dict: dictionary, catalog });
   const report = compileBenefitReport(parsed.issues, results);
   if (!body.commit) {
@@ -275,4 +276,155 @@ export async function listBenefitMaps(opts?: { releaseId?: string; groupId?: str
     params,
   );
   return r.rows.map(mapStoredRow);
+}
+
+function cell(value: unknown) {
+  return value == null ? "" : String(value);
+}
+
+function rowFromAdminBody(body: Record<string, unknown>, rowNum = 1): BenefitMapRow {
+  return {
+    row: rowNum,
+    group_id: cell(body.group_id ?? body.groupId),
+    release_id: cell(body.release_id ?? body.releaseId),
+    version_label: cell(body.version_label ?? body.versionLabel),
+    channel_code: cell(body.channel_code ?? body.channelCode),
+    benefit_name_zh: cell(body.benefit_name_zh ?? body.benefitNameZh),
+    maps_to_slot_labels: cell(body.maps_to_slot_labels ?? body.mapsToSlotLabels),
+    map_mode: cell(body.map_mode ?? body.mapMode),
+    evidence_url: cell(body.evidence_url ?? body.evidenceUrl),
+    status: cell(body.status),
+    benefit_batch: cell(body.benefit_batch ?? body.benefitBatch),
+    benefit_type: cell(body.benefit_type ?? body.benefitType),
+    member_scope: cell(body.member_scope ?? body.memberScope),
+    version_label_for_template: cell(body.version_label_for_template ?? body.versionLabelForTemplate),
+    tags_hint: cell(body.tags_hint ?? body.tagsHint),
+    notes: cell(body.notes),
+    updated_by: cell(body.updated_by ?? body.updatedBy),
+    updated_at: cell(body.updated_at ?? body.updatedAt),
+  };
+}
+
+async function persistValidatedRow(
+  result: BenefitRowResult,
+  importedBy: string | null,
+  opts?: { id?: string },
+): Promise<BenefitMapListItem> {
+  if (!result.ok) {
+    throw new AppError(400, "IMPORT_INVALID", "版本×特典校验未通过，未写入", compileBenefitReport([], [result]));
+  }
+  if (!result.group || !result.release || !result.channelCode) {
+    throw badRequest("组合 / 发行 / 通路无法解析");
+  }
+  const row = result.row;
+  const status = row.status.trim() || "drafting";
+  const updatedAt = parseOptionalTime(row.updated_at);
+  const params = [
+    result.group.id,
+    result.release.id,
+    row.version_label.trim(),
+    result.channelCode,
+    row.benefit_name_zh.trim(),
+    row.maps_to_slot_labels || null,
+    row.map_mode.trim(),
+    row.evidence_url.trim() || null,
+    status,
+    row.benefit_batch || null,
+    row.benefit_type || null,
+    row.member_scope || null,
+    row.version_label_for_template || null,
+    row.tags_hint || null,
+    row.notes || null,
+    row.updated_by || importedBy,
+    updatedAt,
+    importedBy,
+  ];
+  let saved;
+  try {
+    if (opts?.id) {
+      saved = await query(
+        `UPDATE release_benefit_map SET
+           group_id = $2, release_id = $3, version_label = $4, channel_code = $5, benefit_name_zh = $6,
+           maps_to_slot_labels = $7, map_mode = $8, evidence_url = $9, status = $10,
+           benefit_batch = $11, benefit_type = $12, member_scope = $13, version_label_for_template = $14,
+           tags_hint = $15, notes = $16, updated_by = $17, updated_at = COALESCE($18, now()),
+           imported_at = now(), imported_by = $19
+         WHERE id = $1
+         RETURNING id`,
+        [opts.id, ...params],
+      );
+      if (!saved.rows[0]) throw new AppError(404, "NOT_FOUND", "对照行不存在");
+    } else {
+      saved = await query(
+        `INSERT INTO release_benefit_map (
+           group_id, release_id, version_label, channel_code, benefit_name_zh,
+           maps_to_slot_labels, map_mode, evidence_url, status,
+           benefit_batch, benefit_type, member_scope, version_label_for_template,
+           tags_hint, notes, updated_by, updated_at, imported_by
+         ) VALUES (
+           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18
+         )
+         RETURNING id`,
+        params,
+      );
+    }
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "23505") {
+      throw new AppError(409, "DUPLICATE_MAP", "同一发行×版本×通路×特典已存在");
+    }
+    throw err;
+  }
+  const id = String(saved.rows[0].id);
+  const listed = await listBenefitMaps({ id });
+  if (!listed[0]) throw new AppError(500, "SERVER", "对照行写入后无法读取");
+  return listed[0];
+}
+
+/** Single-row create/update using the same validator as CSV import. */
+export async function upsertBenefitMapRow(
+  body: Record<string, unknown>,
+  importedBy: string | null,
+  opts?: { id?: string },
+): Promise<{ map: BenefitMapListItem; report: BenefitReport }> {
+  const existing = opts?.id ? (await listBenefitMaps({ id: opts.id }))[0] : null;
+  if (opts?.id && !existing) throw new AppError(404, "NOT_FOUND", "对照行不存在");
+  const merged: Record<string, unknown> = existing
+    ? {
+        groupId: existing.groupId,
+        releaseId: existing.releaseId,
+        versionLabel: existing.versionLabel,
+        channelCode: existing.channelCode,
+        benefitNameZh: existing.benefitNameZh,
+        mapsToSlotLabels: existing.mapsToSlotLabels,
+        mapMode: existing.mapMode,
+        evidenceUrl: existing.evidenceUrl,
+        status: existing.status,
+        benefitBatch: existing.benefitBatch,
+        benefitType: existing.benefitType,
+        memberScope: existing.memberScope,
+        versionLabelForTemplate: existing.versionLabelForTemplate,
+        tagsHint: existing.tagsHint,
+        notes: existing.notes,
+        updatedBy: existing.updatedBy,
+        ...body,
+      }
+    : body;
+  const row = rowFromAdminBody(merged);
+  const catalog = await loadCatalogSnapshot(!!body.tagsStrict);
+  // 新建只认启用通路（与 CSV 一致）；改已有行时允许已停用通路，便于停用/改备注
+  const dict = await loadRuntimeChannelDictionary({ includeDisabled: !!opts?.id });
+  const result = validateBenefitRow(row, { dict, catalog });
+  const report = compileBenefitReport([], [result]);
+  const map = await persistValidatedRow(result, importedBy, opts);
+  return { map, report };
+}
+
+export async function retireBenefitMapRow(id: string, importedBy: string | null) {
+  return upsertBenefitMapRow({ status: "retired" }, importedBy, { id });
+}
+
+export async function deleteBenefitMapRow(id: string) {
+  const r = await query("DELETE FROM release_benefit_map WHERE id = $1 RETURNING id", [id]);
+  if (!r.rows[0]) throw new AppError(404, "NOT_FOUND", "对照行不存在");
+  return { deleted: true, id };
 }

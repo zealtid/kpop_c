@@ -28,12 +28,16 @@ export type BenefitMapRow = {
   mapMode: string;
   evidenceUrl: string | null;
   status: string;
+  groupId?: string;
+  tagsHint?: string | null;
 };
 
 export type BenefitChannel = {
   code: string;
   name_zh: string;
   aliases: string[];
+  enabled?: boolean;
+  sortOrder?: number;
 };
 
 export type BenefitValidateResponse = {
@@ -71,6 +75,52 @@ export async function importBenefits(text: string, tagsStrict: boolean) {
     method: "POST",
     body: JSON.stringify({ text, tagsStrict }),
   });
+}
+
+export async function saveBenefitChannel(editingCode: string | null, body: Record<string, unknown>) {
+  if (editingCode) {
+    return api<BenefitChannel>(`/admin/version-benefit/channels/${encodeURIComponent(editingCode)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  }
+  return api<BenefitChannel>("/admin/version-benefit/channels", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function disableBenefitChannel(code: string) {
+  return api<BenefitChannel>(`/admin/version-benefit/channels/${encodeURIComponent(code)}/disable`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export type BenefitMapPayload = Record<string, unknown>;
+
+export async function saveBenefitMap(editingId: string | null, body: BenefitMapPayload) {
+  if (editingId) {
+    return api<{ map: BenefitMapRow }>(`/admin/version-benefit/maps/${editingId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  }
+  return api<{ map: BenefitMapRow }>("/admin/version-benefit/maps", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function retireBenefitMap(id: string) {
+  return api<{ map: BenefitMapRow }>(`/admin/version-benefit/maps/${id}/retire`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function deleteBenefitMap(id: string) {
+  return api<{ deleted: boolean }>(`/admin/version-benefit/maps/${id}`, { method: "DELETE" });
 }
 
 /** 4xx 时报告在 error.details；成功时在 report。 */

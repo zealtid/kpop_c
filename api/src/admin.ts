@@ -190,6 +190,7 @@ export async function createDraftTemplate(body: {
   name?: string;
   isBenefit?: boolean;
   mainImageUrl?: string | null;
+  imageBack?: string | null;
   code?: string;
 }) {
   if (!body.releaseId || !body.version) throw badRequest("缺少 releaseId / version");
@@ -208,8 +209,8 @@ export async function createDraftTemplate(body: {
   const id = randomUUID();
   try {
     await query(
-      `INSERT INTO templates (id, release_id, member_id, code, name, version, is_benefit, is_deprecated, status, main_image_url, dedupe_key)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,false,'draft',$8,$9)`,
+      `INSERT INTO templates (id, release_id, member_id, code, name, version, is_benefit, is_deprecated, status, main_image_url, image_back, dedupe_key)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,false,'draft',$8,$9,$10)`,
       [
         id,
         body.releaseId,
@@ -219,6 +220,7 @@ export async function createDraftTemplate(body: {
         body.version,
         !!body.isBenefit,
         body.mainImageUrl || null,
+        body.imageBack || null,
         dedupeKey,
       ],
     );
@@ -256,11 +258,12 @@ export async function updateTemplate(
     name?: string;
     isBenefit?: boolean;
     mainImageUrl?: string | null;
+    imageBack?: string | null;
     code?: string;
   },
 ) {
   const current = await query(
-    "SELECT id, release_id, member_id, version, name, is_benefit, main_image_url, code, dedupe_key FROM templates WHERE id = $1",
+    "SELECT id, release_id, member_id, version, name, is_benefit, main_image_url, image_back, code, dedupe_key FROM templates WHERE id = $1",
     [id],
   );
   if (!current.rows[0]) throw notFound("模板不存在");
@@ -286,8 +289,9 @@ export async function updateTemplate(
          name = $5,
          is_benefit = $6,
          main_image_url = $7,
-         code = $8,
-         dedupe_key = $9
+         image_back = $8,
+         code = $9,
+         dedupe_key = $10
        WHERE id = $1`,
       [
         id,
@@ -297,6 +301,7 @@ export async function updateTemplate(
         body.name != null ? String(body.name) : row.name,
         body.isBenefit != null ? !!body.isBenefit : row.is_benefit,
         body.mainImageUrl !== undefined ? body.mainImageUrl || null : row.main_image_url,
+        body.imageBack !== undefined ? body.imageBack || null : row.image_back,
         body.code != null ? String(body.code) : row.code,
         dedupeKey,
       ],

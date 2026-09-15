@@ -57,6 +57,14 @@ export function renderShareLandingHtml(summary: ShareSummary, opts?: { catalogUr
     summary.template?.mainImageUrl
       ? `<img class="card" alt="" src="${escapeHtml(summary.template.mainImageUrl)}"/>`
       : "";
+  const groupLogo = summary.group?.iconUrl || summary.group?.logoUrl
+    ? `<img class="logo" alt="" src="${escapeHtml(String(summary.group.iconUrl || summary.group.logoUrl))}"/>`
+    : summary.group
+      ? `<span class="logo letter" style="background:${escapeHtml(summary.group.logoColor || "#6b5cff")}">${escapeHtml((summary.group.nameZh || "?").slice(0, 1))}</span>`
+      : "";
+  const titleBlock = groupLogo
+    ? `<div class="ident">${groupLogo}<h1>${escapeHtml(h.title)}</h1></div>`
+    : `<h1>${escapeHtml(h.title)}</h1>`;
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -72,6 +80,10 @@ export function renderShareLandingHtml(summary: ShareSummary, opts?: { catalogUr
     .wrap { max-width: 430px; margin: 0 auto; padding: 28px 20px 48px; }
     .brand { color:#6B5CFF; font-weight:700; font-size:14px; letter-spacing:.04em; }
     h1 { font-size: 26px; line-height:1.25; margin: 10px 0 8px; }
+    .ident { display:flex; align-items:center; gap:12px; margin: 10px 0 8px; }
+    .ident h1 { margin:0; }
+    .logo { width:48px; height:48px; border-radius:12px; object-fit:cover; background:#e8e6f2; flex-shrink:0; }
+    .logo.letter { display:inline-flex; align-items:center; justify-content:center; color:#fff; font-weight:700; }
     .sub { color:#667085; font-size:15px; margin:0 0 12px; }
     .note { color:#F79009; font-size:13px; margin:0 0 20px; }
     .card { width:100%; border-radius:12px; display:block; margin: 0 0 16px; background:#fff; }
@@ -90,7 +102,7 @@ export function renderShareLandingHtml(summary: ShareSummary, opts?: { catalogUr
 <body>
   <div class="wrap">
     <div class="brand">星卡 · 小卡图鉴</div>
-    <h1>${escapeHtml(h.title)}</h1>
+    ${titleBlock}
     <p class="sub">${escapeHtml(h.subtitle)}</p>
     ${h.note ? `<p class="note">${escapeHtml(h.note)}</p>` : ""}
     ${img}

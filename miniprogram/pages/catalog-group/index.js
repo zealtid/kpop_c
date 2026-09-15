@@ -1,6 +1,7 @@
 const api = require("../../utils/api");
 const catalogSelect = require("../../utils/catalogSelect");
 const releaseDate = require("../../utils/releaseDate");
+const followPicker = require("../../utils/followPicker");
 
 Page({
   data: { id: "", group: {}, releases: [], selected: [], pageLoading: true, selectMode: false },
@@ -18,7 +19,7 @@ Page({
     api
       .request({ url: `/catalog/groups/${this.data.id}`, auth: false })
       .then((d) => {
-        this.setData({ group: d.group });
+        this.setData({ group: followPicker.withLogo(d.group || {}, api.mediaUrl) });
         const releases = d.releases || [];
         return Promise.all(
           releases.map((r) =>

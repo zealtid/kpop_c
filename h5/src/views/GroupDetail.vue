@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
-import { api, errorMessage } from "../api";
+import { api, errorMessage, mediaUrl } from "../api";
 import { isWeChatBrowser } from "../wechat";
 import AuthBanner from "../components/AuthBanner.vue";
 import WeChatGate from "../components/WeChatGate.vue";
@@ -39,7 +39,11 @@ onMounted(async () => {
   <WeChatGate v-if="!isWeChatBrowser()" />
   <div v-else class="page">
     <a href="#/catalog" class="muted">← 图鉴</a>
-    <h1>{{ group?.nameZh || "组合" }}</h1>
+    <div class="group-ident" style="margin: 12px 0 8px">
+      <img v-if="group?.iconUrl || group?.logoUrl" class="group-logo" :src="mediaUrl(group.iconUrl || group.logoUrl)" alt="" />
+      <span v-else-if="group" class="group-logo letter" :style="{ background: group.logoColor || '#6b5cff' }">{{ (group.nameZh || group.nameEn || "?").slice(0, 1) }}</span>
+      <h1 style="margin: 0">{{ group?.nameZh || "组合" }}</h1>
+    </div>
     <p v-if="group?.scopeNote" class="warn">{{ group.scopeNote }}</p>
     <AuthBanner />
     <p v-if="error" class="warn">{{ error }}</p>

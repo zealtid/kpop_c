@@ -22,10 +22,9 @@ Page({
       const catalog = results[0];
       const follows = results[1];
       const followed = ((follows && follows.groups) || []).map((g) => g.id);
-      const groups = ((catalog && catalog.groups) || []).map((g) => ({
-        ...g,
-        selected: followed.indexOf(g.id) !== -1,
-      }));
+      const groups = ((catalog && catalog.groups) || []).map((g) =>
+        followPicker.withLogo({ ...g, selected: followed.indexOf(g.id) !== -1 }, api.mediaUrl),
+      );
       this.setData({
         groups,
         initialIds: followed.slice(),

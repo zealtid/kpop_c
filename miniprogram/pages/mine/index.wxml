@@ -43,12 +43,19 @@
         <view class="link" bindtap="goFollowManage">管理关注</view>
       </view>
       <view class="avatar-strip">
-        <view
-          wx:for="{{followPreview}}"
-          wx:key="id"
-          class="avatar-dot"
-          style="background: {{item.logoColor}}"
-        >{{item.initial}}</view>
+        <block wx:for="{{followPreview}}" wx:key="id">
+          <image
+            wx:if="{{item.logoSrc}}"
+            class="avatar-dot"
+            src="{{item.logoSrc}}"
+            mode="aspectFill"
+          />
+          <view
+            wx:else
+            class="avatar-dot"
+            style="background: {{item.logoColor}}"
+          >{{item.initial}}</view>
+        </block>
       </view>
     </view>
     <view wx:else class="card">

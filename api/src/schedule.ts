@@ -42,7 +42,7 @@ async function resolveGroupId(idOrSlug: unknown): Promise<string> {
 
 async function hydrateGroup(groupId: string) {
   const r = await query(
-    `SELECT id, slug, name_zh, name_en, name_ko, logo_color, scope_note, is_pilot
+    `SELECT id, slug, name_zh, name_en, name_ko, aliases, logo_color, icon_url, logo_url, scope_note, is_pilot, status, ugc_open
      FROM idol_groups WHERE id = $1`,
     [groupId],
   );

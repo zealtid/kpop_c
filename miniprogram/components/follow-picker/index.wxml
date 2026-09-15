@@ -20,7 +20,8 @@
     data-id="{{item.id}}"
   >
     <view class="left">
-      <view class="dot" style="background: {{item.logoColor}}"></view>
+      <image wx:if="{{item.logoSrc}}" class="dot" src="{{item.logoSrc}}" mode="aspectFill"/>
+      <view wx:else class="dot letter" style="background: {{item.logoColor}}">{{item.initial}}</view>
       <view>
         <view class="name">{{item.nameZh}}</view>
         <view class="en">{{item.nameEn}}</view>

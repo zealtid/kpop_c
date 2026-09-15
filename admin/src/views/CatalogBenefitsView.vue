@@ -6,7 +6,10 @@ import {
   NCard,
   NCheckbox,
   NDataTable,
+  NForm,
+  NFormItem,
   NInput,
+  NModal,
   NSelect,
   NSpace,
   NTag,
@@ -17,9 +20,14 @@ import { errorMessage } from "../api";
 import {
   BENEFIT_CSV_PLACEHOLDER,
   benefitReportFrom,
+  deleteBenefitMap,
+  disableBenefitChannel,
   importBenefits,
   listBenefitChannels,
   listBenefitMaps,
+  retireBenefitMap,
+  saveBenefitChannel,
+  saveBenefitMap,
   validateBenefits,
   type BenefitChannel,
   type BenefitIssue,
@@ -52,6 +60,34 @@ const releaseFilter = ref("");
 const groupFilter = ref("");
 const channels = ref<BenefitChannel[]>([]);
 const fileName = ref("");
+const channelShow = ref(false);
+const channelEditing = ref<BenefitChannel | null>(null);
+const channelForm = ref({ code: "", name_zh: "", aliases: "", enabled: true });
+const mapShow = ref(false);
+const mapEditing = ref<BenefitMapRow | null>(null);
+const mapForm = ref({
+  groupId: "",
+  releaseId: "",
+  versionLabel: "standard",
+  channelCode: "",
+  benefitNameZh: "",
+  mapsToSlotLabels: "",
+  mapMode: "slots",
+  evidenceUrl: "",
+  status: "confirmed",
+  tagsHint: "",
+});
+const formBusy = ref(false);
+
+const MAP_MODE_OPTIONS = [
+  { label: "slots", value: "slots" },
+  { label: "benefit_only", value: "benefit_only" },
+];
+const MAP_STATUS_OPTIONS = [
+  { label: "confirmed", value: "confirmed" },
+  { label: "drafting", value: "drafting" },
+  { label: "retired", value: "retired" },
+];
 
 const canCommit = computed(
   () => !!report.value && report.value.errorCount === 0 && report.value.rowCount > 0 && !committed.value && !busy.value,
@@ -100,6 +136,50 @@ const mapColumns: DataTableColumns<BenefitMapRow> = [
   { title: "卡槽", key: "mapsToSlotLabels", minWidth: 120, render: (row) => row.mapsToSlotLabels || "" },
   { title: "模式", key: "mapMode", width: 100 },
   { title: "状态", key: "status", width: 110, ellipsis: { tooltip: true } },
+  {
+    title: "",
+    key: "actions",
+    width: 200,
+    render: (row) =>
+      h(NSpace, { size: 6 }, {
+        default: () => [
+          h(NButton, { size: "tiny", onClick: () => openMap(row) }, { default: () => "编辑" }),
+          h(NButton, { size: "tiny", disabled: row.status === "retired", onClick: () => void onRetireMap(row) }, { default: () => "停用" }),
+          h(NButton, { size: "tiny", type: "error", onClick: () => void onDeleteMap(row) }, { default: () => "删除" }),
+        ],
+      }),
+  },
+];
+
+const channelColumns: DataTableColumns<BenefitChannel> = [
+  { title: "code", key: "code", width: 140 },
+  { title: "中文名", key: "name_zh", minWidth: 120 },
+  { title: "别名", key: "aliases", minWidth: 160, render: (row) => (row.aliases || []).join(", ") },
+  {
+    title: "状态",
+    key: "enabled",
+    width: 80,
+    render: (row) =>
+      h(NTag, { size: "small", type: row.enabled === false ? "default" : "success", bordered: false }, {
+        default: () => (row.enabled === false ? "停用" : "启用"),
+      }),
+  },
+  {
+    title: "",
+    key: "actions",
+    width: 160,
+    render: (row) =>
+      h(NSpace, { size: 6 }, {
+        default: () => [
+          h(NButton, { size: "tiny", onClick: () => openChannel(row) }, { default: () => "编辑" }),
+          h(
+            NButton,
+            { size: "tiny", disabled: row.enabled === false, onClick: () => void onDisableChannel(row) },
+            { default: () => "停用" },
+          ),
+        ],
+      }),
+  },
 ];
 
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -159,7 +239,7 @@ async function onCommit() {
   written.value = nextWritten;
   committed.value = nextWritten > 0;
   noticeType.value = nextWritten ? "success" : "info";
-  notice.value = nextWritten ? `已写入 ${nextWritten} 条 confirmed 对照（只读）` : "没有可写入的 confirmed 行";
+  notice.value = nextWritten ? `已写入 ${nextWritten} 条 confirmed 对照` : "没有可写入的 confirmed 行";
   if (nextWritten) message.success(notice.value);
   await refreshMaps();
 }
@@ -195,6 +275,133 @@ async function refreshChannels() {
   if (res.status === 200) channels.value = res.body.channels || [];
 }
 
+const channelOptions = computed(() => {
+  const current = mapForm.value.channelCode;
+  return channels.value
+    .filter((c) => c.enabled !== false || c.code === current)
+    .map((c) => ({
+      label: `${c.code} · ${c.name_zh}${c.enabled === false ? "（停用）" : ""}`,
+      value: c.code,
+    }));
+});
+
+const mapReleaseOptions = computed(() => {
+  const list = mapForm.value.groupId
+    ? props.releases.filter((r) => r.groupId === mapForm.value.groupId)
+    : props.releases;
+  return list.map((r) => ({
+    label: r.groupNameZh ? `${r.groupNameZh} · ${r.title}` : r.title,
+    value: r.id,
+  }));
+});
+
+function openChannel(row: BenefitChannel | null) {
+  channelEditing.value = row;
+  channelForm.value = {
+    code: row?.code || "",
+    name_zh: row?.name_zh || "",
+    aliases: (row?.aliases || []).join(", "),
+    enabled: row?.enabled !== false,
+  };
+  channelShow.value = true;
+}
+
+async function onSaveChannel() {
+  formBusy.value = true;
+  const res = await saveBenefitChannel(channelEditing.value?.code || null, {
+    code: channelForm.value.code,
+    name_zh: channelForm.value.name_zh,
+    aliases: channelForm.value.aliases,
+    enabled: channelForm.value.enabled,
+  });
+  formBusy.value = false;
+  if (res.status !== 200) {
+    message.error(errorMessage(res.body, "通路保存失败"));
+    return;
+  }
+  channelShow.value = false;
+  message.success(channelEditing.value ? "通路已保存" : "通路已创建");
+  await refreshChannels();
+}
+
+async function onDisableChannel(row: BenefitChannel) {
+  formBusy.value = true;
+  const res = await disableBenefitChannel(row.code);
+  formBusy.value = false;
+  if (res.status !== 200) {
+    message.error(errorMessage(res.body, "停用失败"));
+    return;
+  }
+  message.success(`已停用 ${row.code}`);
+  await refreshChannels();
+}
+
+function openMap(row: BenefitMapRow | null) {
+  mapEditing.value = row;
+  const release = props.releases.find((r) => r.id === row?.releaseId);
+  mapForm.value = {
+    groupId: row?.groupId || release?.groupId || groupFilter.value || props.groups[0]?.id || "",
+    releaseId: row?.releaseId || releaseFilter.value || "",
+    versionLabel: row?.versionLabel || "standard",
+    channelCode: row?.channelCode || channels.value.find((c) => c.enabled !== false)?.code || "",
+    benefitNameZh: row?.benefitNameZh || "",
+    mapsToSlotLabels: row?.mapsToSlotLabels || "",
+    mapMode: row?.mapMode || "slots",
+    evidenceUrl: row?.evidenceUrl || "",
+    status: row?.status || "confirmed",
+    tagsHint: row?.tagsHint || "",
+  };
+  mapShow.value = true;
+}
+
+async function onSaveMap() {
+  formBusy.value = true;
+  const res = await saveBenefitMap(mapEditing.value?.id || null, {
+    groupId: mapForm.value.groupId,
+    releaseId: mapForm.value.releaseId,
+    versionLabel: mapForm.value.versionLabel,
+    channelCode: mapForm.value.channelCode,
+    benefitNameZh: mapForm.value.benefitNameZh,
+    mapsToSlotLabels: mapForm.value.mapsToSlotLabels,
+    mapMode: mapForm.value.mapMode,
+    evidenceUrl: mapForm.value.evidenceUrl,
+    status: mapForm.value.status,
+    tagsHint: mapForm.value.tagsHint,
+  });
+  formBusy.value = false;
+  if (res.status !== 200) {
+    message.error(errorMessage(res.body, "对照保存失败"));
+    return;
+  }
+  mapShow.value = false;
+  message.success(mapEditing.value ? "对照已保存" : "对照已创建");
+  await refreshMaps();
+}
+
+async function onRetireMap(row: BenefitMapRow) {
+  formBusy.value = true;
+  const res = await retireBenefitMap(row.id);
+  formBusy.value = false;
+  if (res.status !== 200) {
+    message.error(errorMessage(res.body, "停用失败"));
+    return;
+  }
+  message.success("已停用该对照");
+  await refreshMaps();
+}
+
+async function onDeleteMap(row: BenefitMapRow) {
+  formBusy.value = true;
+  const res = await deleteBenefitMap(row.id);
+  formBusy.value = false;
+  if (res.status !== 200) {
+    message.error(errorMessage(res.body, "删除失败"));
+    return;
+  }
+  message.success("已删除对照行");
+  await refreshMaps();
+}
+
 watch([releaseFilter, groupFilter], () => {
   void refreshMaps();
 });
@@ -208,13 +415,22 @@ onMounted(() => {
 <template>
   <div class="b2-page" :class="{ narrow: isNarrow }">
   <p class="muted">
-    上传运营 Sheet/CSV，按行校验通路词典与卡槽。只把校验通过的
-    <code>confirmed</code> 行只读落库；<strong>不会</strong>自动 published 无图 Template，也不改图鉴导入。
-    词典与别名由 API 处理。
+    <strong>通路词典</strong>优先：增改 / 软禁用后，C 端图鉴搜索可用通路中文名与别名找特典。
+    B2 的 CSV 校验与写入路径不变；对照单行修补为次要，不是矩阵 CMS。
   </p>
   <n-alert v-if="notice" :type="noticeType" :show-icon="false" class="block">{{ notice }}</n-alert>
 
+  <n-card size="small" title="通路词典" class="report">
+    <p class="muted">启用中的通路参与 CSV 校验与 C 端特典搜索；停用后新校验不再认该 code，已落库对照保留。</p>
+    <n-button size="small" type="primary" class="block" @click="openChannel(null)">新增通路</n-button>
+    <div v-if="channels.length" class="table-wrap">
+      <n-data-table :columns="channelColumns" :data="channels" :pagination="false" :scroll-x="720" :row-key="(row: BenefitChannel) => row.code" />
+    </div>
+    <p v-else class="muted">还没有通路词条。</p>
+  </n-card>
+
   <div class="benefit-form">
+    <p class="muted"><strong>CSV 导入（B2）</strong>：按行校验通路词典与卡槽。只把校验通过的 <code>confirmed</code> 行落库；不会自动 published 无图 Template。</p>
     <label class="label">CSV 文件</label>
     <div class="file-row">
       <input
@@ -252,15 +468,6 @@ onMounted(() => {
     </n-space>
   </div>
 
-  <n-card v-if="channels.length" size="small" title="通路词典（只读 · API）" class="report">
-    <p class="muted">别名归一由后端完成，前端不改词典。</p>
-    <div class="channels">
-      <n-tag v-for="ch in channels" :key="ch.code" size="small" :bordered="false">
-        {{ ch.code }} · {{ ch.name_zh }}
-      </n-tag>
-    </div>
-  </n-card>
-
   <n-card v-if="report" size="small" title="校验报告" class="report">
     <p>
       <span :class="report.ok && report.errorCount === 0 ? 'ok' : 'bad'">
@@ -287,7 +494,8 @@ onMounted(() => {
     <p v-else class="muted">没有问题项</p>
   </n-card>
 
-  <n-card size="small" title="已落库对照（只读）" class="report">
+  <n-card size="small" title="已落库对照（次要）" class="report">
+    <p class="muted">浏览 CSV 写入结果。单行增改不是主路径，勿当矩阵 CMS 使用。</p>
     <div class="filters" :class="{ stacked: isNarrow }">
       <div class="filter">
         <label class="label">按发行过滤</label>
@@ -298,6 +506,7 @@ onMounted(() => {
         <n-select v-model:value="groupFilter" :options="groupOptions" />
       </div>
     </div>
+    <n-button size="small" type="primary" class="block" @click="openMap(null)">新增对照行</n-button>
     <n-alert v-if="mapsDeny" type="error" :show-icon="false" class="block">{{ mapsDeny }}</n-alert>
     <p v-else-if="mapsLoading" class="muted">加载对照表…</p>
     <div v-if="maps.length" class="map-cards narrow-only">
@@ -306,13 +515,90 @@ onMounted(() => {
         <p class="card-meta">{{ row.groupSlug }} · {{ row.releaseTitle }} · {{ row.versionLabel }}</p>
         <p class="card-meta">{{ row.channelCode }} · {{ row.mapMode }} · {{ row.status }}</p>
         <p v-if="row.mapsToSlotLabels" class="card-meta">卡槽 {{ row.mapsToSlotLabels }}</p>
+        <n-space :size="6" style="margin-top: 8px">
+          <n-button size="tiny" @click="openMap(row)">编辑</n-button>
+          <n-button size="tiny" :disabled="row.status === 'retired'" @click="onRetireMap(row)">停用</n-button>
+          <n-button size="tiny" type="error" @click="onDeleteMap(row)">删除</n-button>
+        </n-space>
       </n-card>
     </div>
     <div v-if="maps.length" class="table-wrap wide-only">
-      <n-data-table :columns="mapColumns" :data="maps" :pagination="false" :scroll-x="960" :row-key="(row: BenefitMapRow) => row.id" />
+      <n-data-table :columns="mapColumns" :data="maps" :pagination="false" :scroll-x="1140" :row-key="(row: BenefitMapRow) => row.id" />
     </div>
-    <p v-if="!mapsDeny && !mapsLoading && !maps.length" class="muted">还没有 confirmed 对照。校验通过后可写入。</p>
+    <p v-if="!mapsDeny && !mapsLoading && !maps.length" class="muted">还没有对照。可校验 CSV 后写入，或点「新增对照行」。</p>
   </n-card>
+
+  <n-modal
+    :show="channelShow"
+    preset="card"
+    :title="channelEditing ? '编辑通路' : '新增通路'"
+    :style="{ width: 'min(440px, calc(100vw - 24px))' }"
+    @update:show="channelShow = $event"
+  >
+    <n-form>
+      <n-form-item label="code" required>
+        <n-input v-model:value="channelForm.code" :disabled="!!channelEditing" placeholder="weverse" />
+      </n-form-item>
+      <n-form-item label="中文名" required>
+        <n-input v-model:value="channelForm.name_zh" />
+      </n-form-item>
+      <n-form-item label="别名（逗号分隔）">
+        <n-input v-model:value="channelForm.aliases" />
+      </n-form-item>
+      <n-form-item>
+        <n-checkbox v-model:checked="channelForm.enabled">启用</n-checkbox>
+      </n-form-item>
+      <n-space justify="end">
+        <n-button :disabled="formBusy" @click="channelShow = false">取消</n-button>
+        <n-button type="primary" :loading="formBusy" @click="onSaveChannel">保存</n-button>
+      </n-space>
+    </n-form>
+  </n-modal>
+
+  <n-modal
+    :show="mapShow"
+    preset="card"
+    :title="mapEditing ? '编辑对照' : '新增对照行'"
+    :style="{ width: 'min(520px, calc(100vw - 24px))' }"
+    @update:show="mapShow = $event"
+  >
+    <n-form>
+      <n-form-item label="组合" required>
+        <n-select v-model:value="mapForm.groupId" :options="groupOptions.filter((o) => o.value)" />
+      </n-form-item>
+      <n-form-item label="发行" required>
+        <n-select v-model:value="mapForm.releaseId" :options="mapReleaseOptions" />
+      </n-form-item>
+      <n-form-item label="version_label" required>
+        <n-input v-model:value="mapForm.versionLabel" />
+      </n-form-item>
+      <n-form-item label="通路" required>
+        <n-select v-model:value="mapForm.channelCode" :options="channelOptions" filterable />
+      </n-form-item>
+      <n-form-item label="特典名" required>
+        <n-input v-model:value="mapForm.benefitNameZh" />
+      </n-form-item>
+      <n-form-item label="卡槽（分号分隔）">
+        <n-input v-model:value="mapForm.mapsToSlotLabels" />
+      </n-form-item>
+      <n-form-item label="map_mode" required>
+        <n-select v-model:value="mapForm.mapMode" :options="MAP_MODE_OPTIONS" />
+      </n-form-item>
+      <n-form-item label="evidence_url">
+        <n-input v-model:value="mapForm.evidenceUrl" placeholder="https://..." />
+      </n-form-item>
+      <n-form-item label="status" required>
+        <n-select v-model:value="mapForm.status" :options="MAP_STATUS_OPTIONS" />
+      </n-form-item>
+      <n-form-item label="tags_hint">
+        <n-input v-model:value="mapForm.tagsHint" />
+      </n-form-item>
+      <n-space justify="end">
+        <n-button :disabled="formBusy" @click="mapShow = false">取消</n-button>
+        <n-button type="primary" :loading="formBusy" @click="onSaveMap">保存</n-button>
+      </n-space>
+    </n-form>
+  </n-modal>
   </div>
 </template>
 

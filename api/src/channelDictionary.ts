@@ -1,11 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { query } from "./db.js";
+import { AppError, badRequest, notFound } from "./errors.js";
 
 export type ChannelDef = {
   code: string;
   name_zh: string;
   aliases: string[];
+  enabled?: boolean;
+  sortOrder?: number;
 };
 
 export type ChannelDictionary = {
@@ -92,4 +96,147 @@ export function normalizeChannelCode(raw: string, dict?: ChannelDictionary): str
 
 export function isUnknownChannel(code: string | null | undefined) {
   return (code || "").trim().toLowerCase() === "unknown";
+}
+
+/** Expand a C-end search token with matching enabled-channel code / 中文名 / aliases. */
+export function expandChannelSearchTokens(token: string, dict: ChannelDictionary): string[] {
+  const key = token.trim().toLowerCase();
+  if (key.length < 2) return [];
+  const extra: string[] = [];
+  for (const ch of dict.channels) {
+    if (ch.enabled === false) continue;
+    const names = [ch.code, ch.name_zh, ...(ch.aliases || [])].map((n) => String(n || "").trim()).filter(Boolean);
+    const hit = names.some((n) => {
+      const s = n.toLowerCase();
+      return s === key || s.includes(key) || (s.length >= 2 && key.includes(s));
+    });
+    if (hit) extra.push(...names);
+  }
+  return extra;
+}
+
+const CODE_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function isPgUniqueViolation(err: unknown): boolean {
+  return typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23505";
+}
+
+function mapDbChannel(row: Record<string, unknown>): ChannelDef {
+  const aliases = Array.isArray(row.aliases) ? row.aliases.map((a) => String(a)) : [];
+  return {
+    code: String(row.code),
+    name_zh: String(row.name_zh),
+    aliases,
+    enabled: row.enabled !== false,
+    sortOrder: Number(row.sort_order || 0),
+  };
+}
+
+function slugCode(raw: unknown) {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function parseAliases(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map((a) => String(a).trim()).filter(Boolean);
+  if (raw == null || raw === "") return [];
+  return String(raw)
+    .split(/[,，]/)
+    .map((a) => a.trim())
+    .filter(Boolean);
+}
+
+/** Prefer DB (seeded from fixtures). Empty table falls back to in-repo JSON. */
+export async function loadRuntimeChannelDictionary(opts?: {
+  includeDisabled?: boolean;
+}): Promise<ChannelDictionary> {
+  try {
+    const where = opts?.includeDisabled ? "" : "WHERE enabled = true";
+    const r = await query(
+      `SELECT code, name_zh, aliases, enabled, sort_order
+       FROM channel_dictionary ${where}
+       ORDER BY sort_order, code`,
+    );
+    if (r.rowCount) {
+      return { channels: r.rows.map(mapDbChannel) };
+    }
+  } catch {
+    // 迁移未落地时回退 JSON，避免校验脚本中断
+  }
+  const file = loadChannelDictionary();
+  return {
+    channels: file.channels.map((c) => ({ ...c, enabled: true })),
+  };
+}
+
+export async function seedChannelDictionaryFromFixture() {
+  const dict = loadChannelDictionary();
+  for (const [i, ch] of dict.channels.entries()) {
+    await query(
+      `INSERT INTO channel_dictionary (code, name_zh, aliases, enabled, sort_order)
+       VALUES ($1,$2,$3,true,$4)
+       ON CONFLICT (code) DO NOTHING`,
+      [ch.code, ch.name_zh, ch.aliases, i],
+    );
+  }
+}
+
+export async function createChannelEntry(body: Record<string, unknown>) {
+  const code = slugCode(body.code);
+  if (!code || !CODE_RE.test(code)) throw badRequest("code 须为小写字母、数字与连字符");
+  const nameZh = String(body.name_zh ?? body.nameZh ?? "").trim();
+  if (!nameZh) throw badRequest("name_zh 不能为空");
+  const aliases = parseAliases(body.aliases);
+  const sortOrder = Number.isInteger(Number(body.sortOrder)) ? Number(body.sortOrder) : 0;
+  try {
+    await query(
+      `INSERT INTO channel_dictionary (code, name_zh, aliases, enabled, sort_order)
+       VALUES ($1,$2,$3,true,$4)`,
+      [code, nameZh, aliases, sortOrder],
+    );
+  } catch (err) {
+    if (isPgUniqueViolation(err)) throw new AppError(409, "DUPLICATE_CHANNEL", "通路 code 已存在");
+    throw err;
+  }
+  return getChannelEntry(code);
+}
+
+export async function getChannelEntry(codeRaw: string) {
+  const code = slugCode(codeRaw);
+  const r = await query(
+    `SELECT code, name_zh, aliases, enabled, sort_order FROM channel_dictionary WHERE code = $1`,
+    [code],
+  );
+  if (!r.rows[0]) throw notFound("通路不存在");
+  return mapDbChannel(r.rows[0]);
+}
+
+export async function updateChannelEntry(codeRaw: string, body: Record<string, unknown>) {
+  const row = await getChannelEntry(codeRaw);
+  const nameZh =
+    body.name_zh != null || body.nameZh != null
+      ? String(body.name_zh ?? body.nameZh ?? "").trim()
+      : row.name_zh;
+  if (!nameZh) throw badRequest("name_zh 不能为空");
+  const aliases = body.aliases !== undefined ? parseAliases(body.aliases) : row.aliases;
+  const enabled = body.enabled != null ? !!body.enabled : row.enabled !== false;
+  const sortOrder =
+    body.sortOrder != null && Number.isInteger(Number(body.sortOrder))
+      ? Number(body.sortOrder)
+      : (row.sortOrder ?? 0);
+  await query(
+    `UPDATE channel_dictionary SET
+       name_zh = $2, aliases = $3, enabled = $4, sort_order = $5, updated_at = now()
+     WHERE code = $1`,
+    [row.code, nameZh, aliases, enabled, sortOrder],
+  );
+  return getChannelEntry(row.code);
+}
+
+/** Soft-disable. Maps that already used this code stay; 新校验不再认该通路。 */
+export async function disableChannelEntry(codeRaw: string) {
+  return updateChannelEntry(codeRaw, { enabled: false });
 }

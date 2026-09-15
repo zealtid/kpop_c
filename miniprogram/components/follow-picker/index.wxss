@@ -49,6 +49,17 @@
   height: 72rpx;
   border-radius: 20rpx;
   flex-shrink: 0;
+  background: var(--color-bg-muted);
+  object-fit: cover;
+}
+
+.dot.letter {
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .name {
