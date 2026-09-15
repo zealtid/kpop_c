@@ -11,7 +11,9 @@ test("sheet lists library options with search and 其他/手填", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   const js = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
-  assert.match(wxml, /选择通路 \/ 特典/);
+  assert.match(wxml, /选择特典/);
+  assert.doesNotMatch(wxml, /选择通路 \/ 特典/);
+  assert.match(wxml, /仅显示图鉴库里已有的特典/);
   assert.match(wxml, /bindinput="onQuery"/);
   assert.match(wxml, /wx:for="\{\{hits\}\}"/);
   assert.match(wxml, /wx:key="key"/);

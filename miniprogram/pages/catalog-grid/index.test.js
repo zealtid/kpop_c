@@ -25,6 +25,7 @@ test("entry copy and 4/9 picker", () => {
 test("confirm has adjust/delete/rotate and no private-only", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "confirm.wxml"), "utf8");
   const js = fs.readFileSync(path.join(__dirname, "confirm.js"), "utf8");
+  const wxss = fs.readFileSync(path.join(__dirname, "confirm.wxss"), "utf8");
   assert.match(wxml, /rotateSelected/);
   assert.match(wxml, /deleteSelected/);
   assert.match(wxml, /onHandleStart/);
@@ -32,6 +33,10 @@ test("confirm has adjust/delete/rotate and no private-only", () => {
   assert.match(wxml, /提交进度/);
   assert.match(wxml, /channel-picker/);
   assert.match(wxml, /openChannelPicker/);
+  assert.match(wxml, /点选库里的特典/);
+  assert.doesNotMatch(wxml, /通路 \/ 特典/);
+  assert.match(wxml, /class="channel-ph"/);
+  assert.match(wxss, /\.channel-field \{[\s\S]*?height:\s*72rpx/);
   assert.doesNotMatch(wxml, /仅私人|私人保存/);
   assert.match(js, /matchOwnIfDuplicate:\s*true/);
   assert.match(js, /source:\s*"grid_page"/);

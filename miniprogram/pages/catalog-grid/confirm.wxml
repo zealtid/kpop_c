@@ -76,10 +76,10 @@
     </view>
     <view class="label sub-label">名称/别称</view>
     <input class="box input" value="{{selected.slotLabel}}" bindinput="onSlot" maxlength="80"/>
-    <view class="label sub-label">通路 / 特典</view>
+    <view class="label sub-label">特典</view>
     <view class="box channel-field" bindtap="openChannelPicker">
       <text wx:if="{{channelDisplay}}">{{channelDisplay}}</text>
-      <text wx:else class="ph">点选库里的通路 / 特典</text>
+      <text wx:else class="channel-ph">点选库里的特典</text>
     </view>
     <channel-picker
       show="{{channelPickerOpen}}"
