@@ -56,7 +56,7 @@
 | `catalog_submissions.points_awarded` | 本条首次通过实记分数；存量 approved 保持 0 |
 | `contribution_point_events` | 流水；`UNIQUE(submission_id)` |
 
-迁移：`api/migrations/014_contribution_points.sql`
+迁移：`api/migrations/015_contribution_points.sql`（`014` 为 UGC-2b 宫格来源）
 
 ---
 
@@ -76,6 +76,6 @@
 ## 6. 发版时交给项目总监
 
 1. PR 链接 + 自检 P3-01…06  
-2. 迁移 `014_contribution_points.sql`（无历史回填）  
+2. 迁移 `015_contribution_points.sql`（无历史回填；`014` 已是 UGC-2b）  
 3. 可选环境变量 `CONTRIBUTION_POINTS_PER_APPROVED_CARD`（默认 1）  
 4. 回滚：drop 新表/列；已记分用户需人工核对（本切片无支付，可接受）
