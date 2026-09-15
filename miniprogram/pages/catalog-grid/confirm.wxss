@@ -27,13 +27,18 @@
 .warn {
   border: 1rpx solid var(--color-warning);
 }
+/* 与 .input 同高；勿用全局 .ph（竖图 padding-top:154%） */
 .channel-field {
+  height: 72rpx;
   min-height: 72rpx;
+  padding: 0 16rpx;
   display: flex;
   align-items: center;
+  box-sizing: border-box;
 }
-.channel-field .ph {
+.channel-field .channel-ph {
   color: var(--color-text-tertiary);
+  line-height: 1.4;
 }
 .pick-row {
   margin-top: 16rpx;

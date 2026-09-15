@@ -74,7 +74,7 @@ test("submit without agreement toasts", () => {
   assert.equal(toasts[0].title, "请先勾选协议");
 });
 
-test("wxml uses 名称/别称, agreement checkbox, and 通路 picker sheet", () => {
+test("wxml uses 名称/别称, agreement checkbox, and 特典 picker sheet", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   const json = JSON.parse(fs.readFileSync(path.join(__dirname, "index.json"), "utf8"));
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
@@ -84,7 +84,9 @@ test("wxml uses 名称/别称, agreement checkbox, and 通路 picker sheet", () 
   assert.match(wxml, /bindtap="toggleAgree"/);
   assert.match(wxml, /channel-picker/);
   assert.match(wxml, /openChannelPicker/);
-  assert.match(wxml, /点选库里的通路 \/ 特典/);
+  assert.match(wxml, /点选库里的特典/);
+  assert.doesNotMatch(wxml, /通路 \/ 特典/);
+  assert.match(wxml, /class="channel-ph"/);
   assert.doesNotMatch(wxml, /bindinput="onChannelQ"/);
   assert.match(wxml, /class="faces-row"/);
   assert.match(wxml, /class="face-col"/);
@@ -93,6 +95,8 @@ test("wxml uses 名称/别称, agreement checkbox, and 通路 picker sheet", () 
   assert.match(wxss, /display:\s*flex/);
   assert.match(wxss, /\.chips/);
   assert.match(wxss, /\.box/);
+  assert.match(wxss, /\.channel-field \{[\s\S]*?height:\s*72rpx/);
+  assert.match(wxss, /\.channel-ph/);
   assert.equal(json.usingComponents["channel-picker"], "/components/channel-picker/index");
 });
 
