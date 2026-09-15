@@ -1,4 +1,8 @@
 {
   "navigationBarTitleText": "确认宫格",
-  "disableScroll": false
+  "disableScroll": false,
+  "backgroundColor": "#F4F5F9",
+  "backgroundColorContent": "#F4F5F9",
+  "backgroundColorTop": "#FFFFFF",
+  "backgroundColorBottom": "#F4F5F9"
 }

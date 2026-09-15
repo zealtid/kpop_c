@@ -1,6 +1,7 @@
 const api = require("../../utils/api");
 const analytics = require("../../utils/analytics");
 const followPicker = require("../../utils/followPicker");
+const nav = require("../../utils/navigate");
 
 Page({
   data: {
@@ -46,7 +47,7 @@ Page({
     if (this.data.saving) return;
     const groupIds = followPicker.selectedIds(this.data.groups);
     if (followPicker.sameIdSet(groupIds, this.data.initialIds)) {
-      wx.navigateBack();
+      nav.navigateBack();
       return;
     }
     this.setData({ saving: true });
@@ -54,7 +55,7 @@ Page({
       .request({ url: "/me/follows", method: "PUT", data: { groupIds } })
       .then(() => {
         analytics.track("follow_set", { groupIds, n: groupIds.length, source: "manage" });
-        wx.navigateBack();
+        nav.navigateBack();
       })
       .catch((err) => {
         this.setData({ saving: false });

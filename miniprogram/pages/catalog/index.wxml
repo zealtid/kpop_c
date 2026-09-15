@@ -9,7 +9,7 @@
   </view>
   <view wx:if="{{pageLoading}}" class="page-loading">加载中…</view>
 
-  <view wx:for="{{groups}}" wx:key="id" class="card" bindtap="openGroup" data-id="{{item.slug}}">
+  <view wx:for="{{groups}}" wx:key="id" class="card" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="openGroup" data-id="{{item.slug}}">
     <view class="row">
       <view class="group-ident">
         <image wx:if="{{item.logoSrc}}" class="group-logo" src="{{item.logoSrc}}" mode="aspectFill"/>

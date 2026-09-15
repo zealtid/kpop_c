@@ -1,6 +1,7 @@
 const api = require("../../utils/api");
 const session = require("../../utils/session");
 const followPicker = require("../../utils/followPicker");
+const nav = require("../../utils/navigate");
 
 Page({
   data: {
@@ -65,7 +66,7 @@ Page({
   },
 
   goFollowManage() {
-    wx.navigateTo({ url: "/pages/follow-manage/index" });
+    nav.navigateTo({ url: "/pages/follow-manage/index" });
   },
 
   doLogin() {

@@ -2,6 +2,7 @@ const api = require("../../utils/api");
 const gridDetect = require("../../utils/gridDetect");
 const gridSession = require("../../utils/gridSession");
 const compressImage = require("../../utils/compressImage");
+const nav = require("../../utils/navigate");
 
 function readBase64(filePath) {
   return new Promise((resolve, reject) => {
@@ -167,7 +168,7 @@ Page({
       fromServer,
     });
     this.setData({ busy: false, busyText: "" });
-    wx.navigateTo({ url: "/pages/catalog-grid/confirm" });
+    nav.navigateTo({ url: "/pages/catalog-grid/confirm" });
   },
   degrade(message) {
     this.setData({ busy: false, busyText: "", failHint: message || "切分失败" });

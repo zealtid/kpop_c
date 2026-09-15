@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const nav = require("../../utils/navigate");
 
 Page({
   data: { q: "", templates: [], selected: [], empty: false, pageLoading: false, selectMode: false },
@@ -11,7 +12,7 @@ Page({
     this.search();
   },
   goFeedback() {
-    wx.navigateTo({ url: "/pages/feedback/index" });
+    nav.navigateTo({ url: "/pages/feedback/index" });
   },
   enterSelect() {
     this.setData({ selectMode: true });
@@ -27,7 +28,7 @@ Page({
     }
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    wx.navigateTo({ url: `/pages/card-detail/index?id=${id}&from=catalog` });
+    nav.navigateTo({ url: `/pages/card-detail/index?id=${id}&from=catalog` });
   },
   search() {
     const q = this.data.q;

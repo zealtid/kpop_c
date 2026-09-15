@@ -25,10 +25,10 @@
         <view>{{item.title}}</view>
         <view class="muted">{{item.releasedOnLabel}} · {{item.kind}}</view>
       </view>
-      <view class="muted" catchtap="openRelease" data-id="{{item.id}}">特典对照 →</view>
+      <view class="muted" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" catchtap="openRelease" data-id="{{item.id}}">特典对照 →</view>
     </view>
     <view class="grid3" style="margin-top:16rpx">
-      <view class="tile" wx:for="{{item.templates}}" wx:for-item="t" wx:key="id" bindtap="onTileTap" data-id="{{t.id}}">
+      <view class="tile" wx:for="{{item.templates}}" wx:for-item="t" wx:key="id" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="onTileTap" data-id="{{t.id}}">
         <view class="ph {{selectMode && t.on ? 'sel' : ''}}" style="background: {{t.memberColor}}">
           <image wx:if="{{t.mainImageUrl}}" src="{{t.mainImageUrl}}" mode="aspectFill"/>
           <view wx:if="{{t.isBenefit}}" class="benefit-badge">特典</view>
