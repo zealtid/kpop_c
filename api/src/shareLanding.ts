@@ -80,7 +80,7 @@ export function renderShareLandingHtml(summary: ShareSummary, opts?: { catalogUr
       border:0; width:100%; border-radius:12px; padding:14px 16px; font-size:16px; font-weight:600; }
     .ghost { display:block; text-align:center; margin-top:12px; color:#6B5CFF; text-decoration:none; font-size:14px; }
     .fallback { margin-top:20px; background:#fff; border-radius:12px; padding:14px 16px; font-size:13px; color:#667085; }
-    .path { word-break:break-all; color:#1A1B1F; margin-top:6px; }
+    .path { word-break:break-all; color:#1A1B1F; margin-top:6px; user-select:all; -webkit-user-select:all; }
     .hint { margin-top:16px; font-size:13px; color:#667085; }
   </style>
 </head>
@@ -95,29 +95,60 @@ export function renderShareLandingHtml(summary: ShareSummary, opts?: { catalogUr
     <button class="cta" type="button" id="openMini">${escapeHtml(summary.cta.title)}</button>
     ${catalogLink}
     <div class="fallback">
-      打不开时，请用微信扫描分享图上的二维码，或在小程序中打开：
+      微信内打不开时：长按下方路径复制，打开微信搜索「星卡」小程序后粘贴；或扫描分享图上的小程序码。
       <div class="path" id="miniPath">${escapeHtml(miniPath)}</div>
       <a class="ghost" href="#" id="copyPath">复制小程序路径</a>
+      <p class="hint" id="schemeMiss" style="display:none">若未自动跳转，请用上方复制/长按路径，或扫描分享图二维码。</p>
     </div>
     <p class="hint">${escapeHtml(summary.cta.hint)}</p>
   </div>
   <script>
     var scheme = ${JSON.stringify(scheme)};
     var path = ${JSON.stringify(miniPath)};
+    function copyFallback() {
+      var el = document.createElement("textarea");
+      el.value = path;
+      el.setAttribute("readonly", "true");
+      el.style.position = "fixed";
+      el.style.left = "-9999px";
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(el);
+    }
+    function showMiss() {
+      var n = document.getElementById("schemeMiss");
+      if (n) n.style.display = "block";
+    }
     document.getElementById("openMini").onclick = function () {
+      var wxMini = window.wx && window.wx.miniProgram;
+      if (wxMini && wxMini.navigateTo) {
+        wxMini.navigateTo({ url: path.indexOf("/") === 0 ? path : "/" + path });
+        return;
+      }
       if (scheme) {
-        window.location.href = scheme;
+        var a = document.createElement("a");
+        a.href = scheme;
+        a.rel = "noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { try { window.location.href = scheme; } catch (e) {} }, 80);
+        setTimeout(showMiss, 1600);
         return;
       }
       document.getElementById("copyPath").click();
-      alert("请使用微信打开星卡小程序");
     };
     document.getElementById("copyPath").onclick = function (e) {
       e.preventDefault();
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(path);
+        navigator.clipboard.writeText(path).catch(copyFallback);
+      } else {
+        copyFallback();
       }
-      alert("已复制小程序路径");
+      showMiss();
+      alert("已复制小程序路径，请打开微信搜索「星卡」后粘贴");
     };
   </script>
 </body>

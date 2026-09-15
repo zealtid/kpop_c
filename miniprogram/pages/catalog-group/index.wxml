@@ -2,6 +2,7 @@
   <view class="h1">{{group.nameZh}}</view>
   <view wx:if="{{group.scopeNote}}" class="footnote">{{group.scopeNote}}</view>
   <input class="search" placeholder="在本组内搜索" placeholder-style="color:#98A2B3" confirm-type="search" bindconfirm="onSearch"/>
+  <view wx:if="{{pageLoading}}" class="page-loading">加载中…</view>
 
   <view class="row batch-bar">
     <view class="muted">已选 {{selected.length}}</view>

@@ -4,6 +4,7 @@
     <view class="muted">已选 {{selected.length}}</view>
     <view class="btn slim" bindtap="batchOwn">批量拥有</view>
   </view>
+  <view wx:if="{{pageLoading}}" class="page-loading">加载中…</view>
   <view wx:if="{{empty}}" class="empty-state">
     <view class="empty-title">没有匹配模板</view>
     <view class="empty-sub">找不到想要的卡时，可以反馈缺卡。</view>

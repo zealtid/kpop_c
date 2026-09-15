@@ -218,6 +218,10 @@ Page({
       return;
     }
     this.setData({ saving: true });
+    if (typeof wx.showLoading === "function") wx.showLoading({ title: "保存中", mask: true });
+    const hidePending = () => {
+      if (typeof wx.hideLoading === "function") wx.hideLoading();
+    };
     wx.getFileSystemManager().readFile({
       filePath,
       encoding: "base64",
@@ -241,16 +245,17 @@ Page({
             },
           })
           .then(() => {
-            this.setData({ saving: false });
             wx.showToast({ title: `已加入${customCard.CUSTOM_BADGE}` });
             setTimeout(() => wx.navigateBack(), 400);
           })
           .catch((err) => {
+            hidePending();
             this.setData({ saving: false });
             api.handleWriteError(err);
           });
       },
       fail: () => {
+        hidePending();
         this.setData({ saving: false });
         wx.showToast({ title: "读取图片失败", icon: "none" });
       },

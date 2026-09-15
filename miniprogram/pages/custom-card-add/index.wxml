@@ -104,6 +104,6 @@
     <textarea class="box" maxlength="500" value="{{note}}" bindinput="onNote" placeholder="仅自己可见"/>
   </view>
 
-  <view class="btn {{saving?'off':''}}" bindtap="save">保存到卡册</view>
+  <view class="btn {{saving?'off':''}}" bindtap="save">{{saving ? '保存中…' : '保存到卡册'}}</view>
   <view class="btn ghost" bindtap="applyCatalog">申请入库</view>
 </view>

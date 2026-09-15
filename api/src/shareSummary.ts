@@ -67,7 +67,7 @@ function miniLink(page: string, query: string): ShareMiniLink {
 export function shareCta() {
   return {
     title: "打开星卡小程序",
-    hint: "微信扫码或复制路径，在小程序中查看完整图鉴与卡册",
+    hint: "打不开时请长按复制路径，微信搜索「星卡」后粘贴；或扫描分享图二维码",
     urlScheme: config.wxUrlScheme || null,
     ghId: config.wxMiniGhId || null,
   };

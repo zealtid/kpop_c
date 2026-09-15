@@ -10,6 +10,7 @@ Page({
     selectedVersion: "",
     rows: [],
     visibleRows: [],
+    pageLoading: true,
     empty: false,
     emptyCopy: benefitMatrix.EMPTY_COPY,
     footnote: "",
@@ -21,6 +22,8 @@ Page({
   },
   load() {
     if (!this.data.id) return;
+    this.setData({ pageLoading: true });
+    if (typeof wx.showLoading === "function") wx.showLoading({ title: "加载中", mask: true });
     api
       .request({ url: `/catalog/releases/${this.data.id}/benefit-matrix`, auth: false })
       .then((d) => {
@@ -36,18 +39,22 @@ Page({
           empty: !!d.empty,
           footnote: benefitMatrix.footnote(d.completeness),
           loaded: true,
+          pageLoading: false,
         });
+        if (typeof wx.hideLoading === "function") wx.hideLoading();
       })
       .catch((err) => {
         this.setData({
           empty: true,
           loaded: true,
+          pageLoading: false,
           versions: [benefitMatrix.DEFAULT_VERSION],
           selectedVersion: benefitMatrix.DEFAULT_VERSION,
           rows: [],
           visibleRows: [],
           footnote: benefitMatrix.INCOMPLETE_COPY,
         });
+        if (typeof wx.hideLoading === "function") wx.hideLoading();
         if (err && err.status !== 404) api.handleWriteError(err);
       });
   },

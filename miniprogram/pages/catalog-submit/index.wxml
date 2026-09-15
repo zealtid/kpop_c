@@ -1,5 +1,6 @@
 <view class="page">
   <view class="h1">投稿图鉴</view>
+  <view wx:if="{{pageLoading}}" class="page-loading">加载中…</view>
   <view class="sub">白名单组合内提交单卡，审核通过后进入公开图鉴。卡面必填，卡背可跳过。</view>
 
   <view wx:if="{{warnings.length}}" class="card warn">
@@ -74,5 +75,5 @@
     </view>
   </view>
 
-  <view class="btn {{saving?'off':''}}" bindtap="submit">提交审核</view>
+  <view class="btn {{saving?'off':''}}" bindtap="submit">{{saving ? '提交中…' : '提交审核'}}</view>
 </view>

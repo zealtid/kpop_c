@@ -3,26 +3,36 @@ const catalogSelect = require("../../utils/catalogSelect");
 const releaseDate = require("../../utils/releaseDate");
 
 Page({
-  data: { id: "", group: {}, releases: [], selected: [] },
+  data: { id: "", group: {}, releases: [], selected: [], pageLoading: true },
   onLoad(q) {
     this.setData({ id: q.id });
     this.load();
   },
   load() {
-    api.request({ url: `/catalog/groups/${this.data.id}`, auth: false }).then((d) => {
-      this.setData({ group: d.group });
-      const releases = d.releases || [];
-      Promise.all(
-        releases.map((r) =>
-          api.request({ url: `/catalog/releases/${r.id}/templates`, auth: false }).then((t) =>
-            releaseDate.decorateRelease({
-              ...r,
-              templates: catalogSelect.mapTemplatesForGrid(t.templates, (url) => api.mediaUrl(url)),
-            }),
+    this.setData({ pageLoading: true });
+    if (typeof wx.showLoading === "function") wx.showLoading({ title: "加载中", mask: true });
+    const done = () => {
+      this.setData({ pageLoading: false });
+      if (typeof wx.hideLoading === "function") wx.hideLoading();
+    };
+    api
+      .request({ url: `/catalog/groups/${this.data.id}`, auth: false })
+      .then((d) => {
+        this.setData({ group: d.group });
+        const releases = d.releases || [];
+        return Promise.all(
+          releases.map((r) =>
+            api.request({ url: `/catalog/releases/${r.id}/templates`, auth: false }).then((t) =>
+              releaseDate.decorateRelease({
+                ...r,
+                templates: catalogSelect.mapTemplatesForGrid(t.templates, (url) => api.mediaUrl(url)),
+              }),
+            ),
           ),
-        ),
-      ).then((full) => this.setData({ releases: full, selected: [] }));
-    });
+        ).then((full) => this.setData({ releases: full, selected: [] }));
+      })
+      .catch(api.handleWriteError)
+      .then(done, done);
   },
   openRelease(e) {
     const id = e.currentTarget.dataset.id;
