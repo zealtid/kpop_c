@@ -60,6 +60,7 @@ import {
 } from "./storage.js";
 import * as catalogSubmissions from "./catalogSubmissions.js";
 import * as gridSplit from "./gridSplit.js";
+import * as adminUsers from "./adminUsers.js";
 import { jsSdkSignature, resolveMiniJump } from "./wxMiniJump.js";
 import * as feed from "./feed.js";
 import * as schedule from "./schedule.js";
@@ -1268,6 +1269,7 @@ export function createApp() {
           status: req.query.status as string | undefined,
           groupId: req.query.groupId as string | undefined,
           releaseId: req.query.releaseId as string | undefined,
+          userId: req.query.userId as string | undefined,
         }),
       });
     } catch (e) {
@@ -1315,7 +1317,11 @@ export function createApp() {
         action: "catalog_submission.approve",
         entityType: "catalog_submission",
         entityId: req.params.id,
-        payload: { resultTemplateId: result.resultTemplateId, adopt: !!req.body?.adoptSubmissionImage },
+        payload: {
+          resultTemplateId: result.resultTemplateId,
+          adopt: !!req.body?.adoptSubmissionImage,
+          pointsAwarded: result.pointsAwarded,
+        },
       });
       res.json(result);
     } catch (e) {
@@ -1338,6 +1344,36 @@ export function createApp() {
         payload: { reason: req.body?.reason },
       });
       res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/users", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(
+        await adminUsers.listAdminUsers({
+          q: req.query.q as string | undefined,
+          limit: req.query.limit ? Number(req.query.limit) : undefined,
+          offset: req.query.offset ? Number(req.query.offset) : undefined,
+        }),
+      );
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/users/:id/submissions", requireAdmin, async (req, res, next) => {
+    try {
+      res.json({ submissions: await adminUsers.listAdminUserSubmissions(req.params.id) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/users/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await adminUsers.getAdminUser(req.params.id));
     } catch (e) {
       next(e);
     }

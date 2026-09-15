@@ -46,6 +46,7 @@ Page({
     needsLogin: false,
     loginFailed: false,
     loginBtnLabel: "登录",
+    contributionPoints: 0,
   },
 
   onShow() {
@@ -58,6 +59,7 @@ Page({
     const summary = followPicker.followSummary(followed, 5, api.mediaUrl);
     const nicknameUnset = displayName.isUnsetNickname(user && user.nickname);
     const avatarSrc = resolveAvatarSrc(user);
+    const contributionPoints = Number(user && user.contributionPoints);
     this.setData({
       needsLogin: false,
       loginFailed: false,
@@ -67,6 +69,7 @@ Page({
       nicknameUnset,
       avatarSrc,
       hasAvatar: !!avatarSrc,
+      contributionPoints: Number.isFinite(contributionPoints) ? contributionPoints : 0,
       follows: followed,
       followCount: summary.count,
       followLabel: summary.label,
@@ -95,6 +98,7 @@ Page({
           nicknameUnset: true,
           avatarSrc: "",
           hasAvatar: false,
+          contributionPoints: 0,
           follows: [],
           followCount: 0,
           followLabel: "",

@@ -12,6 +12,7 @@ import {
   isNearDuplicate,
   type ImageWarning,
 } from "./imageHash.js";
+import { awardApprovedSubmissionPoints } from "./contributionPoints.js";
 import {
   absoluteMediaUrl,
   copyPendingToPublicCards,
@@ -55,9 +56,11 @@ const SELECT_SQL = `
   SELECT s.*,
          g.slug AS group_slug, g.name_zh AS group_name_zh, g.ugc_open,
          r.title AS release_title, r.title_zh AS release_title_zh,
-         m.name_en AS member_name_en, m.name_zh AS member_name_zh
+         m.name_en AS member_name_en, m.name_zh AS member_name_zh,
+         u.nickname AS user_nickname, u.avatar_url AS user_avatar_url
   FROM catalog_submissions s
   JOIN idol_groups g ON g.id = s.group_id
+  JOIN users u ON u.id = s.user_id
   LEFT JOIN releases r ON r.id = s.release_id
   LEFT JOIN members m ON m.id = s.member_id
 `;
@@ -92,6 +95,8 @@ export function mapSubmission(row: Row) {
     reviewedAt: iso(row.reviewed_at),
     resultTemplateId: row.result_template_id == null ? null : String(row.result_template_id),
     agreementAcceptedAt: iso(row.agreement_accepted_at),
+    pointsAwarded: Number(row.points_awarded) || 0,
+    userNickname: row.user_nickname == null ? null : String(row.user_nickname),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   };
@@ -433,7 +438,12 @@ export async function getSubmissionForUser(userId: string, id: string) {
   return mapSubmission(r.rows[0]);
 }
 
-export async function adminList(opts: { status?: string; groupId?: string; releaseId?: string }) {
+export async function adminList(opts: {
+  status?: string;
+  groupId?: string;
+  releaseId?: string;
+  userId?: string;
+}) {
   const conds = ["1=1"];
   const params: unknown[] = [];
   if (opts.status) {
@@ -447,6 +457,14 @@ export async function adminList(opts: { status?: string; groupId?: string; relea
   if (opts.releaseId) {
     params.push(opts.releaseId);
     conds.push(`s.release_id = $${params.length}`);
+  }
+  if (opts.userId) {
+    const uid = String(opts.userId).trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uid)) {
+      throw badRequest("userId 无效");
+    }
+    params.push(uid);
+    conds.push(`s.user_id = $${params.length}::uuid`);
   }
   const r = await query(
     `${SELECT_SQL} WHERE ${conds.join(" AND ")}
@@ -577,6 +595,10 @@ export async function approveSubmission(
         ],
       );
     }
+    const pointsAwarded = await awardApprovedSubmissionPoints(client, {
+      userId: String(row.user_id),
+      submissionId: id,
+    });
     await client.query(
       `UPDATE catalog_submissions SET
          status = 'approved',
@@ -587,10 +609,11 @@ export async function approveSubmission(
          channel_code = $8,
          result_template_id = $6,
          reviewer_id = $7,
+         points_awarded = $9,
          reviewed_at = now(),
          updated_at = now()
        WHERE id = $1`,
-      [id, releaseId, memberId, version, name, resultId, reviewerId, channelCode],
+      [id, releaseId, memberId, version, name, resultId, reviewerId, channelCode, pointsAwarded],
     );
     return resultId as string;
   });

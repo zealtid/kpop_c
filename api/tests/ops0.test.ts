@@ -49,6 +49,7 @@ test("A01 unauthorized cannot open admin protected APIs", async () => {
     "/admin/templates",
     "/admin/tickets",
     "/admin/catalog-submissions",
+    "/admin/users",
     "/admin/auth/me",
   ];
   for (const p of paths) {
@@ -98,11 +99,11 @@ test("ops can log in and see Catalog | Intel | Tickets menu", async () => {
   assert.equal(data.user.role, "ops");
   assert.deepEqual(
     data.user.menus.map((m) => m.id),
-    ["catalog", "submissions", "intel", "tickets"],
+    ["catalog", "submissions", "users", "intel", "tickets"],
   );
   assert.deepEqual(
     data.user.menus.map((m) => m.label),
-    ["图鉴", "投稿审核", "情报", "反馈/工单"],
+    ["图鉴", "投稿审核", "用户", "情报", "反馈/工单"],
   );
 
   const me = await api("/admin/auth/me", {

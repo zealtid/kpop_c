@@ -94,7 +94,7 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS / H5 行为测试
 
 | 职责 | 方法 / 路径 |
 | --- | --- |
-| 登录 / 我 | `POST /auth/wx-login` `POST /auth/wx-web-login` `GET /auth/wx-web/start` `GET\|PATCH /me` |
+| 登录 / 我 | `POST /auth/wx-login` `POST /auth/wx-web-login` `GET /auth/wx-web/start` `GET\|PATCH /me`（含只读 `contributionPoints`） |
 | 关注 | `GET\|PUT /me/follows` |
 | 图鉴 | `GET /catalog/groups`（`?ugc_open=1` 仅白名单） `.../members` `.../releases` `GET /catalog/releases/:id/templates` `GET /catalog/search` `GET /catalog/templates` |
 | 投稿 | `POST /media/ugc-pending` `POST /catalog/submissions`（可选 `matchOwnIfDuplicate`：近 dup 则挂拥有、不建待审） `GET /me/catalog-submissions` `GET /me/catalog-submissions/:id` `POST /collection/custom-cards/:id/apply-catalog` `POST /catalog/templates/:id/report` `POST /catalog/grid/split`（4/9 宫格薄回退，jsfeat 投影） |
@@ -103,7 +103,7 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS / H5 行为测试
 | 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
 | 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }`；公开落地 `GET /share/landing` `GET /share/summary`（已发布摘要） |
 | 反馈 | `POST /feedback/missing` `{ text }`（仅文字；不返回工单进度） |
-| 管理 | `POST /admin/import` `POST /admin/import/validate` `GET /admin/completeness` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`（组合含 `ugcOpen`）；UGC 审核 `GET /admin/catalog-submissions` `POST .../approve\|reject`；缺卡工单 `GET\|PATCH /admin/tickets` `POST /admin/tickets/:id/templates`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
+| 管理 | `POST /admin/import` `POST /admin/import/validate` `GET /admin/completeness` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`（组合含 `ugcOpen`）；UGC 审核 `GET /admin/catalog-submissions` `POST .../approve\|reject`；用户 `GET /admin/users` `GET /admin/users/:id` `GET /admin/users/:id/submissions`；缺卡工单 `GET\|PATCH /admin/tickets` `POST /admin/tickets/:id/templates`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
 | OPS 登录 | `POST /admin/auth/login` `GET /admin/auth/me` `POST /admin/auth/logout` `GET /admin/audit` |
 | 情报 | `GET /feed` `GET /feed/featured` `GET /feed/:id` |
 | 日程 | `GET /schedule/today` `GET /schedule` `GET /schedule/:id`（`startAtShanghai` / Asia/Shanghai） |
@@ -149,7 +149,7 @@ api/                 Express + pg + sharp 分享长图
   migrations/        PostgreSQL
   src/               路由与领域逻辑
   tests/             M1 / M2-a / OPS-0 / OPS-1 / OPS-2 / OPS-3
-admin/               独立 Web 运营后台（Vite：图鉴 CRUD + 完整度 + 导入 + 缺卡工单 + 情报只读）
+admin/               独立 Web 运营后台（Vite：图鉴 CRUD + 投稿审核 + 用户/贡献积分 + 完整度 + 导入 + 缺卡工单 + 情报只读）
 h5/                  C 端只读 H5（分享落地 + 微信内图鉴浏览；无投稿/交易）
 miniprogram/         微信小程序
 project.config.json  微信开发者工具打开仓库根目录用
@@ -255,7 +255,7 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 | 路径 | 说明 |
 | --- | --- |
 | `POST /admin/auth/login` | `{ username, password }` → `{ token, user }` |
-| `GET /admin/auth/me` | 当前 ops 用户 + 菜单 图鉴/情报/反馈工单 |
+| `GET /admin/auth/me` | 当前 ops 用户 + 菜单 图鉴/投稿审核/用户/情报/反馈工单 |
 | `POST /admin/auth/logout` | 清 cookie |
 | `GET /admin/audit` | 最近审计（ops） |
 | `GET\|POST /admin/catalog/groups` `PATCH .../:id` `POST .../:id/status` | 组合 CRUD + 状态 |
@@ -266,6 +266,10 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 | `POST /admin/import/validate` `POST /admin/import` | CSV / Markdown / JSON；先报告后写入 |
 | `GET /admin/tickets` `GET\|PATCH /admin/tickets/:id` | 缺卡工单列表 / 状态（open / in_progress / done / wontfix） |
 | `POST /admin/tickets/:id/templates` | 关联已有模板，或新建 **draft** 模板并关联（不入库） |
+| `GET /admin/users` `GET /admin/users/:id` | C 端用户列表 / 详情（昵称、头像、关注、贡献积分、投稿计数） |
+| `GET /admin/users/:id/submissions` | 该用户图鉴投稿 / 上传记录（只读） |
+
+图鉴投稿 **审核通过** 时记入贡献积分，默认每张 1 分（`CONTRIBUTION_POINTS_PER_APPROVED_CARD`）。驳回为 0。Admin **用户**（`#/users`）与小程序「我的」只读展示。不含现金 / 会员 / 广告 / 商城 / 提现。
 
 ### 生产部署（Railway 静态服务 `admin`）
 

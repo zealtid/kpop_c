@@ -87,6 +87,13 @@ button.avatar-btn {
   line-height: 1.35;
 }
 
+.profile-points {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+}
+
 .nickname-sync-wrap {
   position: relative;
   display: inline-block;

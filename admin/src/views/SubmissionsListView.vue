@@ -63,6 +63,19 @@ const columns = computed<DataTableColumns<Submission>>(() => [
     render: (row) =>
       h(RouterLink, { to: { name: "submission-detail", params: { id: row.id } } }, { default: () => row.slotLabel }),
   },
+  {
+    title: "用户",
+    key: "userId",
+    width: 120,
+    render: (row) =>
+      row.userId
+        ? h(
+            RouterLink,
+            { to: { name: "user-detail", params: { id: row.userId } } },
+            { default: () => row.userNickname || row.userId.slice(0, 8) },
+          )
+        : "",
+  },
   { title: "组合", key: "groupNameZh", width: 120, render: (row) => row.groupNameZh || "" },
   { title: "专辑", key: "releaseTitle", render: (row) => row.releaseTitle || "" },
   { title: "状态", key: "status", width: 88, render: (row) => statusTag(row.status) },
