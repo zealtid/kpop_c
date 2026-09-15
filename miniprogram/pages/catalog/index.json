@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "图鉴",
+  "enablePullDownRefresh": true,
   "backgroundColor": "#F4F5F9",
   "backgroundColorContent": "#F4F5F9",
   "backgroundColorTop": "#FFFFFF",

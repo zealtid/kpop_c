@@ -78,8 +78,10 @@
 
   <view class="card">
     <view class="label">卡面（必填，{{aspectLabel}}）</view>
-    <image wx:if="{{frontPreview}}" class="preview" src="{{frontPreview}}" mode="aspectFill"/>
-    <view wx:else class="ph pick">选图后裁剪</view>
+    <view class="card-face">
+      <image wx:if="{{frontPreview}}" src="{{frontPreview}}" mode="aspectFill"/>
+      <view wx:else class="card-face-hint">选图后裁剪</view>
+    </view>
     <view class="row pick-row">
       <view class="btn ghost slim" bindtap="pickFront">选卡面</view>
     </view>
@@ -87,7 +89,9 @@
 
   <view class="card">
     <view class="label">卡背（可跳过）</view>
-    <image wx:if="{{backPreview}}" class="preview" src="{{backPreview}}" mode="aspectFill"/>
+    <view wx:if="{{backPreview}}" class="card-face">
+      <image src="{{backPreview}}" mode="aspectFill"/>
+    </view>
     <view class="row pick-row">
       <view class="btn ghost slim" bindtap="pickBack">选卡背</view>
       <view wx:if="{{backPreview}}" class="btn ghost slim" bindtap="skipBack">跳过</view>

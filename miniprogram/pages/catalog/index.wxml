@@ -7,7 +7,7 @@
     <view class="btn ghost submit-entry" bindtap="goSubmit">投稿图鉴</view>
     <view class="btn ghost submit-entry" bindtap="goGrid">宫格入册</view>
   </view>
-  <view wx:if="{{pageLoading}}" class="page-loading">加载中…</view>
+  <view wx:if="{{pageLoading && !groups.length}}" class="page-loading">加载中…</view>
 
   <view wx:for="{{groups}}" wx:key="id" class="card" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="openGroup" data-id="{{item.slug}}">
     <view class="row">
