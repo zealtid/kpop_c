@@ -1,12 +1,25 @@
 <view class="page">
   <view wx:if="{{needsLogin}}" class="card">
     <view class="h1">未登录</view>
-    <view class="muted">关注管理需要先登录。</view>
+    <view class="muted">关注管理与手机号绑定需要先登录。</view>
     <view wx:if="{{loginFailed}}" class="muted" style="margin-top:12rpx">登录失败，请重试</view>
     <view class="btn" style="margin-top:24rpx" bindtap="doLogin">{{loginBtnLabel}}</view>
   </view>
 
   <block wx:else>
+    <view class="card phone-card">
+      <view class="phone-copy">
+        <view class="h1">手机号</view>
+        <view class="muted">{{phoneBound ? phoneMasked : '未绑定。授权后仅用于联系，登录仍走微信。'}}</view>
+      </view>
+      <button
+        class="phone-bind-btn"
+        hover-class="none"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onGetPhoneNumber"
+      >{{phoneBound ? '换绑手机号' : '绑定手机号'}}</button>
+    </view>
+
     <view class="card row settings-row" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="goFollowManage">
       <view>管理关注</view>
       <view class="muted">选择或调整关注的团体</view>

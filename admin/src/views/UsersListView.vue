@@ -70,6 +70,12 @@ const columns = computed<DataTableColumns<AdminUser>>(() => [
       ]),
   },
   {
+    title: "手机号",
+    key: "phoneMasked",
+    width: 130,
+    render: (row) => row.phoneMasked || "—",
+  },
+  {
     title: "关注",
     key: "followedGroups",
     minWidth: 160,
@@ -132,7 +138,7 @@ watch(
 <template>
   <PageHeader
     title="用户"
-    hint="只读：现有用户资料、关注组合、投稿记录与贡献积分。积分仅在图鉴投稿首次审核通过时 +1；驳回与历史上线前已通过记录不计。"
+    hint="现有用户资料、脱敏手机号、关注组合、投稿记录与贡献积分。完整手机号默认隐藏。积分仅在图鉴投稿首次审核通过时 +1。"
     :crumbs="[{ label: '用户' }]"
   />
   <n-spin :show="loading">
@@ -150,8 +156,8 @@ watch(
         <n-input
           v-model:value="keywordDraft"
           clearable
-          placeholder="昵称或用户 ID"
-          style="width: 240px"
+          placeholder="昵称、用户 ID 或完整手机号"
+          style="width: 280px"
           @keyup.enter="onSearch"
         />
       </AdminFilterBar>
@@ -170,6 +176,7 @@ watch(
               </RouterLink>
               <n-tag size="small" :bordered="false">{{ row.contributionPoints }} 分</n-tag>
             </div>
+            <p class="card-meta">手机 {{ row.phoneMasked || "未绑定" }}</p>
             <p class="card-meta">关注 {{ followLabel(row.followedGroups) }}</p>
             <p class="card-meta">投稿 {{ row.submissionCount }} · {{ formatUserTime(row.createdAt) }}</p>
           </n-card>

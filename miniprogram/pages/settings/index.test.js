@@ -59,12 +59,15 @@ beforeEach(() => {
   api.request = origRequest;
 });
 
-test("settings hosts 管理关注 and no public visibility control", () => {
+test("settings hosts 管理关注, phone bind, and no public visibility control", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
   const js = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
   assert.match(wxml, /管理关注/);
   assert.match(wxml, /goFollowManage/);
+  assert.match(wxml, /open-type="getPhoneNumber"/);
+  assert.match(wxml, /bindgetphonenumber="onGetPhoneNumber"/);
+  assert.match(js, /\/me\/phone|phoneBind/);
   assert.doesNotMatch(wxml, /friends/);
   assert.doesNotMatch(wxml, /可见性|公开|仅自己/);
   assert.doesNotMatch(wxml, /data-v="private"|data-v="public"|setPrivacy/);

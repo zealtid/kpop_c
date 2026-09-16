@@ -3,6 +3,7 @@ const analytics = require("../../utils/analytics");
 const session = require("../../utils/session");
 const displayName = require("../../utils/displayName");
 const followPicker = require("../../utils/followPicker");
+const phoneBind = require("../../utils/phoneBind");
 
 function resolveAvatarSrc(user) {
   const raw = user && (user.avatarUrl || user.avatar_url);
@@ -47,6 +48,8 @@ Page({
     loginFailed: false,
     loginBtnLabel: "登录",
     contributionPoints: 0,
+    phoneMasked: "",
+    phoneBound: false,
     // 仅手动点「同步微信昵称」后才挂载 type=nickname，避免进 Tab 自动拉起微信面板
     nicknameSyncArmed: false,
     nicknameSyncFocus: false,
@@ -72,6 +75,7 @@ Page({
     const nicknameUnset = displayName.isUnsetNickname(user && user.nickname);
     const avatarSrc = resolveAvatarSrc(user);
     const contributionPoints = Number(user && user.contributionPoints);
+    const phone = phoneBind.phoneFields(user);
     const patch = {
       needsLogin: false,
       loginFailed: false,
@@ -82,6 +86,8 @@ Page({
       avatarSrc,
       hasAvatar: !!avatarSrc,
       contributionPoints: Number.isFinite(contributionPoints) ? contributionPoints : 0,
+      phoneMasked: phone.phoneMasked,
+      phoneBound: phone.phoneBound,
       follows: followed,
       followCount: summary.count,
       followLabel: summary.label,
@@ -116,6 +122,8 @@ Page({
           avatarSrc: "",
           hasAvatar: false,
           contributionPoints: 0,
+          phoneMasked: "",
+          phoneBound: false,
           follows: [],
           followCount: 0,
           followLabel: "",
@@ -162,6 +170,21 @@ Page({
         if (app && app.globalData) app.globalData.user = user;
         this.applyProfile(user, { groups: this.data.follows });
         wx.showToast({ title: "已更新", icon: "none" });
+      })
+      .catch(api.handleWriteError);
+  },
+
+  onGetPhoneNumber(e) {
+    if (this.data.needsLogin) return;
+    const wasBound = this.data.phoneBound;
+    phoneBind
+      .bindWithWeChatDetail(e.detail || {})
+      .then((user) => {
+        session.persistUser(user);
+        const app = getApp();
+        if (app && app.globalData) app.globalData.user = user;
+        this.applyProfile(user, { groups: this.data.follows });
+        wx.showToast({ title: wasBound ? "已换绑" : "已绑定", icon: "none" });
       })
       .catch(api.handleWriteError);
   },

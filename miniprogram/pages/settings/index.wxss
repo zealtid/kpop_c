@@ -7,3 +7,31 @@
   text-align: right;
   flex: 1;
 }
+
+.phone-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.phone-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+button.phone-bind-btn {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 12rpx 24rpx;
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: var(--color-button-primary-text);
+  background: var(--color-button-primary-bg);
+  border-radius: 999rpx;
+  border: none;
+}
+
+button.phone-bind-btn::after {
+  border: none;
+}

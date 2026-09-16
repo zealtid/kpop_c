@@ -19,7 +19,7 @@ declare global {
 type JwtPayload = { sub: string; openid: string; typ?: string };
 type WxWebState = { typ: "wx-web"; returnTo?: string };
 
-type UserRow = {
+export type UserRow = {
   id: string;
   wx_openid: string;
   wx_unionid: string | null;
@@ -28,10 +28,12 @@ type UserRow = {
   avatar_url: string | null;
   privacy: string;
   contribution_points?: number | string | null;
+  phone_e164?: string | null;
+  phone_masked?: string | null;
 };
 
 const USER_COLUMNS =
-  "id, wx_openid, wx_unionid, wx_web_openid, nickname, avatar_url, privacy, contribution_points";
+  "id, wx_openid, wx_unionid, wx_web_openid, nickname, avatar_url, privacy, contribution_points, phone_e164, phone_masked";
 
 export function signToken(user: { id: string; wx_openid: string }) {
   return jwt.sign({ sub: user.id, openid: user.wx_openid } satisfies JwtPayload, config.jwtSecret, {
@@ -53,16 +55,21 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
 }
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
-  const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) return next(unauthorized());
-  try {
-    const payload = jwt.verify(header.slice(7), config.jwtSecret) as JwtPayload;
-    if (payload.typ === "ops") return next(unauthorized());
-    req.user = { id: payload.sub, wxOpenid: payload.openid };
-    next();
-  } catch {
-    next(unauthorized("登录已过期"));
-  }
+  void (async () => {
+    const header = req.headers.authorization;
+    if (!header?.startsWith("Bearer ")) return next(unauthorized());
+    try {
+      const payload = jwt.verify(header.slice(7), config.jwtSecret) as JwtPayload;
+      if (payload.typ === "ops") return next(unauthorized());
+      const exists = await query("SELECT 1 FROM users WHERE id = $1", [payload.sub]);
+      if (!exists.rowCount) return next(unauthorized("登录已过期"));
+      req.user = { id: payload.sub, wxOpenid: payload.openid };
+      next();
+    } catch (err) {
+      if (err instanceof AppError) return next(err);
+      next(unauthorized("登录已过期"));
+    }
+  })();
 }
 
 async function loadUserById(id: string) {
@@ -358,6 +365,8 @@ export function publicUser(user: {
   avatar_url: string | null;
   privacy: string;
   contribution_points?: number | string | null;
+  phone_e164?: string | null;
+  phone_masked?: string | null;
 }) {
   return {
     id: user.id,
@@ -365,6 +374,8 @@ export function publicUser(user: {
     avatarUrl: user.avatar_url,
     privacy: user.privacy,
     contributionPoints: Number(user.contribution_points) || 0,
+    phoneMasked: user.phone_masked || null,
+    phoneBound: !!(user.phone_e164 || user.phone_masked),
   };
 }
 

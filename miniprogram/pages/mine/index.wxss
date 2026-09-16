@@ -94,6 +94,30 @@ button.avatar-btn {
   color: var(--color-text-secondary);
 }
 
+.profile-phone {
+  margin-top: 8rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+
+button.phone-bind-btn {
+  margin: 0;
+  padding: 4rpx 16rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
+  color: var(--color-brand);
+  background: var(--color-brand-soft);
+  border-radius: 999rpx;
+  border: none;
+}
+
+button.phone-bind-btn::after {
+  border: none;
+}
+
 .nickname-sync-wrap {
   position: relative;
   display: block;

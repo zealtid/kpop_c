@@ -14,6 +14,8 @@ export type AuditEntry = {
   payload?: unknown;
 };
 
+export type SqlExec = (text: string, params?: unknown[]) => Promise<unknown>;
+
 const MAX_PAYLOAD_BYTES = 8_192;
 
 function sanitizePayload(payload: unknown): unknown {
@@ -34,10 +36,10 @@ function sanitizePayload(payload: unknown): unknown {
 }
 
 /** Persist who / when / what entity changed for privileged admin writes. */
-export async function writeAuditLog(entry: AuditEntry) {
+export async function writeAuditLog(entry: AuditEntry, exec: SqlExec = query) {
   const actor = entry.actor;
   const entityId = entry.entityId == null ? null : String(entry.entityId);
-  await query(
+  await exec(
     `INSERT INTO admin_audit_logs
        (actor_id, actor_username, actor_role, action, entity_type, entity_id, payload)
      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,

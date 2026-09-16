@@ -30,3 +30,11 @@ export function badRequest(message: string, details?: unknown) {
 export function tooManyRequests(message: string, details?: unknown) {
   return new AppError(429, "GRID_VLM_QUOTA", message, details);
 }
+
+export function rateLimited(message: string, code = "RATE_LIMITED", details?: unknown) {
+  return new AppError(429, code, message, details);
+}
+
+export function conflict(message: string, code = "CONFLICT", details?: unknown) {
+  return new AppError(409, code, message, details);
+}

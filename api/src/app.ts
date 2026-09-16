@@ -62,6 +62,7 @@ import * as catalogSubmissions from "./catalogSubmissions.js";
 import * as gridSplit from "./gridSplit.js";
 import { listGridVlmCalls, listGridVlmStats } from "./vlm/calls.js";
 import * as adminUsers from "./adminUsers.js";
+import { bindPhone, listPhoneBindEvents } from "./phone.js";
 import { jsSdkSignature, resolveMiniJump } from "./wxMiniJump.js";
 import * as feed from "./feed.js";
 import * as schedule from "./schedule.js";
@@ -171,6 +172,14 @@ export function createApp() {
     try {
       const avatarUrl = await saveUserAvatar(req.user!.id, req.body?.imageBase64, req.body?.mimeType);
       res.json({ avatarUrl });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/me/phone", requireAuth, async (req, res, next) => {
+    try {
+      res.json(await bindPhone(req.user!.id, String(req.body?.code || "")));
     } catch (e) {
       next(e);
     }
@@ -1411,6 +1420,7 @@ export function createApp() {
           q: req.query.q as string | undefined,
           limit: req.query.limit ? Number(req.query.limit) : undefined,
           offset: req.query.offset ? Number(req.query.offset) : undefined,
+          actorKey: req.ops?.username || req.ops?.id || "ops",
         }),
       );
     } catch (e) {
@@ -1421,6 +1431,45 @@ export function createApp() {
   app.get("/admin/users/:id/submissions", requireAdmin, async (req, res, next) => {
     try {
       res.json({ submissions: await adminUsers.listAdminUserSubmissions(req.params.id) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/users/:id/phone-events", requireAdmin, async (req, res, next) => {
+    try {
+      await adminUsers.getAdminUser(req.params.id);
+      res.json({ events: await listPhoneBindEvents(req.params.id) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/users/:id/reveal-phone", requireAdmin, async (req, res, next) => {
+    try {
+      const fwd = req.headers["x-forwarded-for"];
+      const ip = (Array.isArray(fwd) ? fwd[0] : fwd)?.split(",")[0]?.trim() || req.socket.remoteAddress || null;
+      res.json(
+        await adminUsers.revealAdminUserPhone(req.params.id, req.ops, {
+          ip,
+          ua: String(req.headers["user-agent"] || "") || null,
+        }),
+      );
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.post("/admin/users/:id/hard-delete", requireAdmin, async (req, res, next) => {
+    try {
+      const fwd = req.headers["x-forwarded-for"];
+      const ip = (Array.isArray(fwd) ? fwd[0] : fwd)?.split(",")[0]?.trim() || req.socket.remoteAddress || null;
+      res.json(
+        await adminUsers.hardDeleteAdminUser(req.params.id, req.body?.confirm, req.ops, {
+          ip,
+          ua: String(req.headers["user-agent"] || "") || null,
+        }),
+      );
     } catch (e) {
       next(e);
     }
