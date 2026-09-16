@@ -11,7 +11,7 @@
         data-mode="ai"
       >
         <view class="mode-title">AI 切图</view>
-        <view class="mode-sub">不规则多卡，最多 16 张</view>
+        <view class="mode-sub">不规则多卡</view>
       </view>
       <view
         class="mode {{cutMode==='manual'?'on':''}} {{busy?'off':''}}"

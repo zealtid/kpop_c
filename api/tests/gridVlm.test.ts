@@ -18,8 +18,14 @@ test("default ARK_VISION_MODEL is grounding seed; ep ids pass through", () => {
   try {
     assert.equal(DEFAULT_ARK_VISION_MODEL, "doubao-seed-2-0-lite-260215");
     assert.equal(gridVlmConfig().model, "doubao-seed-2-0-lite-260215");
-    assert.equal(gridVlmConfig().maxDetect, 16);
-    assert.equal(gridVlmConfig().maxSubmit, 16);
+    assert.equal(gridVlmConfig().maxDetect, 64);
+    assert.equal(gridVlmConfig().maxSubmit, 64);
+    process.env.GRID_VLM_MAX_DETECT = "32";
+    process.env.GRID_VLM_MAX_SUBMIT = "48";
+    assert.equal(gridVlmConfig().maxDetect, 32);
+    assert.equal(gridVlmConfig().maxSubmit, 48);
+    delete process.env.GRID_VLM_MAX_DETECT;
+    delete process.env.GRID_VLM_MAX_SUBMIT;
     process.env.ARK_VISION_MODEL = "ep-20260916-demo";
     assert.equal(gridVlmConfig().model, "ep-20260916-demo");
   } finally {
@@ -83,26 +89,27 @@ test("normalize clamps, drops tiny, nms overlap", () => {
   assert.equal(mid.length, 1, "near-duplicate mid boxes should collapse");
 });
 
-test("normalize max 16 keeps top-confidence and xyxy", () => {
+test("normalize safety max keeps top-confidence and xyxy", () => {
   const cards = [];
-  for (let i = 0; i < 20; i++) {
-    const x = (i % 5) * 0.18 + 0.02;
-    const y = Math.floor(i / 5) * 0.22 + 0.02;
-    cards.push({ bbox: [x, y, x + 0.16, y + 0.2], confidence: i / 20 });
+  const total = GRID_VLM_MAX_DETECT + 6;
+  for (let i = 0; i < total; i++) {
+    const x = (i % 8) * 0.12 + 0.01;
+    const y = Math.floor(i / 8) * 0.11 + 0.01;
+    cards.push({ bbox: [x, y, x + 0.1, y + 0.1], confidence: i / total });
   }
   const result = normalizeVlmResult({ cards });
-  assert.equal(GRID_VLM_MAX_DETECT, 16);
-  assert.equal(GRID_VLM_MAX_SUBMIT, 16);
+  assert.equal(GRID_VLM_MAX_DETECT, 64);
+  assert.equal(GRID_VLM_MAX_SUBMIT, 64);
   assert.equal(result.truncated, true);
-  assert.equal(result.rawCount, 20);
+  assert.equal(result.rawCount, total);
   assert.equal(result.boxes.length, GRID_VLM_MAX_DETECT);
   assert.equal(result.boxes[0].index, 0);
   const keptConf = result.boxes.map((b) => b.confidence || 0);
-  assert.ok(Math.min(...keptConf) >= 4 / 20 - 1e-9, "lowest-confidence extras dropped");
+  assert.ok(Math.min(...keptConf) >= 6 / total - 1e-9, "lowest-confidence extras dropped");
   const xy = xyxyToBox([0.2, 0.3, 0.5, 0.8]);
   assert.equal(xy.x, 0.2);
   assert.ok(Math.abs(xy.w - 0.3) < 1e-9);
-  assert.equal(normalizeVlmCards({ cards }).length, 16);
+  assert.equal(normalizeVlmCards({ cards }).length, GRID_VLM_MAX_DETECT);
 });
 
 test("Grounding 1000×1000 coords become 0–1 even if image size is known", () => {
@@ -136,11 +143,12 @@ test("pixel coords larger than 1000 scale with image size", () => {
   assert.ok(boxes[0].w > 0.4);
 });
 
-test("Doubao prompt asks for at most 16 cards; no client keys in MP grid", async () => {
+test("Doubao prompt detects all photocards; no 16 product cap; no client keys in MP grid", async () => {
   const { readFile } = await import("node:fs/promises");
   const promptSrc = await readFile(new URL("../src/vlm/doubao.ts", import.meta.url), "utf8");
-  assert.match(promptSrc, /最多 16 张/);
-  assert.doesNotMatch(promptSrc, /最多 12 张/);
+  assert.doesNotMatch(promptSrc, /最多 16 张/);
+  assert.match(promptSrc, /检出所有小卡/);
+  assert.match(promptSrc, /服务端可能只保留配置的上限张数/);
   const indexJs = await readFile(new URL("../../miniprogram/pages/catalog-grid/index.js", import.meta.url), "utf8");
   assert.doesNotMatch(indexJs, /ARK_API_KEY/);
 });

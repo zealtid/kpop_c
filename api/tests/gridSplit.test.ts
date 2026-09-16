@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import sharp from "sharp";
 import { splitPhotocardGrid, CV_LIBRARY, resolveGridEngine } from "../src/gridSplit.js";
+import { GRID_VLM_MAX_DETECT } from "../src/vlm/normalize.js";
 import { MockGridVlmProvider } from "../src/vlm/index.js";
 
 async function makeGridJpeg(n: 2 | 3) {
@@ -140,13 +141,14 @@ test("VLM mock detects irregular boxes and suggestions", async () => {
   assert.ok(cards.every((c) => c.bbox.every((n) => n >= 0 && n <= 1)));
 });
 
-test("VLM mock >16 cards truncates to top-confidence 16", async () => {
+test("VLM mock over safety max truncates to top-confidence cap", async () => {
   const buf = await makeGridJpeg(2);
   const cards = [];
-  for (let i = 0; i < 20; i++) {
-    const x = (i % 5) * 0.18 + 0.02;
-    const y = Math.floor(i / 5) * 0.22 + 0.02;
-    cards.push({ bbox: [x, y, x + 0.16, y + 0.2], confidence: i / 20 });
+  const total = GRID_VLM_MAX_DETECT + 6;
+  for (let i = 0; i < total; i++) {
+    const x = (i % 8) * 0.12 + 0.01;
+    const y = Math.floor(i / 8) * 0.11 + 0.01;
+    cards.push({ bbox: [x, y, x + 0.1, y + 0.1], confidence: i / total });
   }
   const res = await splitPhotocardGrid(
     {
@@ -159,9 +161,9 @@ test("VLM mock >16 cards truncates to top-confidence 16", async () => {
   );
   assert.equal(res.ok, true, JSON.stringify(res));
   assert.equal(res.truncated, true);
-  assert.equal(res.rawDetectedCount, 20);
-  assert.equal(res.detectedCount, 16);
-  assert.equal((res.boxes as unknown[]).length, 16);
+  assert.equal(res.rawDetectedCount, total);
+  assert.equal(res.detectedCount, GRID_VLM_MAX_DETECT);
+  assert.equal((res.boxes as unknown[]).length, GRID_VLM_MAX_DETECT);
 });
 
 test("VLM timeout/fail degrades without throwing", async () => {

@@ -1,8 +1,10 @@
 import { cardsFromModelText } from "./parse.js";
 import type { DetectedGridCard, VlmCard } from "./types.js";
 
-export const GRID_VLM_MAX_DETECT = 16;
-export const GRID_VLM_MAX_SUBMIT = 16;
+/** Technical safety ceiling (not a marketed product cap). Env: GRID_VLM_MAX_DETECT. */
+export const GRID_VLM_MAX_DETECT = 64;
+/** Technical safety ceiling (not a marketed product cap). Env: GRID_VLM_MAX_SUBMIT. */
+export const GRID_VLM_MAX_SUBMIT = 64;
 export const MIN_BOX_SIDE = 0.05;
 export const MIN_BOX_AREA = 0.008;
 const NMS_IOU = 0.65;
@@ -135,7 +137,7 @@ function reindex(boxes: DetectedGridCard[]) {
   return boxes.map((box, i) => ({ ...box, index: i }));
 }
 
-/** Keep highest-confidence boxes when over the detect cap (UGC-2b-Match16). */
+/** Keep highest-confidence boxes when over the detect safety ceiling. */
 export function capDetectedCards(boxes: DetectedGridCard[], max: number): NormalizedVlmCards {
   const cap = Math.max(1, max);
   const rawCount = boxes.length;

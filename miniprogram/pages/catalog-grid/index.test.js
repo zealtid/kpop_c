@@ -19,6 +19,8 @@ test("entry exposes AI vs 手动四宫/九宫, not only advanced fold", () => {
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
   assert.match(wxml, /宫格入册/);
   assert.match(wxml, /AI 切图/);
+  assert.match(wxml, /不规则多卡/);
+  assert.doesNotMatch(wxml, /最多 16 张/);
   assert.match(wxml, /手动四宫\/九宫/);
   assert.match(wxml, /pickCutMode/);
   assert.match(wxml, /data-mode="ai"/);
@@ -41,7 +43,7 @@ test("entry exposes AI vs 手动四宫/九宫, not only advanced fold", () => {
   assert.doesNotMatch(js, /ARK_API_KEY/);
 });
 
-test("confirm has adjust/delete/rotate, optional version, match-own, cap 16", () => {
+test("confirm has adjust/delete/rotate, optional version, match-own, safety submit cap", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "confirm.wxml"), "utf8");
   const js = fs.readFileSync(path.join(__dirname, "confirm.js"), "utf8");
   const wxss = fs.readFileSync(path.join(__dirname, "confirm.wxss"), "utf8");
