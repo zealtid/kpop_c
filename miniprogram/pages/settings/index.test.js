@@ -59,20 +59,43 @@ beforeEach(() => {
   api.request = origRequest;
 });
 
-test("settings hosts 管理关注, phone bind, and no public visibility control", () => {
+test("settings hosts 管理关注, gated phone bind, and no public visibility control", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
   const js = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
+  const phoneBind = require("../../utils/phoneBind");
   assert.match(wxml, /管理关注/);
   assert.match(wxml, /goFollowManage/);
-  assert.match(wxml, /open-type="getPhoneNumber"/);
-  assert.match(wxml, /bindgetphonenumber="onGetPhoneNumber"/);
+  assert.match(wxml, /关注管理需要先登录/);
+  assert.doesNotMatch(wxml, /手机号绑定/);
+  assert.equal(phoneBind.PHONE_BIND_UI_ENABLED, false);
+  assert.equal(pageDef.data.phoneBindUiEnabled, false);
+  const phoneBlock = wxml.match(
+    /<view wx:if="\{\{phoneBindUiEnabled\}\}" class="card phone-card">[\s\S]*?<\/button>\s*<\/view>/,
+  );
+  assert.ok(phoneBlock, "phone-card must stay behind phoneBindUiEnabled");
+  assert.match(phoneBlock[0], /open-type="getPhoneNumber"/);
+  assert.match(phoneBlock[0], /绑定手机号/);
+  assert.doesNotMatch(wxml.replace(phoneBlock[0], ""), /getPhoneNumber|绑定手机号|换绑手机号/);
+  assert.match(js, /PHONE_BIND_UI_ENABLED/);
   assert.match(js, /\/me\/phone|phoneBind/);
   assert.doesNotMatch(wxml, /friends/);
   assert.doesNotMatch(wxml, /可见性|公开|仅自己/);
   assert.doesNotMatch(wxml, /data-v="private"|data-v="public"|setPrivacy/);
   assert.doesNotMatch(js, /setPrivacy|privacy/);
   assert.doesNotMatch(wxss, /privacy-opt/);
+});
+
+test("onGetPhoneNumber is a no-op while PHONE_BIND_UI_ENABLED is off", async () => {
+  const calls = [];
+  api.request = (opts) => {
+    calls.push(opts);
+    return Promise.resolve({ phoneMasked: "138****8000", phoneBound: true });
+  };
+  const page = pageWithData({ needsLogin: false, phoneBound: false, phoneBindUiEnabled: false });
+  page.onGetPhoneNumber({ detail: { code: "wx-phone-code", errMsg: "getPhoneNumber:ok" } });
+  await flush();
+  assert.equal(calls.filter((c) => c.url === "/me/phone").length, 0);
 });
 
 test("settings load fetches /me and never patches privacy", async () => {

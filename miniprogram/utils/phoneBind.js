@@ -1,5 +1,11 @@
 const api = require("./api");
 
+/**
+ * C 端绑定/换绑入口开关。false 时「我的」「设置」不展示区块；
+ * `/me/phone`、表结构与 Admin 审计不受影响，打开时改回 true 即可。
+ */
+const PHONE_BIND_UI_ENABLED = false;
+
 function phoneFields(user) {
   const phoneMasked = (user && (user.phoneMasked || user.phone_masked)) || "";
   return {
@@ -24,6 +30,7 @@ function bindWithWeChatDetail(detail) {
 }
 
 module.exports = {
+  PHONE_BIND_UI_ENABLED,
   phoneFields,
   bindWithWeChatDetail,
 };

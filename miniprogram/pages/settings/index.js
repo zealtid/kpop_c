@@ -8,6 +8,7 @@ Page({
     needsLogin: false,
     loginFailed: false,
     loginBtnLabel: "登录",
+    phoneBindUiEnabled: phoneBind.PHONE_BIND_UI_ENABLED,
     phoneMasked: "",
     phoneBound: false,
   },
@@ -50,7 +51,7 @@ Page({
   },
 
   onGetPhoneNumber(e) {
-    if (this.data.needsLogin) return;
+    if (!phoneBind.PHONE_BIND_UI_ENABLED || this.data.needsLogin) return;
     const wasBound = this.data.phoneBound;
     phoneBind
       .bindWithWeChatDetail(e.detail || {})

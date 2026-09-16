@@ -48,6 +48,7 @@ Page({
     loginFailed: false,
     loginBtnLabel: "登录",
     contributionPoints: 0,
+    phoneBindUiEnabled: phoneBind.PHONE_BIND_UI_ENABLED,
     phoneMasked: "",
     phoneBound: false,
     // 仅手动点「同步微信昵称」后才挂载 type=nickname，避免进 Tab 自动拉起微信面板
@@ -175,7 +176,7 @@ Page({
   },
 
   onGetPhoneNumber(e) {
-    if (this.data.needsLogin) return;
+    if (!phoneBind.PHONE_BIND_UI_ENABLED || this.data.needsLogin) return;
     const wasBound = this.data.phoneBound;
     phoneBind
       .bindWithWeChatDetail(e.detail || {})

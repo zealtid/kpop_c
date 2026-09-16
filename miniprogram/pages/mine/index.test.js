@@ -91,8 +91,8 @@ test("UX-A3 wxml: avatar+nickname row; nickname fill only; no getUserProfile; ac
   assert.match(wxml, /class="avatar-ph"/);
   assert.match(wxml, /class="profile-name/);
   assert.match(wxml, /贡献积分 \{\{contributionPoints\}\}/);
-  assert.match(wxml, /open-type="getPhoneNumber"/);
-  assert.match(wxml, /bindgetphonenumber="onGetPhoneNumber"/);
+  assert.match(wxml, /wx:if="\{\{phoneBindUiEnabled\}\}"[\s\S]*open-type="getPhoneNumber"/);
+  assert.match(js, /PHONE_BIND_UI_ENABLED/);
   assert.match(js, /phoneBind/);
   assert.match(wxss, /\.profile-row/);
   assert.match(wxss, /align-items:\s*center/);
@@ -351,6 +351,32 @@ test("UX-A3 chooseAvatar uploads then PATCHes persistable URL; temp path is not 
   await flush();
   assert.match(hosted.data.avatarSrc, /\/media\/custom\/u1\/a\.jpg$/);
   assert.equal(hosted.data.hasAvatar, true);
+});
+
+test("phone bind UI stays in markup but is gated off", () => {
+  const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
+  const phoneBind = require("../../utils/phoneBind");
+  assert.equal(phoneBind.PHONE_BIND_UI_ENABLED, false);
+  assert.equal(pageDef.data.phoneBindUiEnabled, false);
+  const phoneBlock = wxml.match(
+    /<view wx:if="\{\{phoneBindUiEnabled\}\}" class="profile-phone">[\s\S]*?<\/view>/,
+  );
+  assert.ok(phoneBlock, "profile-phone block must stay behind phoneBindUiEnabled");
+  assert.match(phoneBlock[0], /open-type="getPhoneNumber"/);
+  assert.match(phoneBlock[0], /未绑定手机号/);
+  assert.doesNotMatch(wxml.replace(phoneBlock[0], ""), /getPhoneNumber|未绑定手机号|换绑/);
+});
+
+test("onGetPhoneNumber is a no-op while PHONE_BIND_UI_ENABLED is off", async () => {
+  const calls = [];
+  api.request = (opts) => {
+    calls.push(opts);
+    return Promise.resolve({ phoneMasked: "138****8000", phoneBound: true });
+  };
+  const page = pageWithData({ needsLogin: false, phoneBound: false, phoneBindUiEnabled: false });
+  page.onGetPhoneNumber({ detail: { code: "wx-phone-code", errMsg: "getPhoneNumber:ok" } });
+  await flush();
+  assert.equal(calls.filter((c) => c.url === "/me/phone").length, 0);
 });
 
 test("P3 #9 我的页只读展示 GET /me 贡献积分", async () => {
