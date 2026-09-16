@@ -66,8 +66,14 @@ test("wxml shows combined 特典 version chip; tap opens detail; 多选 is expli
   assert.match(wxml, /t\.isBenefit \? 'benefit'/);
   assert.match(wxml, /class="release-title"/);
   assert.match(wxml, /class="release-title-row"/);
+  assert.match(wxml, /class="meta-chip kind-chip"/);
   assert.match(wxml, /item\.releasedOnLabel/);
   assert.match(wxml, /item\.kind/);
+  const titleIdx = wxml.indexOf('class="release-title">{{item.title}}');
+  const kindIdx = wxml.indexOf('class="meta-chip kind-chip">{{item.kind}}');
+  const dateIdx = wxml.indexOf('class="release-inline">{{item.releasedOnLabel}}');
+  assert.ok(titleIdx >= 0 && kindIdx > titleIdx && dateIdx > kindIdx);
+  assert.doesNotMatch(wxml, /release-dot/);
   assert.match(wxml, /bindtap="toggleRelease"/);
   assert.match(wxml, /item\.expanded/);
   assert.match(wxml, /bindtap="onTileTap"/);
@@ -92,6 +98,11 @@ test("wxss has Scheme A benefit chip, compact 多选, and selected outline", () 
   assert.match(wxss, /border-radius:\s*999rpx/);
   assert.match(wxss, /\.release-title/);
   assert.match(wxss, /\.release-title-row/);
+  assert.match(wxss, /\.kind-chip/);
+  assert.match(wxss, /\.tile-chips[\s\S]*flex-wrap:\s*nowrap/);
+  assert.match(wxss, /\.tile-chips \.meta-chip[\s\S]*overflow:\s*hidden/);
+  assert.match(wxss, /\.tile-chips \.meta-chip[\s\S]*white-space:\s*nowrap/);
+  assert.match(wxss, /\.tile-chips \.meta-chip[\s\S]*text-overflow:\s*ellipsis/);
   assert.match(wxss, /\.release-chevron/);
   assert.match(wxss, /\.btn\.slim[\s\S]*font-size:\s*22rpx/);
   assert.doesNotMatch(wxss, /#121016|#ff6b9d|#f5c36b/i);

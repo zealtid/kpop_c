@@ -22,11 +22,9 @@
   <view wx:for="{{releases}}" wx:key="id" class="card">
     <view class="release-head" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="toggleRelease" data-id="{{item.id}}">
       <view class="release-title-row">
-        <text wx:if="{{item.releasedOnLabel}}" class="release-inline">{{item.releasedOnLabel}}</text>
-        <text wx:if="{{item.releasedOnLabel && item.kind}}" class="release-dot"> · </text>
-        <text wx:if="{{item.kind}}" class="release-inline">{{item.kind}}</text>
-        <text wx:if="{{(item.releasedOnLabel || item.kind) && item.title}}" class="release-dot"> · </text>
         <text class="release-title">{{item.title}}</text>
+        <view wx:if="{{item.kind}}" class="meta-chip kind-chip">{{item.kind}}</view>
+        <text wx:if="{{item.releasedOnLabel}}" class="release-inline">{{item.releasedOnLabel}}</text>
       </view>
       <view class="release-chevron {{item.expanded ? 'open' : ''}}">▾</view>
     </view>
@@ -37,7 +35,7 @@
         </view>
         <view class="tile-name">{{t.memberNameEn}}</view>
         <view wx:if="{{t.versionChip}}" class="meta-chips tile-chips">
-          <view class="meta-chip {{t.isBenefit ? 'benefit' : ''}}">{{t.versionChip}}</view>
+          <view class="meta-chip {{t.isBenefit ? 'benefit' : ''}}"><text>{{t.versionChip}}</text></view>
         </view>
         <view wx:if="{{!selectMode}}" class="row mini-actions">
           <text class="own" catchtap="ownOne" data-id="{{t.id}}">拥有</text>

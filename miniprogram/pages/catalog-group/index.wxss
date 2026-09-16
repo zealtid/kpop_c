@@ -36,7 +36,8 @@
 .release-title-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
+  gap: 8rpx 12rpx;
   flex: 1;
   min-width: 0;
   line-height: 1.35;
@@ -48,16 +49,18 @@
   color: var(--color-text-primary);
 }
 
-.release-inline {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--color-text-secondary);
+.release-title-row .kind-chip {
+  flex-shrink: 0;
+  padding: 4rpx 14rpx;
+  font-size: 22rpx;
+  line-height: 1.2;
 }
 
-.release-dot {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--color-text-tertiary);
+.release-inline {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: var(--color-text-secondary);
 }
 
 .release-chevron {
@@ -100,6 +103,10 @@
   color: var(--color-text-inverse);
 }
 
+.grid3 .tile {
+  min-width: 0;
+}
+
 .tile-name {
   margin-top: 10rpx;
   font-size: 24rpx;
@@ -109,12 +116,30 @@
 }
 
 .tile-chips {
+  display: flex;
+  flex-wrap: nowrap;
+  min-width: 0;
+  width: 100%;
   margin-top: 8rpx;
+  overflow: hidden;
 }
 
 .tile-chips .meta-chip {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   font-size: 22rpx;
   padding: 6rpx 14rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tile-chips .meta-chip text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .batch-bar {
