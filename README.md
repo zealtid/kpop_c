@@ -52,6 +52,8 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS / H5 行为测试
 3. 小程序 `wx.login()` 的 `code` 原样 POST 到 `/auth/wx-login`。
 4. 服务端调用 `https://api.weixin.qq.com/sns/jscode2session` 换 `openid`，签发 JWT。
 
+登录**不**使用手机号。绑定手机号走小程序 `button open-type="getPhoneNumber"`，把微信返回的 **phone code** POST 到 `/me/phone`；服务端调用 `wxa/business/getuserphonenumber` 换号落库。未绑定不挡使用。同一号全局唯一；支持换绑覆盖。上线前须确认小程序类目支持「手机号快速验证」组件。
+
 ## Path B（验收主路径）
 
 图鉴搜索 `ARIRANG` → 多选模板 → `POST /collection/cards/batch` → `GET /collection/groups/bts/progress` 的 `ownedDistinct` 增加。卡册总览圆环同步更新。
@@ -94,7 +96,7 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS / H5 行为测试
 
 | 职责 | 方法 / 路径 |
 | --- | --- |
-| 登录 / 我 | `POST /auth/wx-login` `POST /auth/wx-web-login` `GET /auth/wx-web/start` `GET\|PATCH /me`（含只读 `contributionPoints`） |
+| 登录 / 我 | `POST /auth/wx-login` `POST /auth/wx-web-login` `GET /auth/wx-web/start` `GET\|PATCH /me`（含只读 `contributionPoints`、脱敏 `phoneMasked` / `phoneBound`） `POST /me/phone`（微信 getPhoneNumber 的 `code`，服务端换号；非登录） |
 | 关注 | `GET\|PUT /me/follows` |
 | 图鉴 | `GET /catalog/groups`（`?ugc_open=1` 仅白名单） `.../members` `.../releases` `GET /catalog/releases/:id/templates` `GET /catalog/search` `GET /catalog/templates` |
 | 投稿 | `POST /media/ugc-pending` `POST /catalog/submissions`（可选 `matchOwnIfDuplicate`：近 dup 则挂拥有、不建待审） `GET /me/catalog-submissions` `GET /me/catalog-submissions/:id` `POST /collection/custom-cards/:id/apply-catalog` `POST /catalog/templates/:id/report` `POST /catalog/grid/split`（主路径火山豆包视觉检测 bbox；`engine=jsfeat` 为 4/9 规则宫格回退） |
@@ -103,7 +105,7 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS / H5 行为测试
 | 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
 | 分享 | `POST /share/image` → `{ url, cardCount, templateIds, truncated:false }`；公开落地 `GET /share/landing` `GET /share/summary`（已发布摘要） |
 | 反馈 | `POST /feedback/missing` `{ text }`（仅文字；不返回工单进度） |
-| 管理 | `POST /admin/import` `POST /admin/import/validate` `GET /admin/completeness` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`（组合含 `ugcOpen`）；UGC 审核 `GET /admin/catalog-submissions` `POST .../approve\|reject`；用户 `GET /admin/users` `GET /admin/users/:id` `GET /admin/users/:id/submissions`；缺卡工单 `GET\|PATCH /admin/tickets` `POST /admin/tickets/:id/templates`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
+| 管理 | `POST /admin/import` `POST /admin/import/validate` `GET /admin/completeness` `GET\|POST\|PATCH /admin/templates` `POST /admin/templates/:id/publish\|unpublish\|deprecate`；图鉴 CRUD `/admin/catalog/{groups,members,releases,templates}`（组合含 `ugcOpen`）；UGC 审核 `GET /admin/catalog-submissions` `POST .../approve\|reject`；用户 `GET /admin/users`（`q` 支持昵称 / UUID / **完整手机号精确匹配**，手机号查询限频） `GET /admin/users/:id` `GET /admin/users/:id/submissions` `GET /admin/users/:id/phone-events` `POST /admin/users/:id/reveal-phone`（写审计） `POST /admin/users/:id/hard-delete` `{ confirm }`（二次确认；无批量）；缺卡工单 `GET\|PATCH /admin/tickets` `POST /admin/tickets/:id/templates`；情报 `GET\|POST /admin/feed` `GET\|POST /admin/schedule`。鉴权：ops JWT / cookie，或 Header `x-admin-token` |
 | OPS 登录 | `POST /admin/auth/login` `GET /admin/auth/me` `POST /admin/auth/logout` `GET /admin/audit` |
 | 情报 | `GET /feed` `GET /feed/featured` `GET /feed/:id` |
 | 日程 | `GET /schedule/today` `GET /schedule` `GET /schedule/:id`（`startAtShanghai` / Asia/Shanghai） |
@@ -266,8 +268,11 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 | `POST /admin/import/validate` `POST /admin/import` | CSV / Markdown / JSON；先报告后写入 |
 | `GET /admin/tickets` `GET\|PATCH /admin/tickets/:id` | 缺卡工单列表 / 状态（open / in_progress / done / wontfix） |
 | `POST /admin/tickets/:id/templates` | 关联已有模板，或新建 **draft** 模板并关联（不入库） |
-| `GET /admin/users` `GET /admin/users/:id` | C 端用户列表 / 详情（昵称、头像、关注、贡献积分、投稿计数） |
+| `GET /admin/users` `GET /admin/users/:id` | C 端用户列表 / 详情（脱敏手机号、昵称、头像、关注、贡献积分、投稿计数） |
 | `GET /admin/users/:id/submissions` | 该用户图鉴投稿 / 上传记录（只读） |
+| `GET /admin/users/:id/phone-events` | 绑定成功 / 失败 / 换绑审计（脱敏号） |
+| `POST /admin/users/:id/reveal-phone` | 显示完整号并写审计；默认脱敏 |
+| `POST /admin/users/:id/hard-delete` | 单用户硬删；body `{ confirm }` 必须为昵称或用户 ID；级联清会话/拥有/投稿元数据/积分；已发布图鉴保留（`catalog_kept`）；对象存储异步 GC |
 
 图鉴投稿 **首次审核通过** 时记入贡献积分，默认每张 **1** 分（OQ-P3-1，`CONTRIBUTION_POINTS_PER_APPROVED_CARD`）。合并已有模板同样记分（OQ-P3-3）。驳回为 0。**不回填**历史上已经通过的投稿（OQ-P3-2）。Admin **用户**（`#/users`）与小程序「我的」只读展示。不含现金 / 会员 / 广告 / 商城 / 提现 / 封禁。
 
@@ -357,6 +362,15 @@ npm run build:h5     # 本地确认 dist/；需设置 VITE_API_BASE
 6. 真机：request 合法域名填 API HTTPS；**不要**把火山方舟域名配进小程序（密钥与调用只在服务端）。
 
 确认后每卡复用 UGC-1：`POST /media/ugc-pending`（≤150KB）+ `POST /catalog/submissions`（白名单、协议）。宫格 `source=grid_page` 一律先匹配 published：近 dup 命中则挂拥有（Mode B，**不计审批积分**），未命中 `pending_review`。版本/特典可空。详见 `docs/ugc-2b-match16-scope-draft.md`。
+
+## 手机号绑定 + Admin 硬删（P3-Phone / P3-HardDelete）
+
+合入后部署 **api + admin**，小程序拉 **main** 重新上传。迁移 `018_phone_bind_harddelete.sql` 随 API 启动 seed/migrate。
+
+- 登录仍微信；未绑定手机号不挡使用。
+- Admin 用户列表默认脱敏；完整号查询仅精确匹配且限频；点「显示完整号码」写审计。
+- 硬删是物理删除（不是 `deleted_at`）；须输入昵称或 ID 二次确认；已发布图鉴保留（`catalog_kept`），用户图异步 GC。
+- **微信类目必须允许手机号快速验证组件**，否则 `getPhoneNumber` 无法上架。不改 Admin ops 登录，无短信 OTP 登录，无批量删用户。
 
 ## 明确不做（M1 之外）
 

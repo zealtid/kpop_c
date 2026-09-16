@@ -91,6 +91,9 @@ test("UX-A3 wxml: avatar+nickname row; nickname fill only; no getUserProfile; ac
   assert.match(wxml, /class="avatar-ph"/);
   assert.match(wxml, /class="profile-name/);
   assert.match(wxml, /贡献积分 \{\{contributionPoints\}\}/);
+  assert.match(wxml, /open-type="getPhoneNumber"/);
+  assert.match(wxml, /bindgetphonenumber="onGetPhoneNumber"/);
+  assert.match(js, /phoneBind/);
   assert.match(wxss, /\.profile-row/);
   assert.match(wxss, /align-items:\s*center/);
   assert.match(wxss, /\.avatar-clip\s*\{[^}]*flex-shrink:\s*0/s);
@@ -108,7 +111,7 @@ test("UX-A3 wxml: avatar+nickname row; nickname fill only; no getUserProfile; ac
   assert.match(wxml, /bindblur="onWxNicknameFill"/);
   assert.match(js, /armNicknameSync/);
   assert.match(js, /nicknameSyncArmed: false/);
-  assert.doesNotMatch(js, /onShow\(\)[\s\S]*nicknameSyncArmed:\s*true/);
+  assert.doesNotMatch(js, /onShow\(\)\s*\{[^}]*nicknameSyncArmed:\s*true/s);
   assert.match(wxml, /管理关注/);
   assert.match(wxml, /bindtap="goSettings"/);
   assert.doesNotMatch(wxml, /收藏家/);

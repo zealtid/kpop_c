@@ -14,12 +14,25 @@ export type AdminUser = {
   createdAt?: string | null;
   updatedAt?: string | null;
   contributionPoints: number;
+  phoneMasked?: string | null;
+  phoneBound?: boolean;
+  phoneBoundAt?: string | null;
   followedGroups: FollowedGroup[];
   submissionCount: number;
   pendingCount: number;
   approvedCount: number;
   rejectedCount: number;
   pointsPerApprovedCard?: number;
+};
+
+export type PhoneBindEvent = {
+  id: string;
+  userId: string | null;
+  actor: string;
+  event: string;
+  phoneMasked: string | null;
+  errorCode: string | null;
+  createdAt: string;
 };
 
 function denied(status: number, body: unknown) {
@@ -56,6 +69,29 @@ export async function getUser(id: string) {
   return api<AdminUser>(`/admin/users/${id}`);
 }
 
+export async function listPhoneEvents(id: string) {
+  return api<{ events: PhoneBindEvent[] }>(`/admin/users/${id}/phone-events`);
+}
+
+export async function revealPhone(id: string) {
+  return api<{ id: string; phoneE164: string | null; phoneMasked: string | null }>(
+    `/admin/users/${id}/reveal-phone`,
+    { method: "POST", body: "{}" },
+  );
+}
+
+export async function hardDeleteUser(id: string, confirm: string) {
+  return api<{
+    deleted: boolean;
+    targetUserId: string;
+    nickname: string;
+    cleanup: Record<string, unknown>;
+  }>(`/admin/users/${id}/hard-delete`, {
+    method: "POST",
+    body: JSON.stringify({ confirm }),
+  });
+}
+
 export function formatUserTime(iso: string | null | undefined) {
   if (!iso) return "";
   return String(iso).replace("T", " ").slice(0, 16);
@@ -64,4 +100,11 @@ export function formatUserTime(iso: string | null | undefined) {
 export function followLabel(groups: FollowedGroup[] | undefined) {
   if (!groups?.length) return "—";
   return groups.map((g) => g.nameZh || g.slug).join("、");
+}
+
+export function bindEventLabel(event: string) {
+  if (event === "bind_success") return "绑定成功";
+  if (event === "rebind") return "换绑";
+  if (event === "bind_fail") return "绑定失败";
+  return event;
 }

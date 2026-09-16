@@ -24,6 +24,15 @@
         <view class="profile-meta">
           <view class="profile-name {{nicknameUnset ? 'placeholder' : ''}}">{{displayName}}</view>
           <view class="profile-points">贡献积分 {{contributionPoints}}</view>
+          <view class="profile-phone">
+            <text>{{phoneBound ? phoneMasked : '未绑定手机号'}}</text>
+            <button
+              class="phone-bind-btn"
+              hover-class="none"
+              open-type="getPhoneNumber"
+              bindgetphonenumber="onGetPhoneNumber"
+            >{{phoneBound ? '换绑' : '绑定'}}</button>
+          </view>
           <view wx:if="{{nicknameUnset}}" class="nickname-sync-wrap">
             <view
               wx:if="{{!nicknameSyncArmed}}"

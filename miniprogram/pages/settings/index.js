@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
 const session = require("../../utils/session");
+const phoneBind = require("../../utils/phoneBind");
 
 Page({
   data: {
@@ -7,6 +8,8 @@ Page({
     needsLogin: false,
     loginFailed: false,
     loginBtnLabel: "登录",
+    phoneMasked: "",
+    phoneBound: false,
   },
 
   onShow() {
@@ -14,11 +17,14 @@ Page({
   },
 
   applyUser(user) {
+    const phone = phoneBind.phoneFields(user);
     this.setData({
       needsLogin: false,
       loginFailed: false,
       loginBtnLabel: session.loginButtonLabel(false),
       user: user || {},
+      phoneMasked: phone.phoneMasked,
+      phoneBound: phone.phoneBound,
     });
   },
 
@@ -37,8 +43,25 @@ Page({
           loginFailed,
           loginBtnLabel: session.loginButtonLabel(loginFailed),
           user: {},
+          phoneMasked: "",
+          phoneBound: false,
         });
       });
+  },
+
+  onGetPhoneNumber(e) {
+    if (this.data.needsLogin) return;
+    const wasBound = this.data.phoneBound;
+    phoneBind
+      .bindWithWeChatDetail(e.detail || {})
+      .then((user) => {
+        session.persistUser(user);
+        const app = getApp();
+        if (app && app.globalData) app.globalData.user = user;
+        this.applyUser(user);
+        wx.showToast({ title: wasBound ? "已换绑" : "已绑定", icon: "none" });
+      })
+      .catch(api.handleWriteError);
   },
 
   goFollowManage() {
