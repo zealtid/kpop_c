@@ -39,6 +39,60 @@
   text-align: center;
   margin: 16rpx 0 8rpx;
 }
+.advanced {
+  margin-top: 8rpx;
+}
+.adv-toggle {
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+}
+.adv-hint {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+}
+.agree {
+  display: flex;
+  align-items: flex-start;
+  min-height: 88rpx;
+  padding: 8rpx 0;
+  gap: 16rpx;
+}
+.agree.off {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.agree-hover { opacity: 0.85; }
+.agree-box {
+  width: 40rpx;
+  height: 40rpx;
+  margin-top: 4rpx;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 3rpx solid var(--color-text-secondary);
+  border-radius: 8rpx;
+  background: var(--color-bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.agree.on .agree-box {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+}
+.agree-mark {
+  width: 18rpx;
+  height: 10rpx;
+  border-left: 4rpx solid var(--color-text-inverse);
+  border-bottom: 4rpx solid var(--color-text-inverse);
+  transform: rotate(-45deg) translate(1rpx, -2rpx);
+}
+.agree-text {
+  flex: 1;
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+.agree.on .agree-text { color: var(--color-text-primary); }
 .offscreen {
   position: fixed;
   left: -2400px;

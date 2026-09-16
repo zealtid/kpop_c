@@ -5,12 +5,13 @@
 let session = null;
 
 function begin(opts) {
+  const boxesIn = opts.boxes || [];
   session = {
     src: opts.src || "",
     origW: Number(opts.origW) || 0,
     origH: Number(opts.origH) || 0,
-    cells: Number(opts.cells) === 9 ? 9 : 4,
-    boxes: (opts.boxes || []).map((b, i) => ({
+    cells: Number(opts.cells) || boxesIn.length || 0,
+    boxes: boxesIn.map((b, i) => ({
       x: b.x,
       y: b.y,
       w: b.w,
@@ -18,20 +19,24 @@ function begin(opts) {
       index: b.index == null ? i : b.index,
       rotation: b.rotation || 0,
       memberId: b.memberId || "",
-      slotLabel: b.slotLabel || `宫格${i + 1}`,
+      suggestedMemberName: b.suggestedMemberName || b.memberName || "",
+      slotLabel: b.slotLabel || `卡${i + 1}`,
       channelValue: b.channelValue || "",
       channelCustom: b.channelCustom || "",
       channelLabel: b.channelLabel || "",
       channelOther: !!b.channelOther,
-      deleted: false,
+      deleted: !!b.deleted,
     })),
-    library: opts.library || "jsfeat",
+    library: opts.library || "doubao",
     method: opts.method || "",
     confidence: opts.confidence || 0,
     fromServer: !!opts.fromServer,
+    engine: opts.engine || (opts.fromServer ? "vlm" : "jsfeat"),
+    detectedCount: Number(opts.detectedCount) || boxesIn.length || 0,
+    suggestedVersionLabel: opts.suggestedVersionLabel || "",
     groupId: opts.groupId || "",
     releaseId: opts.releaseId || "",
-    versionLabel: opts.versionLabel || "",
+    versionLabel: opts.versionLabel || opts.suggestedVersionLabel || "",
   };
   return session;
 }
@@ -83,6 +88,17 @@ function degradeToUgc1(wxLike, src, extra) {
   return prefill;
 }
 
+function matchMemberId(name, members) {
+  const q = String(name || "").trim().toLowerCase();
+  if (!q || !members || !members.length) return "";
+  const found = members.find((m) => {
+    const en = String(m.nameEn || "").trim().toLowerCase();
+    const zh = String(m.nameZh || "").trim().toLowerCase();
+    return en === q || zh === q || (en && q.indexOf(en) >= 0) || (zh && q.indexOf(zh) >= 0);
+  });
+  return found ? String(found.id) : "";
+}
+
 module.exports = {
   begin,
   get,
@@ -92,4 +108,6 @@ module.exports = {
   cancel,
   ugc1Prefill,
   degradeToUgc1,
+  matchMemberId,
+  MAX_SUBMIT: 9,
 };

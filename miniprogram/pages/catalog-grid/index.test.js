@@ -13,9 +13,20 @@ test("app.json registers grid pages", () => {
   assert.ok(appJson.pages.includes("pages/catalog-grid/confirm"));
 });
 
-test("entry copy and 4/9 picker", () => {
+test("entry copy is VLM-first; 4/9 is advanced only", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
+  const js = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
   assert.match(wxml, /宫格入册/);
+  assert.match(wxml, /第三方视觉识别/);
+  assert.match(wxml, /未勾选不可识别/);
+  assert.match(wxml, /toggleConsent/);
+  assert.match(wxml, /识别中|busyText/);
+  assert.match(js, /识别中…/);
+  assert.match(js, /engine:\s*"vlm"/);
+  assert.match(js, /visionConsent:\s*true/);
+  assert.match(js, /GRID_VLM_QUOTA/);
+  assert.doesNotMatch(wxml, /拍或选四宫 \/ 九宫整页/);
+  assert.match(wxml, /手动四宫 \/ 九宫/);
   assert.match(wxml, /四宫/);
   assert.match(wxml, /九宫/);
   assert.match(wxml, /pickAlbum/);
@@ -30,6 +41,9 @@ test("confirm has adjust/delete/rotate and no private-only", () => {
   assert.match(wxml, /deleteSelected/);
   assert.match(wxml, /onHandleStart/);
   assert.match(wxml, /确认入册/);
+  assert.match(wxml, /识别到 \{\{detectedCount\}\} 张/);
+  assert.match(wxml, /一次最多提交 9 张/);
+  assert.match(js, /MAX_SUBMIT/);
   assert.match(wxml, /提交进度/);
   assert.match(wxml, /channel-picker/);
   assert.match(wxml, /openChannelPicker/);

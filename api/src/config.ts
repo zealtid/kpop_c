@@ -53,6 +53,31 @@ export const config = {
   bucketSecretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
 };
 
+/** 2026-09-16 拍板：豆包视觉定位 / Grounding。生产也可改填方舟接入点 `ep-…`，勿校验必须是 seed 名。 */
+export const DEFAULT_ARK_VISION_MODEL = "doubao-seed-2-0-lite-260215";
+
+/**
+ * UGC-2b-VLM: Volcengine Ark / Doubao vision. Read live so tests can toggle env.
+ * Railway must set ARK_API_KEY (+ optional ARK_VISION_MODEL) before production detect works.
+ */
+export function gridVlmConfig() {
+  const timeout = Number(process.env.GRID_VLM_TIMEOUT_MS || 18_000);
+  const dailyLimit = Number(process.env.GRID_VLM_DAILY_LIMIT || 20);
+  const maxDetect = Number(process.env.GRID_VLM_MAX_DETECT || 12);
+  const maxSubmit = Number(process.env.GRID_VLM_MAX_SUBMIT || 9);
+  return {
+    provider: (process.env.GRID_VLM_PROVIDER || "doubao").trim().toLowerCase() || "doubao",
+    apiKey: (process.env.ARK_API_KEY || "").trim(),
+    /** `ARK_VISION_MODEL` as-is: seed id or console endpoint `ep-…`. */
+    model: (process.env.ARK_VISION_MODEL || DEFAULT_ARK_VISION_MODEL).trim(),
+    baseUrl: (process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").replace(/\/$/, ""),
+    timeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : 18_000,
+    dailyLimit: Number.isFinite(dailyLimit) && dailyLimit > 0 ? dailyLimit : 20,
+    maxDetect: Number.isFinite(maxDetect) && maxDetect > 0 ? maxDetect : 12,
+    maxSubmit: Number.isFinite(maxSubmit) && maxSubmit > 0 ? maxSubmit : 9,
+  };
+}
+
 export const isProd = config.nodeEnv === "production";
 export const mockWxLoginEnabled = !isProd || !config.wxAppId || !config.wxSecret;
 /** H5 网页授权：未配 WX_WEB_APPID/SECRET 时走 mock（与小程序 mock 对齐）。 */

@@ -3,6 +3,7 @@
 > 产品：**星卡**  
 > 状态：**已确认 · 本切片已开研发闸**（Q-G1–G5 总监收口）  
 > 上位：`ugc-catalog-direction-plan.md` F-R2 / F-C7 / F-C8；UGC-1 单卡投稿已合入  
+> 检测层升级：见 `ugc-2b-vlm-grid-scope-draft.md`（VLM 主路径；本文保留 jsfeat 4/9 作为高级/降级）  
 > 平台：微信小程序 + API；**无 H5 宫格**
 
 ---

@@ -18,7 +18,7 @@ C 端主路径是微信小程序；另有只读 **H5**（`h5/`，UGC-2a / H5-1 �
 - 缺卡反馈 **仅文字**。
 - **P7**：卡册总览无搜索（搜索在图鉴）。
 - **P8**：分享长图必须拼完所有已拥有卡，禁止截成前 N 张。
-- 本阶段不做：订阅消息、交易开关、缺卡清单页、好友、AI。UGC-1 单卡投稿审核与 UGC-2b 四宫/九宫入册已开放（无私有-only、无 H5 宫格）。
+- 本阶段不做：订阅消息、交易开关、缺卡清单页、好友、端侧大模型、自动灌库文案。UGC-1 单卡投稿审核与 UGC-2b-VLM 宫格入册已开放（无私有-only、无 H5 宫格）。
 
 ## 本地运行
 
@@ -97,7 +97,7 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS / H5 行为测试
 | 登录 / 我 | `POST /auth/wx-login` `POST /auth/wx-web-login` `GET /auth/wx-web/start` `GET\|PATCH /me`（含只读 `contributionPoints`） |
 | 关注 | `GET\|PUT /me/follows` |
 | 图鉴 | `GET /catalog/groups`（`?ugc_open=1` 仅白名单） `.../members` `.../releases` `GET /catalog/releases/:id/templates` `GET /catalog/search` `GET /catalog/templates` |
-| 投稿 | `POST /media/ugc-pending` `POST /catalog/submissions`（可选 `matchOwnIfDuplicate`：近 dup 则挂拥有、不建待审） `GET /me/catalog-submissions` `GET /me/catalog-submissions/:id` `POST /collection/custom-cards/:id/apply-catalog` `POST /catalog/templates/:id/report` `POST /catalog/grid/split`（4/9 宫格薄回退，jsfeat 投影） |
+| 投稿 | `POST /media/ugc-pending` `POST /catalog/submissions`（可选 `matchOwnIfDuplicate`：近 dup 则挂拥有、不建待审） `GET /me/catalog-submissions` `GET /me/catalog-submissions/:id` `POST /collection/custom-cards/:id/apply-catalog` `POST /catalog/templates/:id/report` `POST /catalog/grid/split`（主路径火山豆包视觉检测 bbox；`engine=jsfeat` 为 4/9 规则宫格回退） |
 | 卡册 | `GET /collection/overview` `GET /collection/groups/:id` `.../progress` |
 | 拥有 | `POST /collection/cards` `POST /collection/cards/batch` `PATCH\|DELETE /collection/cards/:templateId` |
 | 想要 | `GET\|POST /collection/wants` `DELETE /collection/wants/:templateId`；已拥有再 POST 返回 `200` `{ code: "OWN_WANT_MUTEX", message, wanted: false }`，不写库 |
@@ -324,12 +324,38 @@ npm run dev:h5       # http://localhost:5174
 npm run build:h5     # 本地确认 dist/；需设置 VITE_API_BASE
 ```
 
-## UGC-2b 四宫 / 九宫入册
+## UGC-2b-VLM 宫格入册（火山豆包视觉）
 
-小程序「宫格入册」：相册或相机拍整页 → 选 4 或 9 → **jsfeat**（灰度 + Sobel + 行列投影）客户端切分；失败则 `POST /catalog/grid/split` 薄回退（sharp 解码，同一套投影）。确认页可调框、删除、旋转。共享组合/专辑/版本；成员与特典按卡可改。
+小程序「宫格入册」：勾选第三方视觉识别说明 → 相册或相机拍整页（规则或不规则，**不再强制**四宫/九宫）→ `POST /catalog/grid/split` **服务端**调用火山方舟豆包视觉，返回归一化 bbox → 确认页展示「识别到 N 张」，可调框、删除、旋转。成员/特典建议仅预填，须用户确认。共享组合/专辑/版本；确认后仍走 UGC-1。
 
-确认后每卡复用 UGC-1：`POST /media/ugc-pending`（≤150KB）+ `POST /catalog/submissions`（白名单、协议、先审后发）。`matchOwnIfDuplicate: true` 时近 dup 命中已发布模板则挂拥有（Mode B），不新建 published、不跳过审核。切分失败降级到单卡 `pages/catalog-submit`。无 H5 宫格、无私有-only。
+失败 / 超时（约 18s）或未配置 `ARK_API_KEY`：Toast 后降级单卡 `pages/catalog-submit`。日限约 20 页/用户；检测最多 12 张、提交最多 9 张。高级入口仍保留手动四宫/九宫（jsfeat，不经过第三方视觉）。无 H5 宫格、无私有-only、不自动 published。
+
+### 环境变量（仅服务端）
+
+密钥**不得**写入小程序或提交到 git。生产 Railway **必须**先配好再开宫格识别，否则会降级单卡。
+
+| 变量 | 必填 | 说明 |
+| --- | --- | --- |
+| `ARK_API_KEY` | 是 | 火山方舟 API Key（控制台 → API Key 管理） |
+| `ARK_VISION_MODEL` | 建议 | 默认 `doubao-seed-2-0-lite-260215`（豆包视觉定位 / Grounding，2026-09-16 拍板）。生产也可填方舟推理接入点 `ep-…`，代码按字符串原样传给 chat/completions，不校验必须是 seed 名。 |
+| `ARK_BASE_URL` | 否 | 默认 `https://ark.cn-beijing.volces.com/api/v3` |
+| `GRID_VLM_PROVIDER` | 否 | 默认 `doubao`（可插拔；测试可用 `mock`） |
+| `GRID_VLM_TIMEOUT_MS` | 否 | 默认 `18000` |
+| `GRID_VLM_DAILY_LIMIT` | 否 | 默认 `20` |
+
+如何取模型 ID：登录 [火山方舟控制台](https://console.volcengine.com/ark/) → 开通 **Doubao-Seed-2.0-lite**（视觉定位 / Grounding）或创建「推理接入点」后把 `ep-…` 填进 `ARK_VISION_MODEL`。未设时 API 默认 `doubao-seed-2-0-lite-260215`。模型 Grounding 输出 `<bbox>`（常为 1000×1000），服务端再转成产品约定的 0–1 bbox。
+
+### 微信开发者工具验证
+
+1. 打开仓库根目录；关闭「不校验合法域名」；`miniprogram/utils/config.js` 指向本机或已配 HTTPS 的 API。
+2. 登录后从图鉴/我的进入「宫格入册」；未勾选协议时点相册应 Toast「请先勾选视觉识别说明」。
+3. 勾选后上传不规则多卡样张，出现「识别中…」，进入确认页看到「识别到 N 张」（可调框/删/转）。确认入册仍先审后发，不自动 published。
+4. 停掉 API 或故意配错 `ARK_API_KEY`：应 Toast 并跳转单卡投稿，不白屏。
+5. 抓包：请求只打到自有 API `/catalog/grid/split`，**不见** `ARK_API_KEY`、不见方舟域名。
+6. 真机：request 合法域名填 API HTTPS；**不要**把火山方舟域名配进小程序（密钥与调用只在服务端）。
+
+确认后每卡复用 UGC-1：`POST /media/ugc-pending`（≤150KB）+ `POST /catalog/submissions`（白名单、协议、先审后发）。`matchOwnIfDuplicate: true` 时近 dup 命中已发布模板则挂拥有（Mode B），不新建 published、不跳过审核。
 
 ## 明确不做（M1 之外）
 
-订阅消息 Worker、微博爬虫、缺卡清单页（C 端进度）、交易、好友关系、AI。H5-2 投稿壳、UGC-2c 票务深链不在本切片。
+订阅消息 Worker、微博爬虫、缺卡清单页（C 端进度）、交易、好友关系、端侧大模型、自动 published 特典文案。H5-2 投稿壳、UGC-2c 票务深链不在本切片。

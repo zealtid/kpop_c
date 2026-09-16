@@ -26,3 +26,7 @@ export function forbidden(message = "没有权限") {
 export function badRequest(message: string, details?: unknown) {
   return new AppError(400, "BAD_REQUEST", message, details);
 }
+
+export function tooManyRequests(message: string, details?: unknown) {
+  return new AppError(429, "GRID_VLM_QUOTA", message, details);
+}

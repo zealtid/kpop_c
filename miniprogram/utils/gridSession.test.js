@@ -11,14 +11,20 @@ test("begin / activeCards / degradeToUgc1", () => {
     src: "tmp://page.jpg",
     origW: 100,
     origH: 150,
-    cells: 4,
     boxes: [
-      { x: 0, y: 0, w: 0.5, h: 0.5 },
+      { x: 0, y: 0, w: 0.5, h: 0.5, memberName: "Carmen" },
       { x: 0.5, y: 0, w: 0.5, h: 0.5, deleted: true },
     ],
-    library: "jsfeat",
+    library: "doubao",
+    engine: "vlm",
+    suggestedVersionLabel: "POB",
   });
   assert.equal(gridSession.activeCards().length, 1);
+  assert.equal(gridSession.get().suggestedVersionLabel, "POB");
+  assert.equal(gridSession.get().boxes[0].suggestedMemberName, "Carmen");
+  assert.equal(gridSession.MAX_SUBMIT, 9);
+  const id = gridSession.matchMemberId("carmen", [{ id: "m1", nameEn: "Carmen", nameZh: "卡门" }]);
+  assert.equal(id, "m1");
   const store = {};
   const nav = [];
   const wxLike = {
