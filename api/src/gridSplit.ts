@@ -13,8 +13,10 @@ import {
   cardsPayload,
   consumeGridVlmQuota,
   createGridVlmProvider,
+  GRID_VLM_DETECT_PROMPT,
   GRID_VLM_MAX_DETECT,
   normalizeVlmResult,
+  readVlmDetectLog,
   recordGridVlmCall,
   type DetectedGridCard,
   type GridEngine,
@@ -123,6 +125,7 @@ async function splitWithVlm(
         detectedCount: 0,
         latencyMs: 0,
         degrade: null,
+        promptText: GRID_VLM_DETECT_PROMPT,
       });
       throw tooManyRequests("今日识别次数已用完，请稍后再试", { count: quota.count, limit: quota.limit });
     }
@@ -144,6 +147,8 @@ async function splitWithVlm(
       { max: cfg.maxDetect || GRID_VLM_MAX_DETECT, imgW: meta.width, imgH: meta.height },
     );
     const boxes = normalized.boxes;
+    const promptText = detected.promptText || GRID_VLM_DETECT_PROMPT;
+    const rawText = detected.rawText || null;
     if (!boxes.length) {
       await recordGridVlmCall({
         userId: opts?.userId,
@@ -154,6 +159,8 @@ async function splitWithVlm(
         detectedCount: 0,
         latencyMs,
         degrade: "ugc1",
+        promptText,
+        rawText,
       });
       return vlmFailPayload("no_cards", provider.id, "没有识别到小卡，已改为单卡投稿");
     }
@@ -170,6 +177,8 @@ async function splitWithVlm(
       latencyMs,
       degrade: null,
       meta: { boxCount: boxes.length, confidenceAvg: Math.min(1, avg) },
+      promptText,
+      rawText,
     });
     const payload: Record<string, unknown> = {
       ok: true,
@@ -203,6 +212,7 @@ async function splitWithVlm(
     } else if (name === "VlmUnconfiguredError" || message === "vlm_unconfigured") {
       reason = "vlm_unconfigured";
     }
+    const failLog = readVlmDetectLog(err);
     await recordGridVlmCall({
       userId: opts?.userId,
       provider: provider.id,
@@ -212,6 +222,8 @@ async function splitWithVlm(
       detectedCount: 0,
       latencyMs,
       degrade: "ugc1",
+      promptText: failLog.promptText || GRID_VLM_DETECT_PROMPT,
+      rawText: failLog.rawText || null,
     });
     if (reason === "timeout") {
       return vlmFailPayload("timeout", provider.id, "识别超时，已改为单卡投稿");

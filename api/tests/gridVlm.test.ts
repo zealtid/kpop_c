@@ -7,6 +7,8 @@ import { DEFAULT_ARK_VISION_MODEL, gridVlmConfig } from "../src/config.js";
 import { cardsFromModelText, completionText, extractJsonValue, parseGroundingBboxes } from "../src/vlm/parse.js";
 import { GRID_VLM_MAX_DETECT, GRID_VLM_MAX_SUBMIT, normalizeVlmCards, normalizeVlmResult, xyxyToBox } from "../src/vlm/normalize.js";
 import { resolveGridEngine } from "../src/gridSplit.js";
+import { GRID_VLM_LOG_TEXT_MAX_BYTES, sanitizeGridVlmLogText } from "../src/vlm/calls.js";
+import { GRID_VLM_DETECT_PROMPT } from "../src/vlm/doubao.js";
 
 test("default ARK_VISION_MODEL is grounding seed; ep ids pass through", () => {
   const prev = process.env.ARK_VISION_MODEL;
@@ -141,6 +143,33 @@ test("pixel coords larger than 1000 scale with image size", () => {
   assert.equal(boxes.length, 1);
   assert.ok(Math.abs(boxes[0].x - 0.05) < 0.02);
   assert.ok(boxes[0].w > 0.4);
+});
+
+test("sanitizeGridVlmLogText strips data URL / keys and truncates", () => {
+  assert.match(GRID_VLM_DETECT_PROMPT, /检出所有小卡/);
+  const dirty = sanitizeGridVlmLogText(
+    'hi data:image/jpeg;base64,AAAA Bearer sk-live-secretkey ark-abcdef0123456789 end',
+  );
+  assert.equal(dirty.truncated, false);
+  assert.ok(dirty.text);
+  assert.doesNotMatch(dirty.text!, /AAAA|sk-live|ark-abcdef|Bearer sk/i);
+  assert.match(dirty.text!, /\[omitted-data-url\]/);
+  assert.match(dirty.text!, /\[omitted-key\]/);
+
+  const huge = "x".repeat(GRID_VLM_LOG_TEXT_MAX_BYTES + 64);
+  const clipped = sanitizeGridVlmLogText(huge);
+  assert.equal(clipped.truncated, true);
+  assert.ok(clipped.text);
+  assert.ok(Buffer.byteLength(clipped.text!, "utf8") <= GRID_VLM_LOG_TEXT_MAX_BYTES);
+
+  const cjk = sanitizeGridVlmLogText("卡".repeat(GRID_VLM_LOG_TEXT_MAX_BYTES));
+  assert.equal(cjk.truncated, true);
+  assert.ok(cjk.text);
+  assert.ok(Buffer.byteLength(cjk.text, "utf8") <= GRID_VLM_LOG_TEXT_MAX_BYTES);
+  assert.doesNotMatch(cjk.text, /\uFFFD/);
+
+  assert.equal(sanitizeGridVlmLogText("").text, null);
+  assert.equal(sanitizeGridVlmLogText(null).text, null);
 });
 
 test("Doubao prompt detects all photocards; no 16 product cap; no client keys in MP grid", async () => {

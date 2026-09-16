@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { query } from "../db.js";
-import { badRequest } from "../errors.js";
+import { badRequest, notFound } from "../errors.js";
 import { shanghaiDate } from "../time.js";
 
 const MODEL_MAX = 128;
@@ -8,9 +8,13 @@ const PROVIDER_MAX = 64;
 const REASON_MAX = 64;
 const DEGRADE_MAX = 32;
 const USER_MAX = 64;
-const META_MAX_BYTES = 2048;
+const META_MAX_BYTES = 8192;
 const DEFAULT_RANGE_DAYS = 7;
 const MAX_RANGE_DAYS = 90;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 提示词 / 模型原文写入上限（字节）；超长截断并标记 truncated。 */
+export const GRID_VLM_LOG_TEXT_MAX_BYTES = 32 * 1024;
 
 export type GridVlmCallInput = {
   userId?: string | null;
@@ -22,11 +26,14 @@ export type GridVlmCallInput = {
   latencyMs?: number;
   degrade?: string | null;
   meta?: { boxCount?: number; confidenceAvg?: number } | null;
+  promptText?: string | null;
+  rawText?: string | null;
 };
 
 export type GridVlmCallRow = {
   id: string;
   userId: string | null;
+  userDisplayName: string | null;
   createdAt: string | null;
   provider: string;
   model: string;
@@ -37,6 +44,13 @@ export type GridVlmCallRow = {
   degrade: string | null;
   day: string;
   meta: { boxCount?: number; confidenceAvg?: number } | null;
+};
+
+export type GridVlmCallDetail = GridVlmCallRow & {
+  promptText: string | null;
+  rawText: string | null;
+  promptTruncated: boolean;
+  rawTruncated: boolean;
 };
 
 export type GridVlmDayStats = {
@@ -72,6 +86,34 @@ function dayText(value: unknown): string {
 function intOrZero(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? Math.trunc(n) : 0;
+}
+
+function clipUtf8(s: string, maxBytes: number): { text: string; truncated: boolean } {
+  if (Buffer.byteLength(s, "utf8") <= maxBytes) return { text: s, truncated: false };
+  let buf = Buffer.from(s, "utf8").subarray(0, maxBytes);
+  // 去掉截断点上的 UTF-8 续字节，以及随后落下的不完整首字节，避免 toString 填入 U+FFFD 反而超长
+  while (buf.length && (buf[buf.length - 1] & 0xc0) === 0x80) {
+    buf = buf.subarray(0, buf.length - 1);
+  }
+  if (buf.length && (buf[buf.length - 1] & 0xc0) === 0xc0) {
+    buf = buf.subarray(0, buf.length - 1);
+  }
+  return { text: buf.toString("utf8"), truncated: true };
+}
+
+/**
+ * 审计文本：去掉 data URL / 疑似密钥，再按字节截断。
+ * 不存原图、base64 载荷或 API key。
+ */
+export function sanitizeGridVlmLogText(value: unknown): { text: string | null; truncated: boolean } {
+  if (value == null) return { text: null, truncated: false };
+  let s = String(value);
+  if (!s) return { text: null, truncated: false };
+  s = s.replace(/data:[^;,\s]+;base64,[A-Za-z0-9+/=\r\n]+/gi, "[omitted-data-url]");
+  s = s.replace(/\bBearer\s+\S+/gi, "Bearer [omitted]");
+  s = s.replace(/\b(?:sk-|ark-)[A-Za-z0-9_\-]{8,}/gi, "[omitted-key]");
+  const clipped = clipUtf8(s, GRID_VLM_LOG_TEXT_MAX_BYTES);
+  return { text: clipped.text || null, truncated: clipped.truncated };
 }
 
 function sanitizeMeta(meta: GridVlmCallInput["meta"]): Record<string, number> | null {
@@ -177,6 +219,11 @@ type CallDbRow = {
   degrade: string | null;
   day: Date | string;
   meta: unknown;
+  user_nickname?: string | null;
+  prompt_text?: string | null;
+  raw_text?: string | null;
+  prompt_truncated?: boolean;
+  raw_truncated?: boolean;
 };
 
 function mapCall(row: CallDbRow): GridVlmCallRow {
@@ -184,9 +231,11 @@ function mapCall(row: CallDbRow): GridVlmCallRow {
     row.meta && typeof row.meta === "object" && !Array.isArray(row.meta)
       ? (row.meta as { boxCount?: number; confidenceAvg?: number })
       : null;
+  const nickname = row.user_nickname == null ? "" : String(row.user_nickname).trim();
   return {
     id: String(row.id),
     userId: row.user_id ? String(row.user_id) : null,
+    userDisplayName: nickname || null,
     createdAt: iso(row.created_at),
     provider: String(row.provider || ""),
     model: String(row.model || ""),
@@ -200,6 +249,23 @@ function mapCall(row: CallDbRow): GridVlmCallRow {
   };
 }
 
+function mapCallDetail(row: CallDbRow): GridVlmCallDetail {
+  return {
+    ...mapCall(row),
+    promptText: row.prompt_text == null || row.prompt_text === "" ? null : String(row.prompt_text),
+    rawText: row.raw_text == null || row.raw_text === "" ? null : String(row.raw_text),
+    promptTruncated: !!row.prompt_truncated,
+    rawTruncated: !!row.raw_truncated,
+  };
+}
+
+const LIST_COLUMNS = `c.id, c.user_id, c.created_at, c.provider, c.model, c.ok, c.reason,
+                    c.detected_count, c.latency_ms, c.degrade, c.day, c.meta,
+                    u.nickname AS user_nickname`;
+
+const DETAIL_COLUMNS = `${LIST_COLUMNS},
+                    c.prompt_text, c.raw_text, c.prompt_truncated, c.raw_truncated`;
+
 /** Persist one VLM detect attempt. Throws on DB errors (tests). */
 export async function insertGridVlmCall(input: GridVlmCallInput): Promise<GridVlmCallRow> {
   const id = randomUUID();
@@ -212,12 +278,16 @@ export async function insertGridVlmCall(input: GridVlmCallInput): Promise<GridVl
   const latencyMs = Math.max(0, intOrZero(input.latencyMs));
   const day = shanghaiDate();
   const meta = sanitizeMeta(input.meta);
+  const prompt = sanitizeGridVlmLogText(input.promptText);
+  const raw = sanitizeGridVlmLogText(input.rawText);
   const r = await query<CallDbRow>(
     `INSERT INTO grid_vlm_calls (
        id, user_id, created_at, provider, model, ok, reason,
-       detected_count, latency_ms, degrade, day, meta
+       detected_count, latency_ms, degrade, day, meta,
+       prompt_text, raw_text, prompt_truncated, raw_truncated
      ) VALUES (
-       $1, $2, now(), $3, $4, $5, $6, $7, $8, $9, $10::date, $11::jsonb
+       $1, $2, now(), $3, $4, $5, $6, $7, $8, $9, $10::date, $11::jsonb,
+       $12, $13, $14, $15
      )
      RETURNING id, user_id, created_at, provider, model, ok, reason,
                detected_count, latency_ms, degrade, day, meta`,
@@ -233,6 +303,10 @@ export async function insertGridVlmCall(input: GridVlmCallInput): Promise<GridVl
       degrade,
       day,
       meta ? JSON.stringify(meta) : null,
+      prompt.text,
+      raw.text,
+      prompt.truncated,
+      raw.truncated,
     ],
   );
   return mapCall(r.rows[0]);
@@ -345,25 +419,25 @@ export async function listGridVlmCalls(opts?: {
   const cursorRaw = String(opts?.cursor || "").trim();
   const offset = cursorRaw ? 0 : Math.max(0, Number(opts?.offset) || 0);
 
-  const where: string[] = ["day >= $1::date", "day <= $2::date"];
+  const where: string[] = ["c.day >= $1::date", "c.day <= $2::date"];
   const params: unknown[] = [from, to];
 
   if (ok !== undefined) {
     params.push(ok);
-    where.push(`ok = $${params.length}`);
+    where.push(`c.ok = $${params.length}`);
   }
   if (reason) {
     params.push(reason.slice(0, REASON_MAX));
-    where.push(`reason = $${params.length}`);
+    where.push(`c.reason = $${params.length}`);
   }
   if (userId) {
     params.push(userId.slice(0, USER_MAX));
-    where.push(`user_id = $${params.length}`);
+    where.push(`c.user_id = $${params.length}`);
   }
 
   const filterSql = where.join(" AND ");
   const count = await query<{ n: string }>(
-    `SELECT count(*)::text AS n FROM grid_vlm_calls WHERE ${filterSql}`,
+    `SELECT count(*)::text AS n FROM grid_vlm_calls c WHERE ${filterSql}`,
     params,
   );
 
@@ -373,17 +447,17 @@ export async function listGridVlmCalls(opts?: {
     const cursor = decodeCursor(cursorRaw);
     pageParams.push(cursor.createdAt, cursor.id);
     pageWhere.push(
-      `(created_at, id) < ($${pageParams.length - 1}::timestamptz, $${pageParams.length}::uuid)`,
+      `(c.created_at, c.id) < ($${pageParams.length - 1}::timestamptz, $${pageParams.length}::uuid)`,
     );
   }
 
   pageParams.push(limit + 1);
   const limitIdx = pageParams.length;
-  let sql = `SELECT id, user_id, created_at, provider, model, ok, reason,
-                    detected_count, latency_ms, degrade, day, meta
-             FROM grid_vlm_calls
+  let sql = `SELECT ${LIST_COLUMNS}
+             FROM grid_vlm_calls c
+             LEFT JOIN users u ON u.id::text = c.user_id
              WHERE ${pageWhere.join(" AND ")}
-             ORDER BY created_at DESC, id DESC
+             ORDER BY c.created_at DESC, c.id DESC
              LIMIT $${limitIdx}`;
   if (!cursorRaw) {
     pageParams.push(offset);
@@ -402,4 +476,18 @@ export async function listGridVlmCalls(opts?: {
     total: Number(count.rows[0]?.n || 0),
     nextCursor: hasMore && last?.createdAt ? encodeCursor(last.createdAt, last.id) : null,
   };
+}
+
+export async function getGridVlmCall(idRaw: unknown): Promise<GridVlmCallDetail> {
+  const id = String(idRaw || "").trim();
+  if (!UUID_RE.test(id)) throw notFound("调用记录不存在");
+  const r = await query<CallDbRow>(
+    `SELECT ${DETAIL_COLUMNS}
+     FROM grid_vlm_calls c
+     LEFT JOIN users u ON u.id::text = c.user_id
+     WHERE c.id = $1`,
+    [id],
+  );
+  if (!r.rows[0]) throw notFound("调用记录不存在");
+  return mapCallDetail(r.rows[0]);
 }
