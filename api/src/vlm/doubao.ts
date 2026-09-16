@@ -1,9 +1,10 @@
 import sharp from "sharp";
 import { gridVlmConfig } from "../config.js";
 import { cardsFromModelText, completionText } from "./parse.js";
-import type { GridVlmProvider, VlmDetectInput, VlmDetectResult } from "./types.js";
+import { attachVlmDetectLog, type GridVlmProvider, type VlmDetectInput, type VlmDetectResult } from "./types.js";
 
-const DETECT_PROMPT = `请找出图中每一张偶像小卡（photocard）的矩形位置。可能是规则宫格，也可能不规则散落。请检出所有小卡；服务端可能只保留配置的上限张数。忽略手机、手、专辑封面、便签、桌面杂物。
+/** 发给豆包视觉的文本提示词（不含图片）。Admin 审计与 detect 共用。 */
+export const GRID_VLM_DETECT_PROMPT = `请找出图中每一张偶像小卡（photocard）的矩形位置。可能是规则宫格，也可能不规则散落。请检出所有小卡；服务端可能只保留配置的上限张数。忽略手机、手、专辑封面、便签、桌面杂物。
 
 对每张小卡输出 Grounding 框，坐标为相对整图的 0–1000（左 上 右 下），必须检出所有小卡，每卡一行：
 <bbox>x_min y_min x_max y_max</bbox>
@@ -15,20 +16,22 @@ const DETECT_PROMPT = `请找出图中每一张偶像小卡（photocard）的矩
 
 const VLM_MAX_EDGE = 1280;
 
+function vlmErr(name: string, message: string, rawText?: string) {
+  const err = new Error(message);
+  err.name = name;
+  return attachVlmDetectLog(err, { promptText: GRID_VLM_DETECT_PROMPT, rawText });
+}
+
 export class DoubaoVisionProvider implements GridVlmProvider {
   readonly id = "doubao";
 
   async detect(input: VlmDetectInput): Promise<VlmDetectResult> {
     const cfg = gridVlmConfig();
     if (!cfg.apiKey) {
-      const err = new Error("vlm_unconfigured");
-      err.name = "VlmUnconfiguredError";
-      throw err;
+      throw vlmErr("VlmUnconfiguredError", "vlm_unconfigured");
     }
     if (!cfg.model) {
-      const err = new Error("vlm_unconfigured");
-      err.name = "VlmUnconfiguredError";
-      throw err;
+      throw vlmErr("VlmUnconfiguredError", "vlm_unconfigured");
     }
     const jpeg = await sharp(input.buffer)
       .rotate()
@@ -51,7 +54,7 @@ export class DoubaoVisionProvider implements GridVlmProvider {
           {
             role: "user",
             content: [
-              { type: "text", text: DETECT_PROMPT },
+              { type: "text", text: GRID_VLM_DETECT_PROMPT },
               { type: "image_url", image_url: { url: dataUrl } },
             ],
           },
@@ -61,19 +64,19 @@ export class DoubaoVisionProvider implements GridVlmProvider {
     });
     const text = await res.text();
     if (!res.ok) {
-      const err = new Error(`vlm_http_${res.status}`);
-      err.name = "VlmHttpError";
-      throw err;
+      throw vlmErr("VlmHttpError", `vlm_http_${res.status}`, text);
     }
     let payload: unknown;
     try {
       payload = JSON.parse(text);
     } catch {
-      const err = new Error("vlm_http_json");
-      err.name = "VlmHttpError";
-      throw err;
+      throw vlmErr("VlmHttpError", "vlm_http_json", text);
     }
     const content = completionText(payload);
-    return { cards: cardsFromModelText(content), rawText: content };
+    return {
+      cards: cardsFromModelText(content),
+      promptText: GRID_VLM_DETECT_PROMPT,
+      rawText: content,
+    };
   }
 }

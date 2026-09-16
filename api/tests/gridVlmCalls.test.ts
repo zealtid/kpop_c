@@ -9,8 +9,14 @@ import { pool, query } from "../src/db.js";
 import { seed } from "../src/seed.js";
 import { shanghaiDate } from "../src/time.js";
 import { splitPhotocardGrid } from "../src/gridSplit.js";
-import { MockGridVlmProvider } from "../src/vlm/index.js";
-import { insertGridVlmCall, listGridVlmCalls, listGridVlmStats } from "../src/vlm/calls.js";
+import { attachVlmDetectLog, GRID_VLM_DETECT_PROMPT, MockGridVlmProvider } from "../src/vlm/index.js";
+import {
+  getGridVlmCall,
+  GRID_VLM_LOG_TEXT_MAX_BYTES,
+  insertGridVlmCall,
+  listGridVlmCalls,
+  listGridVlmStats,
+} from "../src/vlm/calls.js";
 import type { Server } from "node:http";
 
 let server: Server;
@@ -68,7 +74,7 @@ describe("grid_vlm_calls insert + stats", { concurrency: false }, () => {
     await pool.end();
   });
 
-  test("insertGridVlmCall writes a row without image / raw / key fields", async () => {
+  test("insertGridVlmCall writes prompt/raw without image / base64 / key", async () => {
     await query("DELETE FROM grid_vlm_calls");
     const row = await insertGridVlmCall({
       userId: "user-insert-1",
@@ -78,6 +84,8 @@ describe("grid_vlm_calls insert + stats", { concurrency: false }, () => {
       detectedCount: 3,
       latencyMs: 812,
       meta: { boxCount: 3, confidenceAvg: 0.88 },
+      promptText: "请找出图中每一张偶像小卡",
+      rawText: '{"cards":[{"bbox":[10,20,30,40]}]}',
     });
     assert.equal(row.ok, true);
     assert.equal(row.reason, null);
@@ -85,13 +93,48 @@ describe("grid_vlm_calls insert + stats", { concurrency: false }, () => {
     assert.equal(row.userId, "user-insert-1");
     assert.equal(row.day, shanghaiDate());
     assert.equal(row.meta?.boxCount, 3);
+    assert.equal("promptText" in row, false);
+    assert.equal("rawText" in row, false);
     const stored = await query("SELECT * FROM grid_vlm_calls WHERE id = $1", [row.id]);
     const raw = stored.rows[0] as Record<string, unknown>;
     assert.equal(raw.ok, true);
-    assert.ok(!("image" in raw) && !("image_base64" in raw) && !("raw" in raw) && !("api_key" in raw));
+    assert.equal(raw.prompt_text, "请找出图中每一张偶像小卡");
+    assert.equal(raw.raw_text, '{"cards":[{"bbox":[10,20,30,40]}]}');
+    assert.equal(raw.prompt_truncated, false);
+    assert.equal(raw.raw_truncated, false);
+    assert.ok(!("image" in raw) && !("image_base64" in raw) && !("api_key" in raw));
     const metaText = JSON.stringify(raw.meta || {});
     assert.ok(!/base64|sk-|ark-/i.test(metaText));
-    assert.ok(Buffer.byteLength(metaText, "utf8") <= 2048);
+    assert.ok(Buffer.byteLength(metaText, "utf8") <= 8192);
+  });
+
+  test("insertGridVlmCall truncates oversized prompt/raw and redacts secrets", async () => {
+    await query("DELETE FROM grid_vlm_calls");
+    const huge = "卡".repeat(GRID_VLM_LOG_TEXT_MAX_BYTES);
+    const row = await insertGridVlmCall({
+      userId: "user-trunc",
+      provider: "doubao",
+      model: "m",
+      ok: false,
+      reason: "vlm_fail",
+      promptText: `data:image/jpeg;base64,QUFBQQ== ${huge}`,
+      rawText: `Bearer sk-supersecretkey ${huge}`,
+    });
+    const stored = await query<{
+      prompt_text: string;
+      raw_text: string;
+      prompt_truncated: boolean;
+      raw_truncated: boolean;
+    }>("SELECT prompt_text, raw_text, prompt_truncated, raw_truncated FROM grid_vlm_calls WHERE id = $1", [
+      row.id,
+    ]);
+    const rec = stored.rows[0];
+    assert.equal(rec.prompt_truncated, true);
+    assert.equal(rec.raw_truncated, true);
+    assert.ok(Buffer.byteLength(rec.prompt_text, "utf8") <= GRID_VLM_LOG_TEXT_MAX_BYTES);
+    assert.ok(Buffer.byteLength(rec.raw_text, "utf8") <= GRID_VLM_LOG_TEXT_MAX_BYTES);
+    assert.doesNotMatch(rec.prompt_text, /QUFBQQ|data:image/i);
+    assert.doesNotMatch(rec.raw_text, /sk-supersecretkey/i);
   });
 
   test("listGridVlmStats aggregates ok / fail / no_cards / timeout / quota", async () => {
@@ -191,6 +234,8 @@ describe("grid_vlm_calls insert + stats", { concurrency: false }, () => {
             { bbox: [0.1, 0.1, 0.4, 0.55], confidence: 0.9 },
             { bbox: [0.5, 0.12, 0.88, 0.6], confidence: 0.8 },
           ],
+          promptText: GRID_VLM_DETECT_PROMPT,
+          rawText: "<bbox>80 100 420 620</bbox>\n<bbox>500 90 920 610</bbox>",
         };
       }),
     });
@@ -199,7 +244,10 @@ describe("grid_vlm_calls insert + stats", { concurrency: false }, () => {
 
     const empty = await splitPhotocardGrid(body, {
       userId: "u-detect-empty",
-      provider: new MockGridVlmProvider(async () => ({ cards: [] })),
+      provider: new MockGridVlmProvider(async () => ({
+        cards: [],
+        rawText: '{"cards":[]}',
+      })),
     });
     assert.equal(empty.reason, "no_cards");
 
@@ -213,8 +261,28 @@ describe("grid_vlm_calls insert + stats", { concurrency: false }, () => {
     });
     assert.equal(timeout.reason, "timeout");
 
-    const okRow = await query<{ detected_count: number; ok: boolean; latency_ms: number; meta: unknown }>(
-      `SELECT detected_count, ok, latency_ms, meta FROM grid_vlm_calls WHERE user_id = $1`,
+    const failRaw = await splitPhotocardGrid(body, {
+      userId: "u-detect-fail",
+      provider: new MockGridVlmProvider(async () => {
+        const err = new Error("vlm_http_500");
+        err.name = "VlmHttpError";
+        throw attachVlmDetectLog(err, {
+          promptText: GRID_VLM_DETECT_PROMPT,
+          rawText: '{"error":{"message":"boom"}}',
+        });
+      }),
+    });
+    assert.equal(failRaw.reason, "vlm_fail");
+
+    const okRow = await query<{
+      detected_count: number;
+      ok: boolean;
+      latency_ms: number;
+      meta: unknown;
+      prompt_text: string | null;
+      raw_text: string | null;
+    }>(
+      `SELECT detected_count, ok, latency_ms, meta, prompt_text, raw_text FROM grid_vlm_calls WHERE user_id = $1`,
       ["u-detect-ok"],
     );
     assert.equal(okRow.rows.length, 1);
@@ -222,6 +290,29 @@ describe("grid_vlm_calls insert + stats", { concurrency: false }, () => {
     assert.equal(Number(okRow.rows[0].detected_count), 2);
     assert.ok(Number(okRow.rows[0].latency_ms) >= 20);
     assert.equal((okRow.rows[0].meta as { boxCount?: number })?.boxCount, 2);
+    assert.equal(okRow.rows[0].prompt_text, GRID_VLM_DETECT_PROMPT);
+    assert.match(String(okRow.rows[0].raw_text), /<bbox>80 100 420 620<\/bbox>/);
+
+    const emptyRow = await query<{ prompt_text: string | null; raw_text: string | null }>(
+      `SELECT prompt_text, raw_text FROM grid_vlm_calls WHERE user_id = $1`,
+      ["u-detect-empty"],
+    );
+    assert.equal(emptyRow.rows[0].prompt_text, GRID_VLM_DETECT_PROMPT);
+    assert.equal(emptyRow.rows[0].raw_text, '{"cards":[]}');
+
+    const failRow = await query<{ prompt_text: string | null; raw_text: string | null }>(
+      `SELECT prompt_text, raw_text FROM grid_vlm_calls WHERE user_id = $1`,
+      ["u-detect-fail"],
+    );
+    assert.equal(failRow.rows[0].prompt_text, GRID_VLM_DETECT_PROMPT);
+    assert.equal(failRow.rows[0].raw_text, '{"error":{"message":"boom"}}');
+
+    const toRow = await query<{ prompt_text: string | null; raw_text: string | null }>(
+      `SELECT prompt_text, raw_text FROM grid_vlm_calls WHERE user_id = $1`,
+      ["u-detect-to"],
+    );
+    assert.equal(toRow.rows[0].prompt_text, GRID_VLM_DETECT_PROMPT);
+    assert.equal(toRow.rows[0].raw_text, null);
 
     assert.equal(await callCount("u-detect-empty"), 1);
     assert.equal(await callCount("u-detect-to"), 1);
@@ -272,13 +363,20 @@ describe("grid_vlm_calls insert + stats", { concurrency: false }, () => {
 
   test("GET /admin/grid-vlm/stats and /calls use ops auth", async () => {
     await query("DELETE FROM grid_vlm_calls");
-    await insertGridVlmCall({
-      userId: "u-admin",
+    const user = await query<{ id: string }>(
+      `INSERT INTO users (wx_openid, nickname) VALUES ($1, $2) RETURNING id`,
+      [`wx-vlm-${Date.now()}`, "宫格测试用户"],
+    );
+    const userId = user.rows[0].id;
+    const row = await insertGridVlmCall({
+      userId,
       provider: "doubao",
       model: "ep-test",
       ok: true,
       detectedCount: 1,
       latencyMs: 42,
+      promptText: "请找出图中每一张偶像小卡",
+      rawText: "<bbox>1 2 3 4</bbox>",
     });
     const today = shanghaiDate();
     const denied = await api(`/admin/grid-vlm/stats?from=${today}&to=${today}`);
@@ -293,13 +391,69 @@ describe("grid_vlm_calls insert + stats", { concurrency: false }, () => {
     assert.equal(body.summary.ok, 1);
     assert.equal(body.summary.sumDetected, 1);
 
-    const calls = await api(`/admin/grid-vlm/calls?from=${today}&to=${today}&userId=u-admin`, {
+    const calls = await api(`/admin/grid-vlm/calls?from=${today}&to=${today}&userId=${userId}`, {
       headers: { "x-admin-token": "dev-admin" },
     });
     assert.equal(calls.status, 200);
-    const list = calls.body as { calls: { userId: string; model: string }[]; total: number };
+    const list = calls.body as {
+      calls: {
+        userId: string;
+        model: string;
+        userDisplayName: string | null;
+        promptText?: string;
+        rawText?: string;
+      }[];
+      total: number;
+    };
     assert.equal(list.total, 1);
-    assert.equal(list.calls[0].userId, "u-admin");
+    assert.equal(list.calls[0].userId, userId);
     assert.equal(list.calls[0].model, "ep-test");
+    assert.equal(list.calls[0].userDisplayName, "宫格测试用户");
+    assert.equal("promptText" in list.calls[0], false);
+    assert.equal("rawText" in list.calls[0], false);
+
+    const detailDenied = await api(`/admin/grid-vlm/calls/${row.id}`);
+    assert.equal(detailDenied.status, 401);
+
+    const detail = await api(`/admin/grid-vlm/calls/${row.id}`, {
+      headers: { "x-admin-token": "dev-admin" },
+    });
+    assert.equal(detail.status, 200, JSON.stringify(detail.body));
+    const one = detail.body as {
+      userDisplayName: string | null;
+      promptText: string | null;
+      rawText: string | null;
+      promptTruncated: boolean;
+      model: string;
+    };
+    assert.equal(one.userDisplayName, "宫格测试用户");
+    assert.equal(one.promptText, "请找出图中每一张偶像小卡");
+    assert.equal(one.rawText, "<bbox>1 2 3 4</bbox>");
+    assert.equal(one.promptTruncated, false);
+    assert.equal(one.model, "ep-test");
+
+    const mapped = await getGridVlmCall(row.id);
+    assert.equal(mapped.userDisplayName, "宫格测试用户");
+    assert.equal(mapped.promptText, "请找出图中每一张偶像小卡");
+
+    const missing = await api(`/admin/grid-vlm/calls/00000000-0000-4000-8000-000000000099`, {
+      headers: { "x-admin-token": "dev-admin" },
+    });
+    assert.equal(missing.status, 404);
+
+    const legacy = await insertGridVlmCall({
+      userId: "legacy-no-user",
+      provider: "doubao",
+      model: "ep-old",
+      ok: true,
+      detectedCount: 0,
+      latencyMs: 1,
+    });
+    const legacyDetail = await getGridVlmCall(legacy.id);
+    assert.equal(legacyDetail.userDisplayName, null);
+    assert.equal(legacyDetail.promptText, null);
+    assert.equal(legacyDetail.rawText, null);
+    assert.equal(legacyDetail.promptTruncated, false);
+    assert.equal(legacyDetail.rawTruncated, false);
   });
 });

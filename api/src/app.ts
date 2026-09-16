@@ -60,7 +60,7 @@ import {
 } from "./storage.js";
 import * as catalogSubmissions from "./catalogSubmissions.js";
 import * as gridSplit from "./gridSplit.js";
-import { listGridVlmCalls, listGridVlmStats } from "./vlm/calls.js";
+import { getGridVlmCall, listGridVlmCalls, listGridVlmStats } from "./vlm/calls.js";
 import * as adminUsers from "./adminUsers.js";
 import { bindPhone, listPhoneBindEvents } from "./phone.js";
 import { jsSdkSignature, resolveMiniJump } from "./wxMiniJump.js";
@@ -882,6 +882,14 @@ export function createApp() {
           offset: req.query.offset,
         }),
       );
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/grid-vlm/calls/:id", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await getGridVlmCall(req.params.id));
     } catch (e) {
       next(e);
     }

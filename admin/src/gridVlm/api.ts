@@ -15,6 +15,7 @@ export type GridVlmDayStats = {
 export type GridVlmCall = {
   id: string;
   userId: string | null;
+  userDisplayName: string | null;
   createdAt: string | null;
   provider: string;
   model: string;
@@ -25,6 +26,13 @@ export type GridVlmCall = {
   degrade: string | null;
   day: string;
   meta: { boxCount?: number; confidenceAvg?: number } | null;
+};
+
+export type GridVlmCallDetail = GridVlmCall & {
+  promptText: string | null;
+  rawText: string | null;
+  promptTruncated: boolean;
+  rawTruncated: boolean;
 };
 
 function denied(status: number, body: unknown) {
@@ -99,6 +107,30 @@ export async function listGridVlmCalls(opts?: {
     total: res.body.total || 0,
     nextCursor: res.body.nextCursor || null,
   };
+}
+
+export async function getGridVlmCall(id: string) {
+  const res = await api<GridVlmCallDetail>(`/admin/grid-vlm/calls/${encodeURIComponent(id)}`);
+  if (res.status !== 200) {
+    return {
+      ok: false as const,
+      status: res.status,
+      message: denied(res.status, res.body),
+    };
+  }
+  return { ok: true as const, call: res.body };
+}
+
+export function shortUserId(userId: string | null | undefined) {
+  if (!userId) return "";
+  return userId.length > 8 ? userId.slice(0, 8) : userId;
+}
+
+export function callUserLabel(row: { userDisplayName?: string | null; userId?: string | null }) {
+  const name = String(row.userDisplayName || "").trim();
+  if (name) return name;
+  if (row.userId) return "（无昵称）";
+  return "—";
 }
 
 export function formatCallTime(iso: string | null | undefined) {
