@@ -1,5 +1,16 @@
 const api = require("../../utils/api");
 const cardCondition = require("../../utils/cardCondition");
+const catalogSelect = require("../../utils/catalogSelect");
+
+function decorateCard(card) {
+  const next = card || {};
+  return {
+    ...next,
+    mainImageUrl: api.mediaUrl(next.mainImageUrl),
+    imageBack: next.imageBack ? api.mediaUrl(next.imageBack) : "",
+    versionChip: catalogSelect.versionChipLabel(next),
+  };
+}
 
 Page({
   data: {
@@ -11,7 +22,6 @@ Page({
     conditions: cardCondition.CONDITIONS,
     saving: false,
     missing: false,
-    showingBack: false,
     catalogMode: false,
   },
   onLoad(q) {
@@ -34,11 +44,7 @@ Page({
       .then((card) => {
         this.setData({
           missing: false,
-          card: {
-            ...card,
-            mainImageUrl: api.mediaUrl(card.mainImageUrl),
-            imageBack: card.imageBack ? api.mediaUrl(card.imageBack) : "",
-          },
+          card: decorateCard(card),
           quantity: cardCondition.clampQuantity(card.quantity),
           condition: card.condition || "",
           notes: card.notes || "",
@@ -60,11 +66,7 @@ Page({
         const card = d.template || d;
         this.setData({
           missing: false,
-          card: {
-            ...card,
-            mainImageUrl: api.mediaUrl(card.mainImageUrl),
-            imageBack: card.imageBack ? api.mediaUrl(card.imageBack) : "",
-          },
+          card: decorateCard(card),
         });
       })
       .catch((err) => {
@@ -143,9 +145,6 @@ Page({
         this.setData({ saving: false });
         api.handleWriteError(err);
       });
-  },
-  flip() {
-    this.setData({ showingBack: !this.data.showingBack });
   },
   report() {
     if (!this.data.id) return;

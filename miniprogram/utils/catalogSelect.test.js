@@ -6,14 +6,56 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const catalogSelect = require("./catalogSelect");
 
-test("mapTemplatesForGrid adds on:false and resolved image URL", () => {
+test("mapTemplatesForGrid adds on:false, versionChip and resolved image URL", () => {
   const mapped = catalogSelect.mapTemplatesForGrid(
     [{ id: "a", isBenefit: true, mainImageUrl: "/img/a.jpg" }],
     (url) => `https://cdn${url}`,
   );
   assert.deepEqual(mapped, [
-    { id: "a", isBenefit: true, mainImageUrl: "https://cdn/img/a.jpg", on: false },
+    {
+      id: "a",
+      isBenefit: true,
+      mainImageUrl: "https://cdn/img/a.jpg",
+      versionChip: "特典",
+      on: false,
+    },
   ]);
+});
+
+test("versionChipLabel combines 特典 with version once", () => {
+  assert.equal(catalogSelect.versionChipLabel({ isBenefit: true, version: "Apple Music" }), "特典-Apple Music");
+  assert.equal(catalogSelect.versionChipLabel({ isBenefit: true, version: "特典-JP" }), "特典-JP");
+  assert.equal(catalogSelect.versionChipLabel({ isBenefit: true }), "特典");
+  assert.equal(catalogSelect.versionChipLabel({ isBenefit: false, version: "Lemon Beach" }), "Lemon Beach");
+});
+
+test("withAlbumExpanded defaults first album open and remembers last", () => {
+  const releases = [{ id: "r1" }, { id: "r2" }, { id: "r3" }];
+  const first = catalogSelect.withAlbumExpanded(releases, []);
+  assert.deepEqual(
+    first.map((r) => r.expanded),
+    [true, false, false],
+  );
+  const remembered = catalogSelect.withAlbumExpanded(releases, [
+    { id: "r1", expanded: false },
+    { id: "r2", expanded: true },
+  ]);
+  assert.deepEqual(
+    remembered.map((r) => r.expanded),
+    [false, true, false],
+  );
+});
+
+test("toggleAlbumExpanded flips one album", () => {
+  const next = catalogSelect.toggleAlbumExpanded(
+    [
+      { id: "r1", expanded: true },
+      { id: "r2", expanded: false },
+    ],
+    "r2",
+  );
+  assert.equal(next[0].expanded, true);
+  assert.equal(next[1].expanded, true);
 });
 
 test("toggleSelected works across albums and deselects", () => {

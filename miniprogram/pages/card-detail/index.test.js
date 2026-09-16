@@ -71,6 +71,23 @@ test("wxml has quantity stepper, 品相 chips, 备注, save", () => {
   assert.match(wxml, /bindtap="save">保存</);
   assert.match(wxml, /catalogMode/);
   assert.match(wxml, /bindtap="ownOne"/);
+  assert.match(wxml, /bindtap="wantOne"/);
+  assert.match(wxml, /class="faces-row"/);
+  assert.match(wxml, /class="card-face"/);
+  assert.match(wxml, /暂无卡背/);
+  assert.match(wxml, /class="action-bar"/);
+  assert.match(wxml, /class="stats-slot"/);
+  assert.doesNotMatch(wxml, /showingBack|bindtap="flip"/);
+});
+
+test("wxss pins catalog actions and uses 2:3 card-face pair", () => {
+  const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
+  assert.match(wxss, /\.faces-row/);
+  assert.match(wxss, /\.action-bar/);
+  assert.match(wxss, /position:\s*fixed/);
+  assert.match(wxss, /safe-area-inset-bottom/);
+  assert.match(wxss, /\.stats-slot/);
+  assert.doesNotMatch(wxss, /#121016|#ff6b9d|#f5c36b/i);
 });
 
 test("page is registered outside tabBar; pages[0] stays cardbook", () => {
@@ -120,7 +137,9 @@ test("save 401 goes through handleWriteError", async () => {
 test("src uses handleWriteError and does not call camera APIs", () => {
   const src = fs.readFileSync(path.join(__dirname, "index.js"), "utf8");
   assert.match(src, /\.catch\(api\.handleWriteError\)|\.catch\(\(err\) => \{[\s\S]*api\.handleWriteError/);
+  assert.match(src, /versionChipLabel/);
   assert.doesNotMatch(src, /chooseMedia|chooseImage|CameraContext|camera/);
+  assert.doesNotMatch(src, /showingBack|flip\(/);
 });
 
 after(() => {

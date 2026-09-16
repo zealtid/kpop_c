@@ -20,26 +20,24 @@
   </view>
 
   <view wx:for="{{releases}}" wx:key="id" class="card">
-    <view class="release-head">
-      <view>
-        <view class="release-title">{{item.title}}</view>
-        <view class="meta-chips">
-          <view wx:if="{{item.releasedOnLabel}}" class="meta-chip">{{item.releasedOnLabel}}</view>
-          <view wx:if="{{item.kind}}" class="meta-chip">{{item.kind}}</view>
-        </view>
+    <view class="release-head" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="toggleRelease" data-id="{{item.id}}">
+      <view class="release-title-row">
+        <text wx:if="{{item.releasedOnLabel}}" class="release-inline">{{item.releasedOnLabel}}</text>
+        <text wx:if="{{item.releasedOnLabel && item.kind}}" class="release-dot"> · </text>
+        <text wx:if="{{item.kind}}" class="release-inline">{{item.kind}}</text>
+        <text wx:if="{{(item.releasedOnLabel || item.kind) && item.title}}" class="release-dot"> · </text>
+        <text class="release-title">{{item.title}}</text>
       </view>
-      <view class="release-link" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" catchtap="openRelease" data-id="{{item.id}}">特典对照 →</view>
+      <view class="release-chevron {{item.expanded ? 'open' : ''}}">▾</view>
     </view>
-    <view class="grid3" style="margin-top:16rpx">
+    <view wx:if="{{item.expanded}}" class="grid3" style="margin-top:16rpx">
       <view class="tile" wx:for="{{item.templates}}" wx:for-item="t" wx:key="id" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="onTileTap" data-id="{{t.id}}">
         <view class="ph {{selectMode && t.on ? 'sel' : ''}}" style="background: {{t.memberColor}}">
           <image wx:if="{{t.mainImageUrl}}" src="{{t.mainImageUrl}}" mode="aspectFill"/>
-          <view wx:if="{{t.isBenefit}}" class="benefit-badge">特典</view>
         </view>
         <view class="tile-name">{{t.memberNameEn}}</view>
-        <view class="meta-chips tile-chips">
-          <view wx:if="{{t.isBenefit}}" class="meta-chip benefit">特典</view>
-          <view wx:if="{{t.version}}" class="meta-chip">{{t.version}}</view>
+        <view wx:if="{{t.versionChip}}" class="meta-chips tile-chips">
+          <view class="meta-chip {{t.isBenefit ? 'benefit' : ''}}">{{t.versionChip}}</view>
         </view>
         <view wx:if="{{!selectMode}}" class="row mini-actions">
           <text class="own" catchtap="ownOne" data-id="{{t.id}}">拥有</text>
