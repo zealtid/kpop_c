@@ -156,11 +156,18 @@ test("sanitizeGridVlmLogText strips data URL / keys and truncates", () => {
   assert.match(dirty.text!, /\[omitted-data-url\]/);
   assert.match(dirty.text!, /\[omitted-key\]/);
 
-  const huge = "卡".repeat(GRID_VLM_LOG_TEXT_MAX_BYTES);
+  const huge = "x".repeat(GRID_VLM_LOG_TEXT_MAX_BYTES + 64);
   const clipped = sanitizeGridVlmLogText(huge);
   assert.equal(clipped.truncated, true);
   assert.ok(clipped.text);
   assert.ok(Buffer.byteLength(clipped.text!, "utf8") <= GRID_VLM_LOG_TEXT_MAX_BYTES);
+
+  const cjk = sanitizeGridVlmLogText("卡".repeat(GRID_VLM_LOG_TEXT_MAX_BYTES));
+  assert.equal(cjk.truncated, true);
+  assert.ok(cjk.text);
+  assert.ok(Buffer.byteLength(cjk.text, "utf8") <= GRID_VLM_LOG_TEXT_MAX_BYTES);
+  assert.doesNotMatch(cjk.text, /\uFFFD/);
+
   assert.equal(sanitizeGridVlmLogText("").text, null);
   assert.equal(sanitizeGridVlmLogText(null).text, null);
 });

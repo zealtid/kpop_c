@@ -110,7 +110,7 @@ describe("grid_vlm_calls insert + stats", { concurrency: false }, () => {
 
   test("insertGridVlmCall truncates oversized prompt/raw and redacts secrets", async () => {
     await query("DELETE FROM grid_vlm_calls");
-    const huge = "卡".repeat(GRID_VLM_LOG_TEXT_MAX_BYTES);
+    const huge = "x".repeat(GRID_VLM_LOG_TEXT_MAX_BYTES + 64);
     const row = await insertGridVlmCall({
       userId: "user-trunc",
       provider: "doubao",

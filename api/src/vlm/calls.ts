@@ -91,7 +91,11 @@ function intOrZero(value: unknown): number {
 function clipUtf8(s: string, maxBytes: number): { text: string; truncated: boolean } {
   if (Buffer.byteLength(s, "utf8") <= maxBytes) return { text: s, truncated: false };
   let buf = Buffer.from(s, "utf8").subarray(0, maxBytes);
+  // 去掉截断点上的 UTF-8 续字节，以及随后落下的不完整首字节，避免 toString 填入 U+FFFD 反而超长
   while (buf.length && (buf[buf.length - 1] & 0xc0) === 0x80) {
+    buf = buf.subarray(0, buf.length - 1);
+  }
+  if (buf.length && (buf[buf.length - 1] & 0xc0) === 0xc0) {
     buf = buf.subarray(0, buf.length - 1);
   }
   return { text: buf.toString("utf8"), truncated: true };
