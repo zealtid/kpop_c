@@ -34,7 +34,8 @@
   </view>
 
   <view class="card">
-    <view class="label">切分结果（点选后可拖边）</view>
+    <view class="label">识别到 {{detectedCount}} 张（点选后可拖边）</view>
+    <view class="muted" wx:if="{{detectedCount > 9}}">一次最多提交 9 张，请删除多余卡或分次拍摄。</view>
     <view class="stage" style="height: {{displayH}}px;">
       <image
         wx:if="{{src}}"

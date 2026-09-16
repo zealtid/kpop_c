@@ -40,6 +40,7 @@ Page({
     saving: false,
     warnings: [],
     overlays: [],
+    detectedCount: 0,
     selected: null,
     displayW: 300,
     displayH: 450,
@@ -66,16 +67,23 @@ Page({
     this._boxes = sess.boxes.map((b) => ({ ...b }));
     this.data.displayW = displayW;
     this.data.displayH = displayH;
+    const liveN = this._boxes.filter((b) => !b.deleted).length;
+    const engine = sess.engine || (sess.fromServer ? "vlm" : "jsfeat");
+    let cvNote = sess.fromServer
+      ? `服务端回退切分 · ${sess.library}`
+      : `客户端 ${sess.library} 切分`;
+    if (engine === "vlm") {
+      cvNote = `视觉识别 · ${sess.library || "doubao"}`;
+    }
     this.setData({
       src: sess.src,
       displayW,
       displayH,
+      detectedCount: sess.detectedCount || liveN,
       groupId: sess.groupId || "",
       releaseId: sess.releaseId || "",
-      versionLabel: sess.versionLabel || "",
-      cvNote: sess.fromServer
-        ? `服务端回退切分 · ${sess.library}`
-        : `客户端 ${sess.library} 切分`,
+      versionLabel: sess.versionLabel || sess.suggestedVersionLabel || "",
+      cvNote,
     });
     this.syncOverlays();
     this.loadGroups();
@@ -96,6 +104,7 @@ Page({
     const selected = selectedBox ? { ...selectedBox, n: ov ? ov.n : 1 } : null;
     this.setData({
       overlays,
+      detectedCount: live.length,
       selected,
       channelDisplay: selected
         ? channelPick.displayLabel(
@@ -154,6 +163,7 @@ Page({
     api.request({ url: `/catalog/groups/${groupId}/members`, auth: false }).then((d) => {
       const members = (d.members || []).map(customCard.mapCatalogMember).filter(Boolean);
       this.setData({ members });
+      this.applyMemberSuggestions(members);
     });
   },
   pickGroup(e) {
@@ -176,6 +186,22 @@ Page({
   },
   selectCard(e) {
     this.syncOverlays(Number(e.currentTarget.dataset.index));
+  },
+  applyMemberSuggestions(members) {
+    if (!this._boxes || !members || !members.length) return;
+    let changed = false;
+    this._boxes = this._boxes.map((b) => {
+      if (b.memberId || !b.suggestedMemberName) return b;
+      const id = gridSession.matchMemberId(b.suggestedMemberName, members);
+      if (!id) return b;
+      changed = true;
+      return { ...b, memberId: id };
+    });
+    if (changed) {
+      gridSession.setBoxes(this._boxes);
+      const sel = this.data.selected;
+      this.syncOverlays(sel ? sel.index : undefined);
+    }
   },
   pickMember(e) {
     this.patchSelected({ memberId: e.currentTarget.dataset.id || "" });
@@ -325,6 +351,10 @@ Page({
       wx.showToast({ title: "请至少保留一张", icon: "none" });
       return;
     }
+    if (cards.length > gridSession.MAX_SUBMIT) {
+      wx.showToast({ title: `一次最多提交${gridSession.MAX_SUBMIT}张，请删除或分次拍`, icon: "none" });
+      return;
+    }
     if (!this.data.groupId) {
       wx.showToast({ title: "请选择开放投稿的组合", icon: "none" });
       return;
@@ -339,7 +369,7 @@ Page({
     }
     const progress = cards.map((c, i) => ({
       index: c.index,
-      title: c.slotLabel || `宫格${i + 1}`,
+      title: c.slotLabel || `卡${i + 1}`,
       status: "wait",
       statusLabel: "等待",
     }));
@@ -365,7 +395,7 @@ Page({
           progress[i].statusLabel = statusLabel("uploading");
           this.setData({ progress: progress.slice() });
           const front = await this.uploadFront(cropped);
-          const slotLabel = card.slotLabel || `宫格${i + 1}`;
+          const slotLabel = card.slotLabel || `卡${i + 1}`;
           const res = await api.request({
             url: "/catalog/submissions",
             method: "POST",

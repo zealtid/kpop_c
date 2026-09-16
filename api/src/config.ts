@@ -53,6 +53,28 @@ export const config = {
   bucketSecretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
 };
 
+/**
+ * UGC-2b-VLM: Volcengine Ark / Doubao vision. Read live so tests can toggle env.
+ * Railway must set ARK_API_KEY + ARK_VISION_MODEL before production detect works.
+ */
+export function gridVlmConfig() {
+  const timeout = Number(process.env.GRID_VLM_TIMEOUT_MS || 18_000);
+  const dailyLimit = Number(process.env.GRID_VLM_DAILY_LIMIT || 20);
+  const maxDetect = Number(process.env.GRID_VLM_MAX_DETECT || 12);
+  const maxSubmit = Number(process.env.GRID_VLM_MAX_SUBMIT || 9);
+  return {
+    provider: (process.env.GRID_VLM_PROVIDER || "doubao").trim().toLowerCase() || "doubao",
+    apiKey: (process.env.ARK_API_KEY || "").trim(),
+    /** Endpoint ID (ep-…) from 方舟控制台, or a current Doubao vision model id. */
+    model: (process.env.ARK_VISION_MODEL || "doubao-seed-1.6-vision").trim(),
+    baseUrl: (process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").replace(/\/$/, ""),
+    timeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : 18_000,
+    dailyLimit: Number.isFinite(dailyLimit) && dailyLimit > 0 ? dailyLimit : 20,
+    maxDetect: Number.isFinite(maxDetect) && maxDetect > 0 ? maxDetect : 12,
+    maxSubmit: Number.isFinite(maxSubmit) && maxSubmit > 0 ? maxSubmit : 9,
+  };
+}
+
 export const isProd = config.nodeEnv === "production";
 export const mockWxLoginEnabled = !isProd || !config.wxAppId || !config.wxSecret;
 /** H5 网页授权：未配 WX_WEB_APPID/SECRET 时走 mock（与小程序 mock 对齐）。 */

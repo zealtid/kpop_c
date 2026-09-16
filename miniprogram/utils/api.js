@@ -2,7 +2,7 @@ const { API_BASE } = require("./config");
 
 const LOGIN_TOAST = "请先登录";
 
-function request({ url, method = "GET", data, auth = true }) {
+function request({ url, method = "GET", data, auth = true, timeout }) {
   const app = getApp();
   const header = { "Content-Type": "application/json" };
   const token = (app && app.globalData && app.globalData.token) || wx.getStorageSync("token");
@@ -13,7 +13,7 @@ function request({ url, method = "GET", data, auth = true }) {
       method,
       data,
       header,
-      timeout: 20000,
+      timeout: timeout == null ? 20000 : timeout,
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data);

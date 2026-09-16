@@ -358,7 +358,7 @@ export function createApp() {
 
   app.post("/catalog/grid/split", requireAuth, async (req, res, next) => {
     try {
-      res.json(await gridSplit.splitPhotocardGrid(req.body || {}));
+      res.json(await gridSplit.splitPhotocardGrid(req.body || {}, { userId: req.user!.id }));
     } catch (e) {
       next(e);
     }
