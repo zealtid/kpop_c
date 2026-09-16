@@ -149,7 +149,7 @@ api/                 Express + pg + sharp 分享长图
   migrations/        PostgreSQL
   src/               路由与领域逻辑
   tests/             M1 / M2-a / OPS-0 / OPS-1 / OPS-2 / OPS-3
-admin/               独立 Web 运营后台（Vite：图鉴 CRUD + 投稿审核 + 用户/贡献积分 + 完整度 + 导入 + 缺卡工单 + 情报只读）
+admin/               独立 Web 运营后台（Vite：图鉴 CRUD + 投稿审核 + 用户/贡献积分 + 完整度 + 导入 + 缺卡工单 + 宫格识别统计 + 情报只读）
 h5/                  C 端只读 H5（分享落地 + 微信内图鉴浏览；无投稿/交易）
 miniprogram/         微信小程序
 project.config.json  微信开发者工具打开仓库根目录用

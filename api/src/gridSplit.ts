@@ -15,6 +15,7 @@ import {
   createGridVlmProvider,
   GRID_VLM_MAX_DETECT,
   normalizeVlmCards,
+  recordGridVlmCall,
   type DetectedGridCard,
   type GridEngine,
   type GridVlmProvider,
@@ -54,6 +55,7 @@ export async function splitPhotocardGrid(
 ) {
   const engine = resolveGridEngine(body || {});
   if (engine === "jsfeat") {
+    // 高级 CV 入口不写入 grid_vlm_calls（仅 VLM 路径记审计）
     return splitWithJsfeat(body);
   }
   return splitWithVlm(body, opts);
@@ -107,33 +109,67 @@ async function splitWithVlm(
     throw badRequest("请先同意将图片送至第三方视觉识别服务");
   }
   const parsed = parseImagePayload({ base64: body.imageBase64, mimeType: body.mimeType });
+  const cfg = gridVlmConfig();
+  const provider = opts?.provider || createGridVlmProvider();
   if (opts?.userId) {
     const quota = await consumeGridVlmQuota(opts.userId);
     if (!quota.ok) {
+      await recordGridVlmCall({
+        userId: opts.userId,
+        provider: provider.id,
+        model: cfg.model,
+        ok: false,
+        reason: "quota",
+        detectedCount: 0,
+        latencyMs: 0,
+        degrade: null,
+      });
       throw tooManyRequests("今日识别次数已用完，请稍后再试", { count: quota.count, limit: quota.limit });
     }
   }
-  const cfg = gridVlmConfig();
-  const provider = opts?.provider || createGridVlmProvider();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
+  const started = Date.now();
+  let latencyMs = 0;
   try {
     const detected = await provider.detect({
       mimeType: parsed.mimeType,
       buffer: parsed.buffer,
       signal: controller.signal,
     });
+    latencyMs = Date.now() - started;
     const meta = await sharp(parsed.buffer).rotate().metadata();
     const boxes = normalizeVlmCards(
       detected.cards?.length ? { cards: detected.cards } : detected.rawText || { cards: [] },
       { max: cfg.maxDetect || GRID_VLM_MAX_DETECT, imgW: meta.width, imgH: meta.height },
     );
     if (!boxes.length) {
+      await recordGridVlmCall({
+        userId: opts?.userId,
+        provider: provider.id,
+        model: cfg.model,
+        ok: false,
+        reason: "no_cards",
+        detectedCount: 0,
+        latencyMs,
+        degrade: "ugc1",
+      });
       return vlmFailPayload("no_cards", provider.id, "没有识别到小卡，已改为单卡投稿");
     }
     const avg =
       boxes.reduce((s, b) => s + (b.confidence == null ? 0.7 : b.confidence), 0) / boxes.length;
     const versionHint = boxes.map((b) => b.versionLabel).find((v) => v);
+    await recordGridVlmCall({
+      userId: opts?.userId,
+      provider: provider.id,
+      model: cfg.model,
+      ok: true,
+      reason: null,
+      detectedCount: boxes.length,
+      latencyMs,
+      degrade: null,
+      meta: { boxCount: boxes.length, confidenceAvg: Math.min(1, avg) },
+    });
     const payload: Record<string, unknown> = {
       ok: true,
       reason: null,
@@ -154,12 +190,29 @@ async function splitWithVlm(
     }
     return payload;
   } catch (err) {
+    latencyMs = Date.now() - started;
     const name = err instanceof Error ? err.name : "";
     const message = err instanceof Error ? err.message : "";
+    let reason = "vlm_fail";
     if (name === "AbortError" || name === "TimeoutError" || /aborted/i.test(message)) {
+      reason = "timeout";
+    } else if (name === "VlmUnconfiguredError" || message === "vlm_unconfigured") {
+      reason = "vlm_unconfigured";
+    }
+    await recordGridVlmCall({
+      userId: opts?.userId,
+      provider: provider.id,
+      model: cfg.model,
+      ok: false,
+      reason,
+      detectedCount: 0,
+      latencyMs,
+      degrade: "ugc1",
+    });
+    if (reason === "timeout") {
       return vlmFailPayload("timeout", provider.id, "识别超时，已改为单卡投稿");
     }
-    if (name === "VlmUnconfiguredError" || message === "vlm_unconfigured") {
+    if (reason === "vlm_unconfigured") {
       return vlmFailPayload("vlm_unconfigured", provider.id, "视觉识别未配置，已改为单卡投稿");
     }
     return vlmFailPayload("vlm_fail", provider.id, "识别失败，已改为单卡投稿");

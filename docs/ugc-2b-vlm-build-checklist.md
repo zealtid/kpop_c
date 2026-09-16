@@ -36,3 +36,12 @@ VLM-01…09 见 freeze §5
 7. 真机：小程序合法域名只配 API HTTPS，不要配方舟。
 
 *合入后部署 api，小程序拉 main。Railway 未设 `ARK_*` 时生产识别会降级单卡。*
+
+## Admin 调用统计
+
+每次服务端 VLM 检测（成功 / `no_cards` / `timeout` / `vlm_fail` / `vlm_unconfigured` / 日限 429）写入 `grid_vlm_calls`；**jsfeat 高级入口不记**。不存原图、base64、方舟原文或密钥。现有 `grid_vlm_daily` 配额逻辑不变。
+
+- API：`GET /admin/grid-vlm/stats?from=&to=`、`GET /admin/grid-vlm/calls`（ops 鉴权）
+- Admin 页：「宫格识别」（今日 / 近 7 日卡片 + 明细）
+- 合入后部署 **api + admin**；migration `017_grid_vlm_calls.sql` 走现有 `npm run migrate` / seed
+

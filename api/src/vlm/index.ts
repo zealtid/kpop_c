@@ -3,4 +3,10 @@ export { extractJsonValue, completionText, parseGroundingBboxes, cardsFromModelT
 export { createGridVlmProvider, setGridVlmProviderForTests, MockGridVlmProvider } from "./provider.js";
 export { DoubaoVisionProvider } from "./doubao.js";
 export { consumeGridVlmQuota, resetGridVlmQuotaForTests } from "./quota.js";
+export {
+  insertGridVlmCall,
+  recordGridVlmCall,
+  listGridVlmStats,
+  listGridVlmCalls,
+} from "./calls.js";
 export type { GridEngine, GridVlmProvider, VlmCard, DetectedGridCard } from "./types.js";

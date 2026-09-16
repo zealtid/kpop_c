@@ -47,6 +47,7 @@ function menuTo(id: string) {
   }
   if (id === "submissions") return { name: "submissions" as const };
   if (id === "users") return { name: "users" as const };
+  if (id === "grid-vlm") return { name: "grid-vlm" as const };
   if (id === "intel") return { name: "intel" as const };
   if (id === "tickets") return { name: "tickets" as const };
   return { path: `/${id}` };
@@ -72,6 +73,7 @@ const activeKey = computed(() => {
   }
   if (route.name === "submissions" || route.name === "submission-detail") return "submissions";
   if (route.name === "users" || route.name === "user-detail") return "users";
+  if (route.name === "grid-vlm") return "grid-vlm";
   if (route.name === "tickets" || route.name === "ticket-detail") return "tickets";
   if (route.name === "intel") return "intel";
   return String(route.name || "");
