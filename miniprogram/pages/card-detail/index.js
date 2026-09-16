@@ -146,6 +146,22 @@ Page({
         api.handleWriteError(err);
       });
   },
+  setCover() {
+    if (this.data.catalogMode || this.data.missing || !this.data.id) return;
+    const slug = this.data.card && this.data.card.groupSlug;
+    if (!slug) {
+      wx.showToast({ title: "无法设置封面", icon: "none" });
+      return;
+    }
+    api
+      .request({
+        url: `/collection/groups/${slug}/cover`,
+        method: "PUT",
+        data: { templateId: this.data.id },
+      })
+      .then(() => wx.showToast({ title: "已设为封面" }))
+      .catch(api.handleWriteError);
+  },
   report() {
     if (!this.data.id) return;
     wx.showModal({

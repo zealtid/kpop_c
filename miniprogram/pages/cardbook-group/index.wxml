@@ -9,7 +9,7 @@
 
   <view class="row actions">
     <view class="btn slim" bindtap="share">生成长图</view>
-    <view class="btn ghost slim" bindtap="addFromCatalog">拍照加入卡册</view>
+    <view class="btn ghost slim" bindtap="addFromCatalog">拍照入册</view>
   </view>
 
   <view class="tabs">
@@ -38,7 +38,7 @@
     <view class="empty-title">{{emptyTitle}}</view>
     <view class="empty-actions">
       <view class="btn slim" bindtap="goCatalog">去图鉴</view>
-      <view class="btn ghost slim" bindtap="addFromCatalog">拍照加入卡册</view>
+      <view class="btn ghost slim" bindtap="addFromCatalog">拍照入册</view>
     </view>
   </view>
 
@@ -53,6 +53,8 @@
         <view wx:if="{{item.version}}" class="tile-chip">{{item.version}}</view>
         <view wx:if="{{item.conditionLabel}}" class="tile-chip mute">{{item.conditionLabel}}</view>
       </view>
+      <view wx:if="{{tab===0 && item.isCover}}" class="tile-chip">封面</view>
+      <view wx:if="{{tab===0 && !item.isCover}}" class="tile-act" catchtap="setCover" data-id="{{item.id}}">设为封面</view>
       <view wx:if="{{tab===0}}" class="tile-act" catchtap="unown" data-id="{{item.id}}">撤销拥有</view>
       <view wx:if="{{tab===1}}" class="tile-act" catchtap="unwant" data-id="{{item.id}}">移除想要</view>
     </view>

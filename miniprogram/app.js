@@ -138,7 +138,7 @@ App({
     });
   },
 
-  /** 登录完成后刷新已打开的卡册页，避免冷启动先 401 再停在空列表。 */
+  /** 登录完成后刷新已打开的收藏页，避免冷启动先 401 再停在空列表。 */
   refreshCardbook() {
     const pages = getCurrentPages();
     pages.forEach((page) => {

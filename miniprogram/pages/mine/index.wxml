@@ -78,7 +78,7 @@
     </view>
     <view wx:else class="card">
       <view class="empty-title">还没有关注组合</view>
-      <view class="empty-sub">选择喜欢的团体后，卡册会展示收集进度。</view>
+      <view class="empty-sub">选择喜欢的团体后，收藏会展示收集进度。</view>
       <view class="btn" bindtap="goFollowManage">去选择关注</view>
     </view>
   </block>

@@ -47,7 +47,7 @@
     "list": [
       {
         "pagePath": "pages/cardbook/index",
-        "text": "卡册",
+        "text": "收藏",
         "iconPath": "assets/tab-book.png",
         "selectedIconPath": "assets/tab-book-on.png"
       },

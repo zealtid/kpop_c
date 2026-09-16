@@ -86,6 +86,147 @@ function toProgress(row: {
   };
 }
 
+export type CoverSource = "user" | "latest" | "none";
+
+export type GroupCover = {
+  templateId: string | null;
+  mainImageUrl: string | null;
+  source: CoverSource;
+};
+
+const EMPTY_COVER: GroupCover = {
+  templateId: null,
+  mainImageUrl: null,
+  source: "none",
+};
+
+function mapCover(
+  row:
+    | {
+        template_id?: string | null;
+        main_image_url?: string | null;
+        source?: string | null;
+      }
+    | null
+    | undefined,
+): GroupCover {
+  if (!row || !row.template_id) return { ...EMPTY_COVER };
+  const source = row.source === "user" ? "user" : "latest";
+  return {
+    templateId: String(row.template_id),
+    mainImageUrl: row.main_image_url == null ? null : String(row.main_image_url),
+    source,
+  };
+}
+
+/** 失去拥有或模板不再可用时清空指定封面，列表回退最近获得 / 占位。 */
+export async function clearInvalidGroupCovers(userId: string, groupId?: string) {
+  await query(
+    `DELETE FROM user_group_covers c
+     WHERE c.user_id = $1
+       AND ($2::uuid IS NULL OR c.group_id = $2)
+       AND NOT EXISTS (
+         SELECT 1
+         FROM user_cards uc
+         JOIN templates t ON t.id = uc.template_id
+         JOIN releases r ON r.id = t.release_id
+         WHERE uc.user_id = c.user_id
+           AND uc.template_id = c.template_id
+           AND r.group_id = c.group_id
+           AND t.status = 'published'
+           AND r.status = 'published'
+           AND t.is_deprecated = false
+       )`,
+    [userId, groupId || null],
+  );
+}
+
+export async function coversForGroups(userId: string, groupIds: string[]) {
+  const empty = new Map<string, GroupCover>();
+  if (!groupIds.length) return empty;
+  await clearInvalidGroupCovers(userId);
+  const [chosen, latest] = await Promise.all([
+    query(
+      `SELECT c.group_id, c.template_id, t.main_image_url
+       FROM user_group_covers c
+       JOIN templates t ON t.id = c.template_id
+       JOIN releases r ON r.id = t.release_id
+       JOIN user_cards uc ON uc.user_id = c.user_id AND uc.template_id = c.template_id
+       WHERE c.user_id = $1
+         AND c.group_id = ANY($2::uuid[])
+         AND r.group_id = c.group_id
+         AND t.status = 'published'
+         AND r.status = 'published'
+         AND t.is_deprecated = false`,
+      [userId, groupIds],
+    ),
+    query(
+      `SELECT DISTINCT ON (r.group_id)
+         r.group_id, t.id AS template_id, t.main_image_url
+       FROM user_cards uc
+       JOIN templates t ON t.id = uc.template_id
+       JOIN releases r ON r.id = t.release_id
+       WHERE uc.user_id = $1
+         AND r.group_id = ANY($2::uuid[])
+         AND t.status = 'published'
+         AND r.status = 'published'
+         AND t.is_deprecated = false
+       ORDER BY r.group_id, uc.created_at DESC, uc.updated_at DESC, t.id DESC`,
+      [userId, groupIds],
+    ),
+  ]);
+  const cmap = new Map<string, GroupCover>();
+  for (const row of latest.rows) {
+    cmap.set(String(row.group_id), mapCover({ ...row, source: "latest" }));
+  }
+  for (const row of chosen.rows) {
+    cmap.set(String(row.group_id), mapCover({ ...row, source: "user" }));
+  }
+  for (const id of groupIds) {
+    if (!cmap.has(id)) cmap.set(id, { ...EMPTY_COVER });
+  }
+  return cmap;
+}
+
+export async function getGroupCover(userId: string, groupKey: string) {
+  const group = await getGroup(groupKey);
+  const covers = await coversForGroups(userId, [group.id as string]);
+  return {
+    groupId: group.id as string,
+    groupSlug: group.slug as string,
+    cover: covers.get(group.id as string) || { ...EMPTY_COVER },
+  };
+}
+
+export async function setGroupCover(userId: string, groupKey: string, templateId: string) {
+  if (!templateId) throw badRequest("缺少 templateId");
+  const group = await getGroup(groupKey);
+  const owned = await query(
+    `SELECT t.id, t.main_image_url
+     FROM user_cards uc
+     JOIN templates t ON t.id = uc.template_id
+     JOIN releases r ON r.id = t.release_id
+     WHERE uc.user_id = $1
+       AND uc.template_id = $2
+       AND r.group_id = $3
+       AND t.status = 'published'
+       AND r.status = 'published'
+       AND t.is_deprecated = false`,
+    [userId, templateId, group.id],
+  );
+  if (!owned.rowCount) {
+    throw badRequest("只能将该团已拥有的小卡设为封面");
+  }
+  await query(
+    `INSERT INTO user_group_covers (user_id, group_id, template_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, group_id)
+     DO UPDATE SET template_id = EXCLUDED.template_id, updated_at = now()`,
+    [userId, group.id, templateId],
+  );
+  return getGroupCover(userId, groupKey);
+}
+
 export async function overview(userId: string | null) {
   const groups = await query(
     `SELECT id, slug, name_zh, name_en, name_ko, aliases, logo_color, icon_url, logo_url, scope_note, is_pilot, status, ugc_open
@@ -98,6 +239,7 @@ export async function overview(userId: string | null) {
   const cmap = new Map(customByGroup.filter((r) => r.group_id).map((r) => [r.group_id as string, r.n]));
   const customCards = userId ? await listCustomCards(userId) : [];
   const customCount = userId ? await countVisibleCustom(userId) : 0;
+  const covers = userId ? await coversForGroups(userId, ids) : new Map<string, GroupCover>();
   return {
     copy: PROGRESS_COPY,
     searchEnabled: false,
@@ -112,11 +254,13 @@ export async function overview(userId: string | null) {
         owned_distinct: 0,
       };
       const groupCustom = cmap.get(g.id as string) || 0;
+      const cover = covers.get(g.id as string) || { ...EMPTY_COVER };
       return {
         ...mapGroup(g),
         progress: toProgress(p),
         customCount: groupCustom,
         customBadge: groupCustom > 0 ? CUSTOM_BADGE : null,
+        cover,
       };
     }),
   };
@@ -147,16 +291,22 @@ export async function groupDetail(userId: string, groupKey: string) {
   const ownedCards = owned.rows.map(mapOwnedCard);
   const custom = await listCustomCards(userId, { groupId: group.id as string });
   const customDuplicates = custom.filter((c) => c.quantity > 1);
+  const covers = await coversForGroups(userId, [group.id as string]);
+  const cover = covers.get(group.id as string) || { ...EMPTY_COVER };
+  const withCoverFlag = (cards: ReturnType<typeof mapOwnedCard>[]) =>
+    cards.map((c) => ({ ...c, isCover: !!(cover.templateId && cover.templateId === c.id) }));
+  const ownedWithCover = withCoverFlag(ownedCards);
   return {
     group,
     progress: toProgress(
       prog || { published_count: 0, benefit_count: 0, owned_distinct: 0 },
     ),
     copy: PROGRESS_COPY,
+    cover,
     tabs: ["拥有", "想要", "重复"],
-    owned: ownedCards,
+    owned: ownedWithCover,
     wanted: wants.rows.map(mapTemplate),
-    duplicates: ownedCards.filter((c) => c.quantity > 1),
+    duplicates: withCoverFlag(ownedCards.filter((c) => c.quantity > 1)),
     custom,
     customDuplicates,
     customBadge: CUSTOM_BADGE,
@@ -306,6 +456,10 @@ export async function removeOwn(userId: string, templateId: string) {
     [userId, templateId],
   );
   if (!r.rowCount) throw notFound("尚未拥有该卡");
+  await query("DELETE FROM user_group_covers WHERE user_id = $1 AND template_id = $2", [
+    userId,
+    templateId,
+  ]);
   // un-own does NOT re-add want
   await track("card_own_remove", { templateId }, userId);
   return { deleted: true, wantRestored: false };

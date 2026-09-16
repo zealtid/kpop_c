@@ -52,7 +52,7 @@ test("cold start stays cardbook; ME10 hides intel Tab; lazyCodeLoading kept", ()
   assert.equal(appJson.pages[0], "pages/cardbook/index");
   assert.equal(appJson.lazyCodeLoading, "requiredComponents");
   const tabs = (appJson.tabBar.list || []).map((t) => t.text);
-  assert.deepEqual(tabs, ["卡册", "图鉴", "我的"]);
+  assert.deepEqual(tabs, ["收藏", "图鉴", "我的"]);
   assert.equal(appJson.tabBar.list[0].pagePath, "pages/cardbook/index");
   assert.ok(!tabs.includes("情报"));
   assert.ok(!(appJson.tabBar.list || []).some((t) => t.pagePath === "pages/feed/index"));

@@ -23,7 +23,7 @@ Page({
   },
 
   onShow() {
-    // ME10：情报底栏已下线；深链 / 旧入口落到卡册，不闪情报内容
+    // ME10：情报底栏已下线；深链 / 旧入口落到收藏，不闪情报内容
     wx.switchTab({ url: "/pages/cardbook/index" });
   },
 

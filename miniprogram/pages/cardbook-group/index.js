@@ -16,6 +16,7 @@ Page({
     customLabel: "",
     list: [],
     emptyTitle: "还没有卡",
+    coverTemplateId: "",
   },
   onLoad(q) {
     this.setData({ id: q.id });
@@ -30,9 +31,14 @@ Page({
         mainImageUrl: api.mediaUrl(c.mainImageUrl),
         conditionLabel: c.condition ? cardCondition.conditionLabel(c.condition) : "",
       });
-      const owned = (data.owned || []).map(mapUrl);
+      const coverTemplateId = data.cover && data.cover.templateId ? data.cover.templateId : "";
+      const withCover = (c) => ({
+        ...c,
+        isCover: !!(coverTemplateId && coverTemplateId === c.id),
+      });
+      const owned = (data.owned || []).map(mapUrl).map(withCover);
       const wanted = (data.wanted || []).map(mapUrl);
-      const duplicates = (data.duplicates || []).map(mapUrl);
+      const duplicates = (data.duplicates || []).map(mapUrl).map(withCover);
       const custom = (data.custom || []).map((c) => customCard.decorateCustomCard(c, api.mediaUrl));
       const pct = data.progress.publishedCount
         ? Math.round((data.progress.ownedDistinct / data.progress.publishedCount) * 100)
@@ -41,6 +47,7 @@ Page({
         group: data.group,
         progress: data.progress,
         pct,
+        coverTemplateId,
         owned,
         wanted,
         duplicates,
@@ -86,6 +93,21 @@ Page({
       .confirmDeleteCustomCard(id, api.request)
       .then((result) => {
         if (result.cancelled) return;
+        this.load();
+      })
+      .catch(api.handleWriteError);
+  },
+  setCover(e) {
+    const templateId = e.currentTarget.dataset.id;
+    if (!templateId || !this.data.id) return;
+    api
+      .request({
+        url: `/collection/groups/${this.data.id}/cover`,
+        method: "PUT",
+        data: { templateId },
+      })
+      .then(() => {
+        wx.showToast({ title: "已设为封面" });
         this.load();
       })
       .catch(api.handleWriteError);

@@ -3,10 +3,12 @@ const analytics = require("../../utils/analytics");
 const onboarding = require("../../utils/followOnboarding");
 const session = require("../../utils/session");
 const customCard = require("../../utils/customCard");
+const groupCover = require("../../utils/groupCover");
 
 Page({
   data: {
     groups: [],
+    followCount: 0,
     customCards: [],
     customCount: 0,
     customLabel: customCard.CUSTOM_BADGE,
@@ -16,7 +18,7 @@ Page({
     loginBtnLabel: "登录",
   },
   onShow() {
-    analytics.tabView("卡册");
+    analytics.tabView("收藏");
     this.load();
   },
   load() {
@@ -38,16 +40,12 @@ Page({
           ? []
           : (data.groups || [])
               .filter((g) => followedIds.has(g.id) || followedSlugs.has(g.slug))
-              .map((g) => ({
-                ...g,
-                pct: g.progress && g.progress.publishedCount
-                  ? Math.round((g.progress.ownedDistinct / g.progress.publishedCount) * 100)
-                  : 0,
-                customBadge: g.customCount ? customCard.CUSTOM_BADGE : "",
-                customLabel: g.customCount ? customCard.customCountLabel(g.customCount) : "",
-                logoSrc: g.iconUrl || g.logoUrl ? api.mediaUrl(g.iconUrl || g.logoUrl) : "",
-                initial: (g.nameZh || g.nameEn || "?").slice(0, 1),
-              }));
+              .map((g) => {
+                const next = groupCover.decorateFollowedGroup(g, api.mediaUrl);
+                next.customBadge = g.customCount ? customCard.CUSTOM_BADGE : "";
+                next.customLabel = g.customCount ? customCard.customCountLabel(g.customCount) : "";
+                return next;
+              });
         const customCards = (data.customCards || []).map((c) =>
           customCard.decorateCustomCard(c, api.mediaUrl),
         );
@@ -56,6 +54,7 @@ Page({
           loginFailed: false,
           loginBtnLabel: session.loginButtonLabel(false),
           groups,
+          followCount: groups.length,
           emptyFollows,
           customCards,
           customCount: data.customCount || customCards.length,
@@ -71,6 +70,7 @@ Page({
           loginFailed,
           loginBtnLabel: session.loginButtonLabel(loginFailed),
           groups: [],
+          followCount: 0,
           emptyFollows: false,
           customCards: [],
           customCount: 0,
@@ -80,6 +80,9 @@ Page({
           return;
         }
       });
+  },
+  focusGroups() {
+    wx.pageScrollTo({ selector: "#group-list", duration: 280 });
   },
   openGroup(e) {
     const id = e.currentTarget.dataset.id;

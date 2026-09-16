@@ -65,7 +65,7 @@ test("onboarding json/wxml share follow-picker with 1–3 complete copy", () => 
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
   const json = JSON.parse(fs.readFileSync(path.join(__dirname, "index.json"), "utf8"));
   assert.equal(json.usingComponents["follow-picker"], "/components/follow-picker/index");
-  assert.match(wxml, /complete-text="进入卡册"/);
+  assert.match(wxml, /complete-text="进入收藏"/);
   assert.match(wxml, /max-count="\{\{maxCount\}\}"/);
   assert.match(wxml, /show-skip="\{\{true\}\}"/);
 });

@@ -36,7 +36,7 @@ function waitForPages(cb, attempt) {
   setTimeout(() => waitForPages(cb, (attempt || 0) + 1), 50);
 }
 
-/** 打开关注选择页。force 用于卡册空状态再次进入（即使已跳过）。 */
+/** 打开关注选择页。force 用于收藏空状态再次进入（即使已跳过）。 */
 function openOnboarding({ force = false } = {}) {
   if (isOnboardingPage()) return;
   if (opening) return;

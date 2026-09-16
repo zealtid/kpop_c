@@ -8,12 +8,15 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const navigations = [];
+const toasts = [];
 
 global.wx = {
   getStorageSync() {
     return "";
   },
-  showToast() {},
+  showToast(opts) {
+    toasts.push(opts);
+  },
   showModal() {},
   request() {},
   navigateTo(opts) {
@@ -50,6 +53,7 @@ function pageWithData(data) {
 
 beforeEach(() => {
   navigations.length = 0;
+  toasts.length = 0;
 });
 
 test("wxml opens card detail from owned tiles and still catchtap unown", () => {
@@ -59,10 +63,12 @@ test("wxml opens card detail from owned tiles and still catchtap unown", () => {
   assert.match(wxml, /catchtap="unown"/);
   assert.match(wxml, /item\.conditionLabel/);
   assert.doesNotMatch(wxml, /拍照加卡/);
-  assert.match(wxml, /拍照加入卡册/);
+  assert.match(wxml, /拍照入册/);
   assert.match(wxml, /addFromCatalog/);
   assert.match(wxml, /goCatalog/);
   assert.match(wxml, /emptyTitle/);
+  assert.match(wxml, /设为封面/);
+  assert.match(wxml, /catchtap="setCover"/);
   assert.match(wxss, /padding-top:\s*150%/);
 });
 
@@ -137,10 +143,33 @@ test("custom tile image opens fullscreen preview for pending", () => {
   assert.equal(customCard.takePreviewSrc(), "/media/custom/x.jpg");
 });
 
-test("empty 去图鉴 switches to catalog tab; 拍照加入卡册 stays on grid", () => {
+test("empty 去图鉴 switches to catalog tab; 拍照入册 stays on grid", () => {
   const page = pageWithData({});
   page.goCatalog();
   assert.equal(navigations[navigations.length - 1].url, "/pages/catalog/index");
   page.addFromCatalog();
   assert.equal(navigations[navigations.length - 1].url, "/pages/catalog-grid/index");
+});
+
+test("setCover PUTs owned template as group cover", async () => {
+  const api = require("../../utils/api");
+  const origReq = api.request;
+  const calls = [];
+  api.request = (opts) => {
+    calls.push(opts);
+    return Promise.resolve({ cover: { templateId: "abc", source: "user" } });
+  };
+  let loads = 0;
+  const page = pageWithData({ id: "bts" });
+  page.load = () => {
+    loads += 1;
+  };
+  page.setCover({ currentTarget: { dataset: { id: "abc" } } });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(calls[0].url, "/collection/groups/bts/cover");
+  assert.equal(calls[0].method, "PUT");
+  assert.deepEqual(calls[0].data, { templateId: "abc" });
+  assert.equal(loads, 1);
+  assert.ok(toasts.some((t) => t.title === "已设为封面"));
+  api.request = origReq;
 });

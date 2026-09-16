@@ -121,7 +121,7 @@ test("TH05 tabBar + primary/secondary buttons; ME10 情报 hidden", () => {
   const appJson = JSON.parse(fs.readFileSync(APP_JSON, "utf8"));
   assert.equal(appJson.pages[0], "pages/cardbook/index");
   assert.equal(appJson.tabBar.list.length, 3);
-  assert.equal(appJson.tabBar.list[0].text, "卡册");
+  assert.equal(appJson.tabBar.list[0].text, "收藏");
   assert.equal(appJson.tabBar.list[1].text, "图鉴");
   assert.equal(appJson.tabBar.list[2].text, "我的");
   assert.equal(appJson.tabBar.color.toUpperCase(), "#667085");
