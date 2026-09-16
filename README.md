@@ -333,7 +333,7 @@ npm run build:h5     # 本地确认 dist/；需设置 VITE_API_BASE
 
 小程序「宫格入册」：入口显式选择 **AI 切图** 或 **手动四宫/九宫**。AI 路径勾选第三方视觉识别说明 → 相册或相机拍整页（规则或不规则）→ `POST /catalog/grid/split` **服务端**调用火山方舟豆包视觉，返回归一化 bbox（≤16）→ 确认页展示「识别到 N 张」，可调框、删除、旋转。成员/特典建议仅预填，须用户确认。共享组合/专辑；**版本与特典可不填**。确认后每卡匹配 published 图鉴：命中直接挂拥有（不计 UGC 审批积分），未命中走 UGC-1 待审。
 
-失败 / 超时（约 18s）或未配置 `ARK_API_KEY`：Toast 后降级单卡 `pages/catalog-submit`。日限约 20 页/用户；**检测+提交最多 16 张**（超出截断最高置信并 Toast）。入口显式二选一：**AI 切图** 或 **手动四宫/九宫**（jsfeat，不经过第三方视觉）。无 H5 宫格、无私有-only、不自动 published。
+失败 / 超时（约 60s）或未配置 `ARK_API_KEY`：Toast 后降级单卡 `pages/catalog-submit`。日限约 20 页/用户；**检测+提交最多 16 张**（超出截断最高置信并 Toast）。入口显式二选一：**AI 切图** 或 **手动四宫/九宫**（jsfeat，不经过第三方视觉）。无 H5 宫格、无私有-only、不自动 published。
 
 ### 环境变量（仅服务端）
 
@@ -345,7 +345,7 @@ npm run build:h5     # 本地确认 dist/；需设置 VITE_API_BASE
 | `ARK_VISION_MODEL` | 建议 | 默认 `doubao-seed-2-0-lite-260215`（豆包视觉定位 / Grounding，2026-09-16 拍板）。生产也可填方舟推理接入点 `ep-…`，代码按字符串原样传给 chat/completions，不校验必须是 seed 名。 |
 | `ARK_BASE_URL` | 否 | 默认 `https://ark.cn-beijing.volces.com/api/v3` |
 | `GRID_VLM_PROVIDER` | 否 | 默认 `doubao`（可插拔；测试可用 `mock`） |
-| `GRID_VLM_TIMEOUT_MS` | 否 | 默认 `18000` |
+| `GRID_VLM_TIMEOUT_MS` | 否 | 默认 `60000` |
 | `GRID_VLM_DAILY_LIMIT` | 否 | 默认 `20` |
 | `GRID_VLM_MAX_DETECT` | 否 | 默认 `16`（UGC-2b-Match16） |
 | `GRID_VLM_MAX_SUBMIT` | 否 | 默认 `16` |
