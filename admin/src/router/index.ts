@@ -41,6 +41,11 @@ export const router = createRouter({
           component: () => import("../views/UserDetailView.vue"),
         },
         {
+          path: "grid-vlm",
+          name: "grid-vlm",
+          component: () => import("../views/GridVlmView.vue"),
+        },
+        {
           path: "catalog/:tab?",
           name: "catalog",
           component: () => import("../views/CatalogView.vue"),

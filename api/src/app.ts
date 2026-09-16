@@ -60,6 +60,7 @@ import {
 } from "./storage.js";
 import * as catalogSubmissions from "./catalogSubmissions.js";
 import * as gridSplit from "./gridSplit.js";
+import { listGridVlmCalls, listGridVlmStats } from "./vlm/calls.js";
 import * as adminUsers from "./adminUsers.js";
 import { jsSdkSignature, resolveMiniJump } from "./wxMiniJump.js";
 import * as feed from "./feed.js";
@@ -825,6 +826,33 @@ export function createApp() {
     try {
       const limit = req.query.limit ? Number(req.query.limit) : 50;
       res.json({ logs: await listAuditLogs(limit) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/grid-vlm/stats", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(await listGridVlmStats({ from: req.query.from, to: req.query.to }));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  app.get("/admin/grid-vlm/calls", requireAdmin, async (req, res, next) => {
+    try {
+      res.json(
+        await listGridVlmCalls({
+          from: req.query.from,
+          to: req.query.to,
+          ok: req.query.ok,
+          reason: req.query.reason,
+          userId: req.query.userId,
+          limit: req.query.limit,
+          cursor: req.query.cursor,
+          offset: req.query.offset,
+        }),
+      );
     } catch (e) {
       next(e);
     }
