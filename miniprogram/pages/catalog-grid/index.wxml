@@ -1,8 +1,30 @@
 <view class="page">
   <view class="h1">宫格入册</view>
-  <view class="sub">拍或选一整页小卡（规则或不规则均可）。服务端识别卡位后确认入册；失败会改走单卡投稿。尽量平铺、少遮挡。</view>
+  <view class="sub">先选切图方式，再拍或选整页。确认卡位后，图鉴已有直接入柜，没有则送审。尽量平铺、少遮挡。</view>
 
   <view class="card">
+    <view class="label">切图方式</view>
+    <view class="mode-row">
+      <view
+        class="mode {{cutMode==='ai'?'on':''}} {{busy?'off':''}}"
+        bindtap="pickCutMode"
+        data-mode="ai"
+      >
+        <view class="mode-title">AI 切图</view>
+        <view class="mode-sub">不规则多卡，最多 16 张</view>
+      </view>
+      <view
+        class="mode {{cutMode==='manual'?'on':''}} {{busy?'off':''}}"
+        bindtap="pickCutMode"
+        data-mode="manual"
+      >
+        <view class="mode-title">手动四宫/九宫</view>
+        <view class="mode-sub">规则摆放，离线切分</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{cutMode==='ai'}}">
     <view
       class="agree {{visionConsent?'on':''}} {{busy?'off':''}}"
       bindtap="toggleConsent"
@@ -13,6 +35,15 @@
       </view>
       <view class="agree-text">图片将送至第三方视觉识别服务检测卡位，不用于广告。未勾选不可识别。</view>
     </view>
+  </view>
+
+  <view class="card" wx:if="{{cutMode==='manual'}}">
+    <view class="label">宫格</view>
+    <view class="chips">
+      <view class="chip {{cells===4?'on':''}}" bindtap="pickCells" data-cells="4">四宫</view>
+      <view class="chip {{cells===9?'on':''}}" bindtap="pickCells" data-cells="9">九宫</view>
+    </view>
+    <view class="muted adv-hint">仅规则 4/9 摆放时使用，不经过第三方视觉服务。</view>
   </view>
 
   <view class="card">
@@ -27,18 +58,6 @@
 
   <view wx:if="{{busy}}" class="muted hint">{{busyText}}</view>
   <view wx:if="{{failHint}}" class="footnote">{{failHint}}</view>
-
-  <view class="card advanced">
-    <view class="adv-toggle" bindtap="toggleAdvanced">{{advancedOpen ? '收起手动规则宫格' : '高级：手动四宫 / 九宫（离线切分）'}}</view>
-    <view wx:if="{{advancedOpen}}">
-      <view class="label">宫格</view>
-      <view class="chips">
-        <view class="chip {{cells===4?'on':''}}" bindtap="pickCells" data-cells="4">四宫</view>
-        <view class="chip {{cells===9?'on':''}}" bindtap="pickCells" data-cells="9">九宫</view>
-      </view>
-      <view class="muted adv-hint">仅规则 4/9 摆放时使用，不经过第三方视觉服务。</view>
-    </view>
-  </view>
 
   <canvas
     canvas-id="detectCanvas"

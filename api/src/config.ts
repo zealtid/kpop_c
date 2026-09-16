@@ -63,8 +63,8 @@ export const DEFAULT_ARK_VISION_MODEL = "doubao-seed-2-0-lite-260215";
 export function gridVlmConfig() {
   const timeout = Number(process.env.GRID_VLM_TIMEOUT_MS || 18_000);
   const dailyLimit = Number(process.env.GRID_VLM_DAILY_LIMIT || 20);
-  const maxDetect = Number(process.env.GRID_VLM_MAX_DETECT || 12);
-  const maxSubmit = Number(process.env.GRID_VLM_MAX_SUBMIT || 9);
+  const maxDetect = Number(process.env.GRID_VLM_MAX_DETECT || 16);
+  const maxSubmit = Number(process.env.GRID_VLM_MAX_SUBMIT || 16);
   return {
     provider: (process.env.GRID_VLM_PROVIDER || "doubao").trim().toLowerCase() || "doubao",
     apiKey: (process.env.ARK_API_KEY || "").trim(),
@@ -73,8 +73,8 @@ export function gridVlmConfig() {
     baseUrl: (process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").replace(/\/$/, ""),
     timeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : 18_000,
     dailyLimit: Number.isFinite(dailyLimit) && dailyLimit > 0 ? dailyLimit : 20,
-    maxDetect: Number.isFinite(maxDetect) && maxDetect > 0 ? maxDetect : 12,
-    maxSubmit: Number.isFinite(maxSubmit) && maxSubmit > 0 ? maxSubmit : 9,
+    maxDetect: Number.isFinite(maxDetect) && maxDetect > 0 ? maxDetect : 16,
+    maxSubmit: Number.isFinite(maxSubmit) && maxSubmit > 0 ? maxSubmit : 16,
   };
 }
 

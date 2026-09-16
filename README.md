@@ -326,9 +326,9 @@ npm run build:h5     # 本地确认 dist/；需设置 VITE_API_BASE
 
 ## UGC-2b-VLM 宫格入册（火山豆包视觉）
 
-小程序「宫格入册」：勾选第三方视觉识别说明 → 相册或相机拍整页（规则或不规则，**不再强制**四宫/九宫）→ `POST /catalog/grid/split` **服务端**调用火山方舟豆包视觉，返回归一化 bbox → 确认页展示「识别到 N 张」，可调框、删除、旋转。成员/特典建议仅预填，须用户确认。共享组合/专辑/版本；确认后仍走 UGC-1。
+小程序「宫格入册」：入口显式选择 **AI 切图** 或 **手动四宫/九宫**。AI 路径勾选第三方视觉识别说明 → 相册或相机拍整页（规则或不规则）→ `POST /catalog/grid/split` **服务端**调用火山方舟豆包视觉，返回归一化 bbox（≤16）→ 确认页展示「识别到 N 张」，可调框、删除、旋转。成员/特典建议仅预填，须用户确认。共享组合/专辑；**版本与特典可不填**。确认后每卡匹配 published 图鉴：命中直接挂拥有（不计 UGC 审批积分），未命中走 UGC-1 待审。
 
-失败 / 超时（约 18s）或未配置 `ARK_API_KEY`：Toast 后降级单卡 `pages/catalog-submit`。日限约 20 页/用户；检测最多 12 张、提交最多 9 张。高级入口仍保留手动四宫/九宫（jsfeat，不经过第三方视觉）。无 H5 宫格、无私有-only、不自动 published。
+失败 / 超时（约 18s）或未配置 `ARK_API_KEY`：Toast 后降级单卡 `pages/catalog-submit`。日限约 20 页/用户；**检测+提交最多 16 张**（超出截断最高置信并 Toast）。入口显式二选一：**AI 切图** 或 **手动四宫/九宫**（jsfeat，不经过第三方视觉）。无 H5 宫格、无私有-only、不自动 published。
 
 ### 环境变量（仅服务端）
 
@@ -342,19 +342,21 @@ npm run build:h5     # 本地确认 dist/；需设置 VITE_API_BASE
 | `GRID_VLM_PROVIDER` | 否 | 默认 `doubao`（可插拔；测试可用 `mock`） |
 | `GRID_VLM_TIMEOUT_MS` | 否 | 默认 `18000` |
 | `GRID_VLM_DAILY_LIMIT` | 否 | 默认 `20` |
+| `GRID_VLM_MAX_DETECT` | 否 | 默认 `16`（UGC-2b-Match16） |
+| `GRID_VLM_MAX_SUBMIT` | 否 | 默认 `16` |
 
 如何取模型 ID：登录 [火山方舟控制台](https://console.volcengine.com/ark/) → 开通 **Doubao-Seed-2.0-lite**（视觉定位 / Grounding）或创建「推理接入点」后把 `ep-…` 填进 `ARK_VISION_MODEL`。未设时 API 默认 `doubao-seed-2-0-lite-260215`。模型 Grounding 输出 `<bbox>`（常为 1000×1000），服务端再转成产品约定的 0–1 bbox。
 
 ### 微信开发者工具验证
 
 1. 打开仓库根目录；关闭「不校验合法域名」；`miniprogram/utils/config.js` 指向本机或已配 HTTPS 的 API。
-2. 登录后从图鉴/我的进入「宫格入册」；未勾选协议时点相册应 Toast「请先勾选视觉识别说明」。
-3. 勾选后上传不规则多卡样张，出现「识别中…」，进入确认页看到「识别到 N 张」（可调框/删/转）。确认入册仍先审后发，不自动 published。
+2. 登录后从图鉴/我的进入「宫格入册」；先选 **AI 切图** 或 **手动四宫/九宫**。AI 未勾选协议时点相册应 Toast「请先勾选视觉识别说明」。
+3. AI 勾选后上传不规则多卡样张，出现「识别中…」，进入确认页看到「识别到 N 张」（可调框/删/转）。确认入册：图鉴命中直接入柜，未命中先审后发，不自动 published。
 4. 停掉 API 或故意配错 `ARK_API_KEY`：应 Toast 并跳转单卡投稿，不白屏。
 5. 抓包：请求只打到自有 API `/catalog/grid/split`，**不见** `ARK_API_KEY`、不见方舟域名。
 6. 真机：request 合法域名填 API HTTPS；**不要**把火山方舟域名配进小程序（密钥与调用只在服务端）。
 
-确认后每卡复用 UGC-1：`POST /media/ugc-pending`（≤150KB）+ `POST /catalog/submissions`（白名单、协议、先审后发）。`matchOwnIfDuplicate: true` 时近 dup 命中已发布模板则挂拥有（Mode B），不新建 published、不跳过审核。
+确认后每卡复用 UGC-1：`POST /media/ugc-pending`（≤150KB）+ `POST /catalog/submissions`（白名单、协议）。宫格 `source=grid_page` 一律先匹配 published：近 dup 命中则挂拥有（Mode B，**不计审批积分**），未命中 `pending_review`。版本/特典可空。详见 `docs/ugc-2b-match16-scope-draft.md`。
 
 ## 明确不做（M1 之外）
 

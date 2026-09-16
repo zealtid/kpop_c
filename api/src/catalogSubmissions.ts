@@ -13,6 +13,7 @@ import {
   type ImageWarning,
 } from "./imageHash.js";
 import { awardApprovedSubmissionPoints } from "./contributionPoints.js";
+import { gridSubmissionRules } from "./gridSubmissionRules.js";
 import {
   absoluteMediaUrl,
   copyPendingToPublicCards,
@@ -290,7 +291,8 @@ async function insertSubmission(
   const memberId = uuidOrNull(body.memberId);
   const member = await assertMember(memberId, groupId);
   const slotLabel = text(body.slotLabel ?? body.name, "name", true, SLOT_MAX)!;
-  const versionLabel = text(body.versionLabel, "versionLabel", true, VERSION_MAX)!;
+  const rules = gridSubmissionRules(source, body.matchOwnIfDuplicate);
+  const versionLabel = text(body.versionLabel, "versionLabel", rules.versionRequired, VERSION_MAX);
   const channelCode = text(body.channelCode, "channelCode", false, CHANNEL_MAX);
   const imageFront = text(body.imageFront, "imageFront", true, 500)!;
   if (!isPendingMediaPath(imageFront)) throw badRequest("卡面必须使用待审桶路径");
@@ -313,7 +315,7 @@ async function insertSubmission(
     });
   }
 
-  if (body.matchOwnIfDuplicate && dups[0]) {
+  if (rules.matchOwn && dups[0]) {
     await grantOwned(userId, dups[0].id);
     await purgePendingImages([imageFront, imageBack, body.imageFrontThumb, body.imageBackThumb]);
     await track(
@@ -332,6 +334,8 @@ async function insertSubmission(
       groupSlug: group.slug,
       releaseTitle: release.title,
       memberEn: member?.name_en || null,
+      // 匹配入册无 submission，不计 UGC 审批贡献积分
+      pointsAwarded: 0,
     };
   }
 
@@ -494,6 +498,7 @@ export async function adminMediaPath(id: string, side: string) {
 }
 
 async function grantOwned(userId: string, templateId: string) {
+  // 仅写入 user_cards；不创建 catalog_submissions，故不会走审核通过记分。
   await query(
     `INSERT INTO user_cards (user_id, template_id, quantity)
      VALUES ($1, $2, 1)

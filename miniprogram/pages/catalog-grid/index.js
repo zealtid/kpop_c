@@ -28,8 +28,8 @@ function getImageInfo(src) {
 
 Page({
   data: {
+    cutMode: "ai",
     visionConsent: false,
-    advancedOpen: false,
     cells: 4,
     preview: "",
     busy: false,
@@ -41,13 +41,14 @@ Page({
   onLoad() {
     this._src = "";
   },
+  pickCutMode(e) {
+    if (this.data.busy) return;
+    const cutMode = e.currentTarget.dataset.mode === "manual" ? "manual" : "ai";
+    this.setData({ cutMode, failHint: "" });
+  },
   toggleConsent() {
     if (this.data.busy) return;
     this.setData({ visionConsent: !this.data.visionConsent, failHint: "" });
-  },
-  toggleAdvanced() {
-    if (this.data.busy) return;
-    this.setData({ advancedOpen: !this.data.advancedOpen });
   },
   pickCells(e) {
     const cells = Number(e.currentTarget.dataset.cells) === 9 ? 9 : 4;
@@ -61,7 +62,7 @@ Page({
   },
   choose(sourceType) {
     if (this.data.busy) return;
-    if (!this.data.advancedOpen && !this.data.visionConsent) {
+    if (this.data.cutMode === "ai" && !this.data.visionConsent) {
       wx.showToast({ title: "请先勾选视觉识别说明", icon: "none" });
       return;
     }
@@ -69,7 +70,7 @@ Page({
       if (!filePath) return;
       this._src = filePath;
       this.setData({ preview: filePath, failHint: "" });
-      if (this.data.advancedOpen) this.splitCv(filePath);
+      if (this.data.cutMode === "manual") this.splitCv(filePath);
       else this.splitVlm(filePath);
     };
     if (typeof wx.chooseMedia === "function") {
@@ -212,6 +213,7 @@ Page({
       suggestedMemberName: b.suggestedMemberName || b.memberName || "",
     }));
     const suggestions = result.suggestions || {};
+    const engine = result.engine || (fromServer ? "vlm" : "jsfeat");
     gridSession.begin({
       src: this._src,
       origW: this._origW,
@@ -222,8 +224,9 @@ Page({
       method: result.method,
       confidence: result.confidence,
       fromServer,
-      engine: result.engine || (fromServer ? "vlm" : "jsfeat"),
+      engine,
       detectedCount: result.detectedCount || boxes.length,
+      truncated: !!result.truncated,
       suggestedVersionLabel: suggestions.versionLabel || "",
     });
     this.setData({ busy: false, busyText: "" });
