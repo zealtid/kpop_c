@@ -9,6 +9,10 @@ const api = require("./api");
 const origRequest = api.request;
 const phoneBind = require("./phoneBind");
 
+test("PHONE_BIND_UI_ENABLED is off so MP can hide bind entry", () => {
+  assert.equal(phoneBind.PHONE_BIND_UI_ENABLED, false);
+});
+
 test("phoneFields reads masked number without inventing a bind", () => {
   assert.deepEqual(phoneBind.phoneFields({}), { phoneMasked: "", phoneBound: false });
   assert.deepEqual(phoneBind.phoneFields({ phoneMasked: "138****8000", phoneBound: true }), {

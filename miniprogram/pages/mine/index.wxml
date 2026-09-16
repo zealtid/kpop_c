@@ -24,7 +24,7 @@
         <view class="profile-meta">
           <view class="profile-name {{nicknameUnset ? 'placeholder' : ''}}">{{displayName}}</view>
           <view class="profile-points">贡献积分 {{contributionPoints}}</view>
-          <view class="profile-phone">
+          <view wx:if="{{phoneBindUiEnabled}}" class="profile-phone">
             <text>{{phoneBound ? phoneMasked : '未绑定手机号'}}</text>
             <button
               class="phone-bind-btn"
