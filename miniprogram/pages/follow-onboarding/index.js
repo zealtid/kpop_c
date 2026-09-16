@@ -11,7 +11,7 @@ Page({
     saving: false,
     maxCount: onboarding.MAX_FOLLOW_GROUPS,
     minCount: 1,
-    hint: "选择 1–3 个组合，卡册会展示他们的收集进度。也可以先跳过，之后再选。",
+    hint: "选择 1–3 个组合，收藏会展示他们的收集进度。也可以先跳过，之后再选。",
   },
 
   onLoad() {

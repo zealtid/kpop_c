@@ -5,7 +5,7 @@
     mode="onboarding"
     max-count="{{maxCount}}"
     min-count="{{minCount}}"
-    complete-text="进入卡册"
+    complete-text="进入收藏"
     show-skip="{{true}}"
     show-search="{{true}}"
     show-clear="{{true}}"

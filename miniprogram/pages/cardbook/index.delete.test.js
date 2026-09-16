@@ -16,6 +16,7 @@ global.wx = {
   request() {},
   navigateTo() {},
   switchTab() {},
+  pageScrollTo() {},
 };
 
 global.getApp = () => ({
@@ -60,7 +61,7 @@ test("wxml custom tiles expose 删除 without mixing into public catalog", () =>
   assert.match(wxml, />删除</);
   assert.match(wxml, /历史私人卡/);
   assert.doesNotMatch(wxml, /拍照加卡/);
-  assert.match(wxml, /拍照加入卡册/);
+  assert.match(wxml, /拍照入册/);
   assert.match(wxml, /addFromCatalog/);
   assert.match(wxml, /goCatalog/);
   assert.match(wxss, /padding-top:\s*150%/);

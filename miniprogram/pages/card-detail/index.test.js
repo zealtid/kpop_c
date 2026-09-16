@@ -69,6 +69,7 @@ test("wxml has quantity stepper, 品相 chips, 备注, save", () => {
   assert.match(wxml, /bindtap="pickCondition"/);
   assert.match(wxml, />备注</);
   assert.match(wxml, /bindtap="save">保存</);
+  assert.match(wxml, /bindtap="setCover">设为封面</);
   assert.match(wxml, /catalogMode/);
   assert.match(wxml, /bindtap="ownOne"/);
   assert.match(wxml, /bindtap="wantOne"/);
@@ -132,6 +133,21 @@ test("save 401 goes through handleWriteError", async () => {
   await Promise.resolve();
   await Promise.resolve();
   assert.equal(toasts.some((t) => t.title === "请先登录"), true);
+});
+
+test("setCover PUTs /collection/groups/:slug/cover", async () => {
+  const page = pageWithData({
+    id: "tmpl-1",
+    catalogMode: false,
+    missing: false,
+    card: { groupSlug: "bts" },
+  });
+  page.setCover();
+  await Promise.resolve();
+  assert.equal(requests[0].url, "/collection/groups/bts/cover");
+  assert.equal(requests[0].method, "PUT");
+  assert.deepEqual(requests[0].data, { templateId: "tmpl-1" });
+  assert.ok(toasts.some((t) => t.title === "已设为封面"));
 });
 
 test("src uses handleWriteError and does not call camera APIs", () => {

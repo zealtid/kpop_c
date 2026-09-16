@@ -1,64 +1,77 @@
 <view class="page album">
-  <view class="head-row">
-    <view class="head-title">
-      <view class="h1">我的卡册</view>
-      <view wx:if="{{!needsLogin && !emptyFollows}}" class="head-count">{{groups.length}} 组</view>
-    </view>
-    <view class="btn slim-add" bindtap="addFromCatalog">拍照加入卡册</view>
-  </view>
+  <view class="h1 page-title">收藏</view>
 
-  <view wx:if="{{needsLogin}}" class="empty-state">
-    <view class="empty-title">登录后查看卡册</view>
-    <view class="empty-sub">可先浏览图鉴</view>
-    <view wx:if="{{loginFailed}}" class="empty-sub">登录失败，请重试</view>
-    <view class="empty-actions">
-      <view class="btn" bindtap="goCatalog">去图鉴</view>
-      <view class="btn ghost" bindtap="doLogin">{{loginBtnLabel}}</view>
+  <view class="dual-entry">
+    <view class="dual-card dual-left" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="focusGroups">
+      <view class="dual-kicker">组合进度</view>
+      <view class="dual-title">收藏</view>
+      <view wx:if="{{!needsLogin && followCount > 0}}" class="dual-count">{{followCount}} 组</view>
+      <view wx:else class="dual-count">关注组合</view>
+    </view>
+    <view class="dual-card dual-right" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="addFromCatalog">
+      <view class="dual-kicker">加入</view>
+      <view class="dual-title">拍照入册</view>
+      <view class="dual-count">宫格识别</view>
     </view>
   </view>
 
-  <block wx:else>
-    <view wx:if="{{emptyFollows}}" class="empty-state">
-      <view class="empty-title">先关注组合</view>
+  <view id="group-list" class="group-list">
+    <view wx:if="{{needsLogin}}" class="empty-state">
+      <view class="empty-title">登录后查看收藏</view>
+      <view class="empty-sub">可先浏览图鉴</view>
+      <view wx:if="{{loginFailed}}" class="empty-sub">登录失败，请重试</view>
       <view class="empty-actions">
-        <view class="btn" bindtap="goFollowPicker">去选择关注</view>
-        <view class="btn ghost" bindtap="goCatalog">去图鉴</view>
+        <view class="btn" bindtap="goCatalog">去图鉴</view>
+        <view class="btn ghost" bindtap="doLogin">{{loginBtnLabel}}</view>
       </view>
     </view>
 
     <block wx:else>
-      <view wx:for="{{groups}}" wx:key="id" class="group-card" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="openGroup" data-id="{{item.slug}}">
-        <view class="left">
-          <image wx:if="{{item.logoSrc}}" class="dot" src="{{item.logoSrc}}" mode="aspectFill"/>
-          <view wx:else class="dot letter" style="background: {{item.logoColor}}">{{item.initial}}</view>
-          <view class="group-meta">
+      <view wx:if="{{emptyFollows}}" class="empty-state">
+        <view class="empty-title">先关注组合</view>
+        <view class="empty-sub">关注后可在收藏里看收集进度</view>
+        <view class="empty-actions">
+          <view class="btn" bindtap="goFollowPicker">去选择关注</view>
+          <view class="btn ghost" bindtap="goCatalog">去图鉴</view>
+        </view>
+      </view>
+
+      <block wx:else>
+        <view wx:for="{{groups}}" wx:key="id" class="group-card" hover-class="nav-hover" hover-start-time="20" hover-stay-time="80" bindtap="openGroup" data-id="{{item.slug}}">
+          <view class="cover" style="background: {{item.logoColor}}">
+            <image wx:if="{{item.hasCover}}" class="cover-img" src="{{item.coverSrc}}" mode="aspectFill"/>
+            <view wx:else class="cover-ph">
+              <view class="cover-initial">{{item.initial}}</view>
+              <view class="cover-cta">去收集</view>
+            </view>
+            <image wx:if="{{item.logoSrc}}" class="logo-badge" src="{{item.logoSrc}}" mode="aspectFill"/>
+          </view>
+          <view class="group-body">
             <view class="name">{{item.nameZh}}</view>
+            <view class="frac">{{item.progress.ownedDistinct}} / {{item.progress.publishedCount}}</view>
             <view class="bar">
               <view class="bar-fill" style="width: {{item.pct}}%"></view>
             </view>
+            <view class="pct">{{item.pct}}%</view>
             <view wx:if="{{item.scopeNote}}" class="footnote">{{item.scopeNote}}</view>
           </view>
         </view>
-        <view class="count-col">
-          <view class="frac">{{item.progress.ownedDistinct}}/{{item.progress.publishedCount}}</view>
-          <view class="pct">{{item.pct}}%</view>
+      </block>
+
+      <view wx:if="{{customCount > 0}}" class="custom-block">
+        <view class="custom-head">历史私人卡 {{customCount}}</view>
+        <view class="grid3">
+          <view class="tile" wx:for="{{customCards}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
+            <view class="ph" style="background: {{item.memberColor || '#EBEDF3'}}" catchtap="openPreview" data-id="{{item.id}}">
+              <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
+              <view class="badge">{{item.badge}}</view>
+              <view wx:if="{{item.moderationLabel}}" class="badge warn">{{item.moderationLabel}}</view>
+            </view>
+            <view class="tile-name">{{item.title || item.memberNameEn || '自定义卡'}}</view>
+            <view class="tile-act" catchtap="removeCustom" data-id="{{item.id}}">删除</view>
+          </view>
         </view>
       </view>
     </block>
-
-    <view wx:if="{{customCount > 0}}" class="custom-block">
-      <view class="custom-head">历史私人卡 {{customCount}}</view>
-      <view class="grid3">
-        <view class="tile" wx:for="{{customCards}}" wx:key="id" bindtap="openCustom" data-id="{{item.id}}">
-          <view class="ph" style="background: {{item.memberColor || '#EBEDF3'}}" catchtap="openPreview" data-id="{{item.id}}">
-            <image wx:if="{{item.mainImageUrl}}" src="{{item.mainImageUrl}}" mode="aspectFill"/>
-            <view class="badge">{{item.badge}}</view>
-            <view wx:if="{{item.moderationLabel}}" class="badge warn">{{item.moderationLabel}}</view>
-          </view>
-          <view class="tile-name">{{item.title || item.memberNameEn || '自定义卡'}}</view>
-          <view class="tile-act" catchtap="removeCustom" data-id="{{item.id}}">删除</view>
-        </view>
-      </view>
-    </view>
-  </block>
+  </view>
 </view>

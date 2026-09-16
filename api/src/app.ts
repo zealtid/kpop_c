@@ -399,6 +399,26 @@ export function createApp() {
     }
   });
 
+  app.get("/collection/groups/:id/cover", requireAuth, async (req, res, next) => {
+    try {
+      res.json(await collection.getGroupCover(req.user!.id, req.params.id));
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  const setCover = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    try {
+      res.json(
+        await collection.setGroupCover(req.user!.id, req.params.id, String(req.body?.templateId || "")),
+      );
+    } catch (e) {
+      next(e);
+    }
+  };
+  app.put("/collection/groups/:id/cover", requireAuth, setCover);
+  app.post("/collection/groups/:id/cover", requireAuth, setCover);
+
   app.get("/collection/groups/:id", requireAuth, async (req, res, next) => {
     try {
       res.json(await collection.groupDetail(req.user!.id, req.params.id));

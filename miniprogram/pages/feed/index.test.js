@@ -143,7 +143,7 @@ test("wxml has chips, today strip, feed cards, empty/featured CTAs", () => {
   assert.match(wxml, /countdown/);
 });
 
-test("T01 pages[0] stays 卡册; ME10 情报 not a tab; pages kept", () => {
+test("T01 pages[0] stays 收藏; ME10 情报 not a tab; pages kept", () => {
   const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, "../../app.json"), "utf8"));
   assert.equal(appJson.pages[0], "pages/cardbook/index");
   assert.ok(appJson.pages.includes("pages/feed/index"));
@@ -151,13 +151,13 @@ test("T01 pages[0] stays 卡册; ME10 情报 not a tab; pages kept", () => {
   assert.ok(appJson.pages.includes("pages/schedule/index"));
   assert.ok(appJson.pages.includes("pages/schedule-detail/index"));
   const tabsList = (appJson.tabBar.list || []).map((t) => t.text);
-  assert.deepEqual(tabsList, ["卡册", "图鉴", "我的"]);
+  assert.deepEqual(tabsList, ["收藏", "图鉴", "我的"]);
   assert.ok(!tabsList.includes("情报"));
   assert.ok(!(appJson.tabBar.list || []).some((t) => t.pagePath === "pages/feed/index"));
   assert.equal(appJson.tabBar.list.length, 3);
 });
 
-test("ME10 deep link to intel page switches to 卡册", () => {
+test("ME10 deep link to intel page switches to 收藏", () => {
   const page = pageWithData({});
   page.onShow();
   assert.deepEqual(tabs, [{ url: "/pages/cardbook/index" }]);
