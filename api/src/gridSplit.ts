@@ -125,7 +125,7 @@ async function splitWithVlm(
     });
     const meta = await sharp(parsed.buffer).rotate().metadata();
     const boxes = normalizeVlmCards(
-      { cards: detected.cards },
+      detected.cards?.length ? { cards: detected.cards } : detected.rawText || { cards: [] },
       { max: cfg.maxDetect || GRID_VLM_MAX_DETECT, imgW: meta.width, imgH: meta.height },
     );
     if (!boxes.length) {

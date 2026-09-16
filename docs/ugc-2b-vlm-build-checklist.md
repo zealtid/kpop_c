@@ -20,7 +20,7 @@ VLM-01…09 见 freeze §5
 
 ## 环境变量（建议名）
 - `ARK_API_KEY` — 火山方舟 API Key（**Railway 生产必填**）
-- `ARK_VISION_MODEL` — 豆包视觉模型/接入点 ID。推荐控制台「推理接入点」`ep-…`；也可填当前视觉模型 ID（默认 `doubao-seed-1.6-vision`，控制台版本如 `doubao-seed-1-6-vision-250815`）
+- `ARK_VISION_MODEL` — 默认 `doubao-seed-2-0-lite-260215`（豆包视觉定位 / Grounding，2026-09-16 拍板）。生产也可填方舟接入点 `ep-…`（原样传给 chat/completions）
 - `ARK_BASE_URL` — 可选，默认 `https://ark.cn-beijing.volces.com/api/v3`
 - `GRID_VLM_PROVIDER=doubao` — 可插拔；CI/本地无密钥时走 mock / `vlm_unconfigured` 降级
 - `GRID_VLM_TIMEOUT_MS=18000`、`GRID_VLM_DAILY_LIMIT=20`

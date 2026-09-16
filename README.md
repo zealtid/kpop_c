@@ -337,13 +337,13 @@ npm run build:h5     # 本地确认 dist/；需设置 VITE_API_BASE
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
 | `ARK_API_KEY` | 是 | 火山方舟 API Key（控制台 → API Key 管理） |
-| `ARK_VISION_MODEL` | 建议 | 推理接入点 ID（`ep-…`）或当前豆包视觉模型 ID。默认 `doubao-seed-1.6-vision`；控制台常见版本如 `doubao-seed-1-6-vision-250815` |
+| `ARK_VISION_MODEL` | 建议 | 默认 `doubao-seed-2-0-lite-260215`（豆包视觉定位 / Grounding，2026-09-16 拍板）。生产也可填方舟推理接入点 `ep-…`，代码按字符串原样传给 chat/completions，不校验必须是 seed 名。 |
 | `ARK_BASE_URL` | 否 | 默认 `https://ark.cn-beijing.volces.com/api/v3` |
 | `GRID_VLM_PROVIDER` | 否 | 默认 `doubao`（可插拔；测试可用 `mock`） |
 | `GRID_VLM_TIMEOUT_MS` | 否 | 默认 `18000` |
 | `GRID_VLM_DAILY_LIMIT` | 否 | 默认 `20` |
 
-如何取模型 ID：登录 [火山方舟控制台](https://console.volcengine.com/ark/) → 开通 Doubao 视觉模型（名称含 Vision，例如 Doubao-Seed-1.6-Vision）→ 创建「推理接入点」→ 把 `ep-…` 填进 `ARK_VISION_MODEL`。也可用控制台展示的带日期模型 ID。
+如何取模型 ID：登录 [火山方舟控制台](https://console.volcengine.com/ark/) → 开通 **Doubao-Seed-2.0-lite**（视觉定位 / Grounding）或创建「推理接入点」后把 `ep-…` 填进 `ARK_VISION_MODEL`。未设时 API 默认 `doubao-seed-2-0-lite-260215`。模型 Grounding 输出 `<bbox>`（常为 1000×1000），服务端再转成产品约定的 0–1 bbox。
 
 ### 微信开发者工具验证
 

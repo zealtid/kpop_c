@@ -1,17 +1,17 @@
 import sharp from "sharp";
 import { gridVlmConfig } from "../config.js";
-import { completionText, extractJsonValue } from "./parse.js";
-import type { GridVlmProvider, VlmCard, VlmDetectInput, VlmDetectResult } from "./types.js";
+import { cardsFromModelText, completionText } from "./parse.js";
+import type { GridVlmProvider, VlmDetectInput, VlmDetectResult } from "./types.js";
 
-const DETECT_PROMPT = `你是小卡（photocard）检测器。图中可能有规则宫格或不规则散落的偶像小卡。
-只返回 JSON，不要 markdown、不要解释。
-格式：
-{"cards":[{"bbox":[x1,y1,x2,y2],"confidence":0.0,"memberName":"","versionLabel":""}]}
-规则：
-- bbox 为相对整图的归一化坐标 0–1：左、上、右、下。
-- 每张实体小卡一个框；最多 12 张。忽略手机、手、专辑封面、便签、桌面杂物。
-- memberName / versionLabel 是可选建议（成员名、特典/版本），不确定则留空字符串。
-- 没有小卡时返回 {"cards":[]}。`;
+const DETECT_PROMPT = `请找出图中每一张偶像小卡（photocard）的矩形位置。可能是规则宫格，也可能不规则散落。最多 12 张。忽略手机、手、专辑封面、便签、桌面杂物。
+
+对每张小卡输出 Grounding 框，坐标为相对整图的 0–1000（左 上 右 下），必须检出所有小卡，每卡一行：
+<bbox>x_min y_min x_max y_max</bbox>
+
+也可以附加 JSON（bbox 用 0–1000 或 0–1 均可；memberName / versionLabel 为可选建议，不确定留空）：
+{"cards":[{"bbox":[x1,y1,x2,y2],"memberName":"","versionLabel":""}]}
+
+没有小卡时不要输出 <bbox>，或返回 {"cards":[]}。`;
 
 const VLM_MAX_EDGE = 1280;
 
@@ -46,8 +46,7 @@ export class DoubaoVisionProvider implements GridVlmProvider {
       body: JSON.stringify({
         model: cfg.model,
         temperature: 0.1,
-        max_tokens: 1200,
-        response_format: { type: "json_object" },
+        max_tokens: 2048,
         messages: [
           {
             role: "user",
@@ -75,12 +74,6 @@ export class DoubaoVisionProvider implements GridVlmProvider {
       throw err;
     }
     const content = completionText(payload);
-    const parsed = extractJsonValue(content);
-    const cards = Array.isArray((parsed as { cards?: VlmCard[] })?.cards)
-      ? ((parsed as { cards: VlmCard[] }).cards as VlmCard[])
-      : Array.isArray(parsed)
-        ? (parsed as VlmCard[])
-        : [];
-    return { cards, rawText: content };
+    return { cards: cardsFromModelText(content), rawText: content };
   }
 }

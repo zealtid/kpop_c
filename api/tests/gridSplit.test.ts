@@ -87,6 +87,30 @@ test("VLM path requires vision consent", async () => {
   );
 });
 
+test("VLM mock 1000-space Grounding boxes normalize to 0–1", async () => {
+  const buf = await makeGridJpeg(2);
+  const res = await splitPhotocardGrid(
+    {
+      imageBase64: buf.toString("base64"),
+      mimeType: "image/jpeg",
+      engine: "vlm",
+      visionConsent: true,
+    },
+    {
+      provider: new MockGridVlmProvider(async () => ({
+        cards: [],
+        rawText: "<bbox>80 100 420 620</bbox>\n<bbox>500 90 920 610</bbox>",
+      })),
+    },
+  );
+  assert.equal(res.ok, true, JSON.stringify(res));
+  assert.equal(res.detectedCount, 2);
+  const cards = res.cards as Array<{ bbox: number[] }>;
+  assert.ok(cards.every((c) => c.bbox.every((n) => n >= 0 && n <= 1)));
+  assert.ok(cards.some((c) => Math.abs(c.bbox[0] - 0.08) < 1e-9));
+  assert.ok(cards.some((c) => Math.abs(c.bbox[0] - 0.5) < 1e-9));
+});
+
 test("VLM mock detects irregular boxes and suggestions", async () => {
   const buf = await makeGridJpeg(2);
   const res = await splitPhotocardGrid(

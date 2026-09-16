@@ -1,3 +1,4 @@
+import { cardsFromModelText } from "./parse.js";
 import type { DetectedGridCard, VlmCard } from "./types.js";
 
 export const GRID_VLM_MAX_DETECT = 12;
@@ -50,19 +51,41 @@ function asCardsList(raw: unknown): unknown[] {
   return [];
 }
 
+/**
+ * Map model coords to 0–1.
+ * Doubao Grounding uses a 1000×1000 grid — prefer /1000 when values fit (1.5, 1000],
+ * even if image pixel size is also known. True pixel boxes (max > 1000) use imgW/imgH.
+ */
 function scaleCoords(vals: number[], dim?: number) {
   const max = Math.max(...vals.map((n) => Math.abs(Number(n) || 0)));
   if (max <= 1.5) return vals.map((n) => clamp01(Number(n)));
+  if (max <= 1000) return vals.map((n) => clamp01(Number(n) / 1000));
   if (dim && dim > 1) return vals.map((n) => clamp01(Number(n) / dim));
-  if (max <= 100) return vals.map((n) => clamp01(Number(n) / 100));
   return vals.map((n) => clamp01(Number(n) / 1000));
+}
+
+function fourNums(raw: unknown): number[] | null {
+  if (Array.isArray(raw) && raw.length >= 4) {
+    return [Number(raw[0]), Number(raw[1]), Number(raw[2]), Number(raw[3])];
+  }
+  if (typeof raw === "string") {
+    const parts = raw
+      .replace(/<bbox>|<\/bbox>/gi, " ")
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number)
+      .filter((n) => Number.isFinite(n));
+    if (parts.length >= 4) return parts.slice(0, 4);
+  }
+  return null;
 }
 
 function readBBox(item: Record<string, unknown>, imgW?: number, imgH?: number): [number, number, number, number] | null {
   const bbox = item.bbox ?? item.box ?? item.xyxy;
-  if (Array.isArray(bbox) && bbox.length >= 4) {
-    const xs = scaleCoords([Number(bbox[0]), Number(bbox[2])], imgW);
-    const ys = scaleCoords([Number(bbox[1]), Number(bbox[3])], imgH);
+  const nums = fourNums(bbox);
+  if (nums) {
+    const xs = scaleCoords([nums[0], nums[2]], imgW);
+    const ys = scaleCoords([nums[1], nums[3]], imgH);
     const x1 = xs[0];
     const x2 = xs[1];
     const y1 = ys[0];
@@ -103,7 +126,8 @@ export function normalizeVlmCards(
   opts?: { max?: number; imgW?: number; imgH?: number },
 ): DetectedGridCard[] {
   const max = opts?.max ?? GRID_VLM_MAX_DETECT;
-  const items = asCardsList(raw);
+  const source = typeof raw === "string" ? { cards: cardsFromModelText(raw) } : raw;
+  const items = asCardsList(source);
   const mapped: DetectedGridCard[] = [];
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
