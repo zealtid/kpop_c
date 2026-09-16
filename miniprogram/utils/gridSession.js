@@ -33,6 +33,7 @@ function begin(opts) {
     fromServer: !!opts.fromServer,
     engine: opts.engine || (opts.fromServer ? "vlm" : "jsfeat"),
     detectedCount: Number(opts.detectedCount) || boxesIn.length || 0,
+    truncated: !!opts.truncated,
     suggestedVersionLabel: opts.suggestedVersionLabel || "",
     groupId: opts.groupId || "",
     releaseId: opts.releaseId || "",
@@ -88,6 +89,10 @@ function degradeToUgc1(wxLike, src, extra) {
   return prefill;
 }
 
+function maxSubmit(engine) {
+  return engine === "jsfeat" ? MAX_SUBMIT_MANUAL : MAX_SUBMIT;
+}
+
 function matchMemberId(name, members) {
   const q = String(name || "").trim().toLowerCase();
   if (!q || !members || !members.length) return "";
@@ -99,6 +104,11 @@ function matchMemberId(name, members) {
   return found ? String(found.id) : "";
 }
 
+const MAX_DETECT = 16;
+const MAX_SUBMIT = 16;
+const MAX_SUBMIT_MANUAL = 9;
+const TRUNCATE_TOAST = "最多 16 张，请删减";
+
 module.exports = {
   begin,
   get,
@@ -109,5 +119,9 @@ module.exports = {
   ugc1Prefill,
   degradeToUgc1,
   matchMemberId,
-  MAX_SUBMIT: 9,
+  maxSubmit,
+  MAX_DETECT,
+  MAX_SUBMIT,
+  MAX_SUBMIT_MANUAL,
+  TRUNCATE_TOAST,
 };

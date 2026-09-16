@@ -140,6 +140,30 @@ test("VLM mock detects irregular boxes and suggestions", async () => {
   assert.ok(cards.every((c) => c.bbox.every((n) => n >= 0 && n <= 1)));
 });
 
+test("VLM mock >16 cards truncates to top-confidence 16", async () => {
+  const buf = await makeGridJpeg(2);
+  const cards = [];
+  for (let i = 0; i < 20; i++) {
+    const x = (i % 5) * 0.18 + 0.02;
+    const y = Math.floor(i / 5) * 0.22 + 0.02;
+    cards.push({ bbox: [x, y, x + 0.16, y + 0.2], confidence: i / 20 });
+  }
+  const res = await splitPhotocardGrid(
+    {
+      imageBase64: buf.toString("base64"),
+      mimeType: "image/jpeg",
+      engine: "vlm",
+      visionConsent: true,
+    },
+    { provider: new MockGridVlmProvider(async () => ({ cards })) },
+  );
+  assert.equal(res.ok, true, JSON.stringify(res));
+  assert.equal(res.truncated, true);
+  assert.equal(res.rawDetectedCount, 20);
+  assert.equal(res.detectedCount, 16);
+  assert.equal((res.boxes as unknown[]).length, 16);
+});
+
 test("VLM timeout/fail degrades without throwing", async () => {
   const buf = await makeGridJpeg(2);
   const timeout = await splitPhotocardGrid(

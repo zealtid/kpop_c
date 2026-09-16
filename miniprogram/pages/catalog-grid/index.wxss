@@ -39,11 +39,35 @@
   text-align: center;
   margin: 16rpx 0 8rpx;
 }
-.advanced {
-  margin-top: 8rpx;
+.mode-row {
+  display: flex;
+  gap: 16rpx;
 }
-.adv-toggle {
-  font-size: 24rpx;
+.mode {
+  flex: 1;
+  box-sizing: border-box;
+  padding: 24rpx 20rpx;
+  border-radius: 16rpx;
+  border: 3rpx solid var(--color-border-subtle);
+  background: var(--color-bg-muted);
+}
+.mode.on {
+  border-color: var(--color-brand);
+  background: rgba(107, 92, 255, 0.12);
+}
+.mode.off {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.mode-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.mode-sub {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.4;
   color: var(--color-text-secondary);
 }
 .adv-hint {

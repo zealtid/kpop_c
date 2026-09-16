@@ -1,8 +1,8 @@
 import { cardsFromModelText } from "./parse.js";
 import type { DetectedGridCard, VlmCard } from "./types.js";
 
-export const GRID_VLM_MAX_DETECT = 12;
-export const GRID_VLM_MAX_SUBMIT = 9;
+export const GRID_VLM_MAX_DETECT = 16;
+export const GRID_VLM_MAX_SUBMIT = 16;
 export const MIN_BOX_SIDE = 0.05;
 export const MIN_BOX_AREA = 0.008;
 const NMS_IOU = 0.65;
@@ -121,10 +121,39 @@ export function boxToXyxy(box: { x: number; y: number; w: number; h: number }): 
   return [clamp01(box.x), clamp01(box.y), clamp01(box.x + box.w), clamp01(box.y + box.h)];
 }
 
-export function normalizeVlmCards(
+export type NormalizedVlmCards = {
+  boxes: DetectedGridCard[];
+  truncated: boolean;
+  rawCount: number;
+};
+
+function readingOrder(boxes: DetectedGridCard[]) {
+  return [...boxes].sort((a, b) => a.y - b.y || a.x - b.x);
+}
+
+function reindex(boxes: DetectedGridCard[]) {
+  return boxes.map((box, i) => ({ ...box, index: i }));
+}
+
+/** Keep highest-confidence boxes when over the detect cap (UGC-2b-Match16). */
+export function capDetectedCards(boxes: DetectedGridCard[], max: number): NormalizedVlmCards {
+  const cap = Math.max(1, max);
+  const rawCount = boxes.length;
+  const truncated = rawCount > cap;
+  const kept = truncated
+    ? [...boxes].sort((a, b) => (b.confidence || 0) - (a.confidence || 0)).slice(0, cap)
+    : boxes;
+  return {
+    boxes: reindex(readingOrder(kept)),
+    truncated,
+    rawCount,
+  };
+}
+
+export function normalizeVlmResult(
   raw: unknown,
   opts?: { max?: number; imgW?: number; imgH?: number },
-): DetectedGridCard[] {
+): NormalizedVlmCards {
   const max = opts?.max ?? GRID_VLM_MAX_DETECT;
   const source = typeof raw === "string" ? { cards: cardsFromModelText(raw) } : raw;
   const items = asCardsList(source);
@@ -148,11 +177,14 @@ export function normalizeVlmCards(
       versionLabel: versionLabel || undefined,
     });
   }
-  const filtered = nms(mapped)
-    .sort((a, b) => a.y - b.y || a.x - b.x)
-    .slice(0, Math.max(1, max))
-    .map((box, i) => ({ ...box, index: i }));
-  return filtered;
+  return capDetectedCards(nms(mapped), max);
+}
+
+export function normalizeVlmCards(
+  raw: unknown,
+  opts?: { max?: number; imgW?: number; imgH?: number },
+): DetectedGridCard[] {
+  return normalizeVlmResult(raw, opts).boxes;
 }
 
 export function cardsPayload(boxes: DetectedGridCard[]): VlmCard[] {

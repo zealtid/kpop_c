@@ -40,6 +40,7 @@ Page({
     saving: false,
     warnings: [],
     overlays: [],
+    maxSubmit: gridSession.MAX_SUBMIT,
     detectedCount: 0,
     selected: null,
     displayW: 300,
@@ -69,6 +70,7 @@ Page({
     this.data.displayH = displayH;
     const liveN = this._boxes.filter((b) => !b.deleted).length;
     const engine = sess.engine || (sess.fromServer ? "vlm" : "jsfeat");
+    const maxSubmit = gridSession.maxSubmit(engine);
     let cvNote = sess.fromServer
       ? `服务端回退切分 · ${sess.library}`
       : `客户端 ${sess.library} 切分`;
@@ -80,11 +82,15 @@ Page({
       displayW,
       displayH,
       detectedCount: sess.detectedCount || liveN,
+      maxSubmit,
       groupId: sess.groupId || "",
       releaseId: sess.releaseId || "",
       versionLabel: sess.versionLabel || sess.suggestedVersionLabel || "",
       cvNote,
     });
+    if (sess.truncated) {
+      wx.showToast({ title: gridSession.TRUNCATE_TOAST, icon: "none", duration: 2500 });
+    }
     this.syncOverlays();
     this.loadGroups();
     this.loadChannelLibrary();
@@ -351,16 +357,17 @@ Page({
       wx.showToast({ title: "请至少保留一张", icon: "none" });
       return;
     }
-    if (cards.length > gridSession.MAX_SUBMIT) {
-      wx.showToast({ title: `一次最多提交${gridSession.MAX_SUBMIT}张，请删除或分次拍`, icon: "none" });
+    const maxSubmit = this.data.maxSubmit || gridSession.MAX_SUBMIT;
+    if (cards.length > maxSubmit) {
+      wx.showToast({ title: `一次最多提交${maxSubmit}张，请删除或分次拍`, icon: "none" });
       return;
     }
     if (!this.data.groupId) {
       wx.showToast({ title: "请选择开放投稿的组合", icon: "none" });
       return;
     }
-    if (!this.data.releaseId || !this.data.versionLabel) {
-      wx.showToast({ title: "请填写专辑和版本", icon: "none" });
+    if (!this.data.releaseId) {
+      wx.showToast({ title: "请选择专辑", icon: "none" });
       return;
     }
     if (!this.data.agreed) {
@@ -403,7 +410,7 @@ Page({
               groupId: this.data.groupId,
               releaseId: this.data.releaseId,
               memberId: card.memberId || null,
-              versionLabel: this.data.versionLabel,
+              versionLabel: this.data.versionLabel || null,
               slotLabel,
               channelCode: channelPick.resolveChannelCode(card.channelValue, card.channelCustom),
               imageFront: front.path,

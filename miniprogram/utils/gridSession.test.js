@@ -17,12 +17,19 @@ test("begin / activeCards / degradeToUgc1", () => {
     ],
     library: "doubao",
     engine: "vlm",
+    truncated: true,
     suggestedVersionLabel: "POB",
   });
   assert.equal(gridSession.activeCards().length, 1);
   assert.equal(gridSession.get().suggestedVersionLabel, "POB");
+  assert.equal(gridSession.get().truncated, true);
   assert.equal(gridSession.get().boxes[0].suggestedMemberName, "Carmen");
-  assert.equal(gridSession.MAX_SUBMIT, 9);
+  assert.equal(gridSession.MAX_SUBMIT, 16);
+  assert.equal(gridSession.MAX_DETECT, 16);
+  assert.equal(gridSession.MAX_SUBMIT_MANUAL, 9);
+  assert.equal(gridSession.maxSubmit("vlm"), 16);
+  assert.equal(gridSession.maxSubmit("jsfeat"), 9);
+  assert.match(gridSession.TRUNCATE_TOAST, /最多 16 张/);
   const id = gridSession.matchMemberId("carmen", [{ id: "m1", nameEn: "Carmen", nameZh: "卡门" }]);
   assert.equal(id, "m1");
   const store = {};

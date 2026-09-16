@@ -1,4 +1,4 @@
-export { GRID_VLM_MAX_DETECT, GRID_VLM_MAX_SUBMIT, normalizeVlmCards, cardsPayload, boxToXyxy, xyxyToBox } from "./normalize.js";
+export { GRID_VLM_MAX_DETECT, GRID_VLM_MAX_SUBMIT, normalizeVlmCards, normalizeVlmResult, capDetectedCards, cardsPayload, boxToXyxy, xyxyToBox } from "./normalize.js";
 export { extractJsonValue, completionText, parseGroundingBboxes, cardsFromModelText } from "./parse.js";
 export { createGridVlmProvider, setGridVlmProviderForTests, MockGridVlmProvider } from "./provider.js";
 export { DoubaoVisionProvider } from "./doubao.js";

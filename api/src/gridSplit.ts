@@ -14,7 +14,7 @@ import {
   consumeGridVlmQuota,
   createGridVlmProvider,
   GRID_VLM_MAX_DETECT,
-  normalizeVlmCards,
+  normalizeVlmResult,
   recordGridVlmCall,
   type DetectedGridCard,
   type GridEngine,
@@ -139,10 +139,11 @@ async function splitWithVlm(
     });
     latencyMs = Date.now() - started;
     const meta = await sharp(parsed.buffer).rotate().metadata();
-    const boxes = normalizeVlmCards(
+    const normalized = normalizeVlmResult(
       detected.cards?.length ? { cards: detected.cards } : detected.rawText || { cards: [] },
       { max: cfg.maxDetect || GRID_VLM_MAX_DETECT, imgW: meta.width, imgH: meta.height },
     );
+    const boxes = normalized.boxes;
     if (!boxes.length) {
       await recordGridVlmCall({
         userId: opts?.userId,
@@ -179,6 +180,9 @@ async function splitWithVlm(
       method: "ark-vision-bbox",
       fallback: false,
       detectedCount: boxes.length,
+      truncated: normalized.truncated,
+      rawDetectedCount: normalized.rawCount,
+      maxDetect: cfg.maxDetect || GRID_VLM_MAX_DETECT,
       boxes,
       cards: cardsPayload(boxes),
       confidence: Math.min(1, avg),

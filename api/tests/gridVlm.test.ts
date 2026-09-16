@@ -5,20 +5,30 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_ARK_VISION_MODEL, gridVlmConfig } from "../src/config.js";
 import { cardsFromModelText, completionText, extractJsonValue, parseGroundingBboxes } from "../src/vlm/parse.js";
-import { GRID_VLM_MAX_DETECT, normalizeVlmCards, xyxyToBox } from "../src/vlm/normalize.js";
+import { GRID_VLM_MAX_DETECT, GRID_VLM_MAX_SUBMIT, normalizeVlmCards, normalizeVlmResult, xyxyToBox } from "../src/vlm/normalize.js";
 import { resolveGridEngine } from "../src/gridSplit.js";
 
 test("default ARK_VISION_MODEL is grounding seed; ep ids pass through", () => {
   const prev = process.env.ARK_VISION_MODEL;
+  const prevDetect = process.env.GRID_VLM_MAX_DETECT;
+  const prevSubmit = process.env.GRID_VLM_MAX_SUBMIT;
   delete process.env.ARK_VISION_MODEL;
+  delete process.env.GRID_VLM_MAX_DETECT;
+  delete process.env.GRID_VLM_MAX_SUBMIT;
   try {
     assert.equal(DEFAULT_ARK_VISION_MODEL, "doubao-seed-2-0-lite-260215");
     assert.equal(gridVlmConfig().model, "doubao-seed-2-0-lite-260215");
+    assert.equal(gridVlmConfig().maxDetect, 16);
+    assert.equal(gridVlmConfig().maxSubmit, 16);
     process.env.ARK_VISION_MODEL = "ep-20260916-demo";
     assert.equal(gridVlmConfig().model, "ep-20260916-demo");
   } finally {
     if (prev != null) process.env.ARK_VISION_MODEL = prev;
     else delete process.env.ARK_VISION_MODEL;
+    if (prevDetect != null) process.env.GRID_VLM_MAX_DETECT = prevDetect;
+    else delete process.env.GRID_VLM_MAX_DETECT;
+    if (prevSubmit != null) process.env.GRID_VLM_MAX_SUBMIT = prevSubmit;
+    else delete process.env.GRID_VLM_MAX_SUBMIT;
   }
 });
 
@@ -73,19 +83,26 @@ test("normalize clamps, drops tiny, nms overlap", () => {
   assert.equal(mid.length, 1, "near-duplicate mid boxes should collapse");
 });
 
-test("normalize max 12 and xyxy", () => {
+test("normalize max 16 keeps top-confidence and xyxy", () => {
   const cards = [];
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 20; i++) {
     const x = (i % 5) * 0.18 + 0.02;
-    const y = Math.floor(i / 5) * 0.28 + 0.02;
-    cards.push({ bbox: [x, y, x + 0.16, y + 0.24], confidence: 0.5 });
+    const y = Math.floor(i / 5) * 0.22 + 0.02;
+    cards.push({ bbox: [x, y, x + 0.16, y + 0.2], confidence: i / 20 });
   }
-  const boxes = normalizeVlmCards({ cards });
-  assert.equal(boxes.length, GRID_VLM_MAX_DETECT);
-  assert.equal(boxes[0].index, 0);
+  const result = normalizeVlmResult({ cards });
+  assert.equal(GRID_VLM_MAX_DETECT, 16);
+  assert.equal(GRID_VLM_MAX_SUBMIT, 16);
+  assert.equal(result.truncated, true);
+  assert.equal(result.rawCount, 20);
+  assert.equal(result.boxes.length, GRID_VLM_MAX_DETECT);
+  assert.equal(result.boxes[0].index, 0);
+  const keptConf = result.boxes.map((b) => b.confidence || 0);
+  assert.ok(Math.min(...keptConf) >= 4 / 20 - 1e-9, "lowest-confidence extras dropped");
   const xy = xyxyToBox([0.2, 0.3, 0.5, 0.8]);
   assert.equal(xy.x, 0.2);
   assert.ok(Math.abs(xy.w - 0.3) < 1e-9);
+  assert.equal(normalizeVlmCards({ cards }).length, 16);
 });
 
 test("Grounding 1000×1000 coords become 0–1 even if image size is known", () => {
@@ -117,4 +134,13 @@ test("pixel coords larger than 1000 scale with image size", () => {
   assert.equal(boxes.length, 1);
   assert.ok(Math.abs(boxes[0].x - 0.05) < 0.02);
   assert.ok(boxes[0].w > 0.4);
+});
+
+test("Doubao prompt asks for at most 16 cards; no client keys in MP grid", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const promptSrc = await readFile(new URL("../src/vlm/doubao.ts", import.meta.url), "utf8");
+  assert.match(promptSrc, /最多 16 张/);
+  assert.doesNotMatch(promptSrc, /最多 12 张/);
+  const indexJs = await readFile(new URL("../../miniprogram/pages/catalog-grid/index.js", import.meta.url), "utf8");
+  assert.doesNotMatch(indexJs, /ARK_API_KEY/);
 });

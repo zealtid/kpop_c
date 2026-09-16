@@ -1,6 +1,6 @@
 <view class="page">
   <view class="h1">确认宫格</view>
-  <view class="sub">整页共用组合 / 专辑 / 版本。点选单卡可改成员、特典，也可调框、旋转或删除。</view>
+  <view class="sub">整页共用组合 / 专辑；版本与特典可不填。点选单卡可改成员、特典，也可调框、旋转或删除。确认后图鉴已有直接入柜，没有则送审。</view>
 
   <view wx:if="{{warnings.length}}" class="card warn">
     <view wx:for="{{warnings}}" wx:key="code" class="muted">{{item.message}}</view>
@@ -29,13 +29,13 @@
         data-id="{{item.id}}"
       >{{item.label}}</view>
     </view>
-    <view class="label sub-label">版本</view>
-    <input class="box input" value="{{versionLabel}}" bindinput="onVersion" placeholder="例如 Photobook A / 特典-POB" maxlength="40"/>
+    <view class="label sub-label">版本（选填）</view>
+    <input class="box input" value="{{versionLabel}}" bindinput="onVersion" placeholder="可不填，例如 Photobook A" maxlength="40"/>
   </view>
 
   <view class="card">
     <view class="label">识别到 {{detectedCount}} 张（点选后可拖边）</view>
-    <view class="muted" wx:if="{{detectedCount > 9}}">一次最多提交 9 张，请删除多余卡或分次拍摄。</view>
+    <view class="muted" wx:if="{{detectedCount > maxSubmit}}">一次最多提交 {{maxSubmit}} 张，请删除多余卡或分次拍摄。</view>
     <view class="stage" style="height: {{displayH}}px;">
       <image
         wx:if="{{src}}"
@@ -77,10 +77,10 @@
     </view>
     <view class="label sub-label">名称/别称</view>
     <input class="box input" value="{{selected.slotLabel}}" bindinput="onSlot" maxlength="80"/>
-    <view class="label sub-label">特典</view>
+    <view class="label sub-label">特典（选填）</view>
     <view class="box channel-field" bindtap="openChannelPicker">
       <text wx:if="{{channelDisplay}}">{{channelDisplay}}</text>
-      <text wx:else class="channel-ph">点选库里的特典</text>
+      <text wx:else class="channel-ph">点选库里的特典，可不填</text>
     </view>
     <channel-picker
       show="{{channelPickerOpen}}"
