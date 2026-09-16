@@ -43,7 +43,9 @@ npm test              # 对 kpop_c_test 跑 M1 / M2-a / OPS / H5 行为测试
 
 ## 微信登录（真机接入）
 
-非生产或未配置密钥时，`POST /auth/wx-login { "code": "任意或 mock:openid" }` 走本地 mock，不请求微信。
+本地 / 非生产：未配置 `WX_APPID`+`WX_SECRET` 时，`POST /auth/wx-login { "code": "任意或 mock:openid" }` 走 mock，不请求微信。也可显式设 `MOCK_WX_LOGIN=1`。**Mock 仅用于本地/开发，生产不要开。**
+
+生产必须同时设置 `WX_APPID` 与 `WX_SECRET`（Railway 等）。缺任一密钥时登录与 `getPhoneNumber` 绑定返回 `WX_NOT_CONFIGURED`，**不会**再静默发明 `dev:` openid。H5 网页授权同理（`WX_WEB_APPID`+`WX_WEB_SECRET`）。
 
 生产接入：
 

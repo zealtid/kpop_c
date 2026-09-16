@@ -80,6 +80,45 @@ export function gridVlmConfig() {
 }
 
 export const isProd = config.nodeEnv === "production";
-export const mockWxLoginEnabled = !isProd || !config.wxAppId || !config.wxSecret;
-/** H5 网页授权：未配 WX_WEB_APPID/SECRET 时走 mock（与小程序 mock 对齐）。 */
-export const mockWxWebLoginEnabled = !isProd || !config.wxWebAppId || !config.wxWebSecret;
+
+function envFlagOn(raw: string | undefined | null) {
+  const v = String(raw || "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/**
+ * Decide whether WeChat login / getPhoneNumber may invent local mock identities.
+ *
+ * Production used to treat a missing WX_SECRET as mock-on
+ * (`!isProd || !wxAppId || !wxSecret`). That minted `dev:<js_code>` openids for
+ * real-device users while DevTools stayed on `mock:devtools`, and real
+ * getPhoneNumber could not talk to WeChat. Missing credentials in production
+ * must fail with WX_NOT_CONFIGURED instead of silently mocking.
+ *
+ * Mock is on only when MOCK_WX_LOGIN=1 (explicit; local/dev only) or when
+ * not production and appId/secret are absent.
+ */
+export function resolveMockWxAuth(opts: {
+  nodeEnv: string;
+  mockFlag?: string | null;
+  appId: string;
+  secret: string;
+}): boolean {
+  if (envFlagOn(opts.mockFlag)) return true;
+  if (opts.nodeEnv === "production") return false;
+  return !String(opts.appId || "").trim() || !String(opts.secret || "").trim();
+}
+
+export const mockWxLoginEnabled = resolveMockWxAuth({
+  nodeEnv: config.nodeEnv,
+  mockFlag: process.env.MOCK_WX_LOGIN,
+  appId: config.wxAppId,
+  secret: config.wxSecret,
+});
+/** H5 网页授权：与小程序同一套开关精神；缺 WX_WEB_* 时仅非生产自动 mock。 */
+export const mockWxWebLoginEnabled = resolveMockWxAuth({
+  nodeEnv: config.nodeEnv,
+  mockFlag: process.env.MOCK_WX_WEB_LOGIN || process.env.MOCK_WX_LOGIN,
+  appId: config.wxWebAppId,
+  secret: config.wxWebSecret,
+});
