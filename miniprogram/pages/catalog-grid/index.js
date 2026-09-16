@@ -3,7 +3,7 @@ const gridDetect = require("../../utils/gridDetect");
 const gridSession = require("../../utils/gridSession");
 const compressImage = require("../../utils/compressImage");
 
-const VLM_REQUEST_TIMEOUT = 25000;
+const VLM_REQUEST_TIMEOUT = 70000;
 
 function readBase64(filePath) {
   return new Promise((resolve, reject) => {

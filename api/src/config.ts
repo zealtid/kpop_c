@@ -61,7 +61,7 @@ export const DEFAULT_ARK_VISION_MODEL = "doubao-seed-2-0-lite-260215";
  * Railway must set ARK_API_KEY (+ optional ARK_VISION_MODEL) before production detect works.
  */
 export function gridVlmConfig() {
-  const timeout = Number(process.env.GRID_VLM_TIMEOUT_MS || 18_000);
+  const timeout = Number(process.env.GRID_VLM_TIMEOUT_MS || 60_000);
   const dailyLimit = Number(process.env.GRID_VLM_DAILY_LIMIT || 20);
   const maxDetect = Number(process.env.GRID_VLM_MAX_DETECT || 16);
   const maxSubmit = Number(process.env.GRID_VLM_MAX_SUBMIT || 16);
@@ -71,7 +71,7 @@ export function gridVlmConfig() {
     /** `ARK_VISION_MODEL` as-is: seed id or console endpoint `ep-…`. */
     model: (process.env.ARK_VISION_MODEL || DEFAULT_ARK_VISION_MODEL).trim(),
     baseUrl: (process.env.ARK_BASE_URL || "https://ark.cn-beijing.volces.com/api/v3").replace(/\/$/, ""),
-    timeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : 18_000,
+    timeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : 60_000,
     dailyLimit: Number.isFinite(dailyLimit) && dailyLimit > 0 ? dailyLimit : 20,
     maxDetect: Number.isFinite(maxDetect) && maxDetect > 0 ? maxDetect : 16,
     maxSubmit: Number.isFinite(maxSubmit) && maxSubmit > 0 ? maxSubmit : 16,
