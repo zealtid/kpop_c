@@ -60,34 +60,40 @@ beforeEach(() => {
   };
 });
 
-test("wxml shows 特典 badge; tap opens detail; 多选 is explicit", () => {
+test("wxml shows combined 特典 version chip; tap opens detail; 多选 is explicit", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
-  assert.match(wxml, /wx:if="\{\{t\.isBenefit\}\}"/);
-  assert.match(wxml, /class="benefit-badge">特典</);
-  assert.match(wxml, /class="meta-chip benefit"/);
+  assert.match(wxml, /t\.versionChip/);
+  assert.match(wxml, /t\.isBenefit \? 'benefit'/);
   assert.match(wxml, /class="release-title"/);
-  assert.match(wxml, /class="meta-chip"/);
+  assert.match(wxml, /class="release-title-row"/);
+  assert.match(wxml, /item\.releasedOnLabel/);
+  assert.match(wxml, /item\.kind/);
+  assert.match(wxml, /bindtap="toggleRelease"/);
+  assert.match(wxml, /item\.expanded/);
   assert.match(wxml, /bindtap="onTileTap"/);
   assert.match(wxml, /bindtap="enterSelect">多选</);
   assert.match(wxml, /wx:if="\{\{selectMode\}\}"/);
   assert.match(wxml, /bindtap="batchOwn">批量拥有</);
   assert.match(wxml, /catchtap="ownOne"/);
   assert.match(wxml, /catchtap="wantOne"/);
-  assert.match(wxml, /item\.releasedOnLabel/);
+  assert.doesNotMatch(wxml, /benefit-badge/);
+  assert.doesNotMatch(wxml, /特典对照/);
   assert.doesNotMatch(wxml, /item\.released_on/);
   assert.doesNotMatch(wxml, /bindtap="toggle"/);
 });
 
-test("wxss has Scheme A benefit corner badge and selected outline", () => {
+test("wxss has Scheme A benefit chip, compact 多选, and selected outline", () => {
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
-  assert.match(wxss, /\.benefit-badge/);
-  assert.match(wxss, /position:\s*absolute/);
+  assert.doesNotMatch(wxss, /\.benefit-badge/);
   assert.match(wxss, /--color-warning/);
   assert.match(wxss, /--color-brand/);
   assert.match(wxss, /\.sel/);
   assert.match(wxss, /\.meta-chip/);
   assert.match(wxss, /border-radius:\s*999rpx/);
   assert.match(wxss, /\.release-title/);
+  assert.match(wxss, /\.release-title-row/);
+  assert.match(wxss, /\.release-chevron/);
+  assert.match(wxss, /\.btn\.slim[\s\S]*font-size:\s*22rpx/);
   assert.doesNotMatch(wxss, /#121016|#ff6b9d|#f5c36b/i);
   assert.doesNotMatch(wxss, /rgba\(\s*18\s*,\s*16\s*,\s*22/);
 });
@@ -168,17 +174,26 @@ test("app.json keeps pages[0]=cardbook and 星卡 branding", () => {
   assert.equal(appJson.window.navigationBarTitleText, "星卡");
 });
 
-test("特典对照 opens catalog-release without a global 特典 Tab", () => {
+test("组合图鉴 header has no 特典对照; catalog-release page remains", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
-  assert.match(wxml, /catchtap="openRelease"/);
-  assert.match(wxml, /特典对照/);
-  const page = pageWithData({});
-  const navigations = [];
-  const prev = global.wx.navigateTo;
-  global.wx.navigateTo = (opts) => navigations.push(opts);
-  page.openRelease({ currentTarget: { dataset: { id: "rel-1" } } });
-  global.wx.navigateTo = prev;
-  assert.deepEqual(navigations, [{ url: "/pages/catalog-release/index?id=rel-1" }]);
+  assert.doesNotMatch(wxml, /特典对照/);
+  assert.doesNotMatch(wxml, /openRelease/);
+  const appJson = JSON.parse(fs.readFileSync(path.join(__dirname, "../../app.json"), "utf8"));
+  assert.ok(appJson.pages.includes("pages/catalog-release/index"));
+});
+
+test("toggleRelease expands and collapses album sections", () => {
+  const page = pageWithData({
+    releases: [
+      { id: "r1", expanded: true, templates: [] },
+      { id: "r2", expanded: false, templates: [] },
+    ],
+  });
+  page.toggleRelease({ currentTarget: { dataset: { id: "r2" } } });
+  assert.equal(page.data.releases[0].expanded, true);
+  assert.equal(page.data.releases[1].expanded, true);
+  page.toggleRelease({ currentTarget: { dataset: { id: "r1" } } });
+  assert.equal(page.data.releases[0].expanded, false);
 });
 
 test("ME08–ME09 load maps released_on to Shanghai calendar label", async () => {
@@ -208,6 +223,9 @@ test("ME08–ME09 load maps released_on to Shanghai calendar label", async () =>
   assert.equal(page.data.releases[0].releasedOnLabel, "2025-02-24");
   assert.equal(page.data.releases[1].releasedOnLabel, "2026-03-20");
   assert.equal(page.data.releases[2].releasedOnLabel, "—");
+  assert.equal(page.data.releases[0].expanded, true);
+  assert.equal(page.data.releases[1].expanded, false);
+  assert.equal(page.data.releases[2].expanded, false);
 });
 
 after(() => {

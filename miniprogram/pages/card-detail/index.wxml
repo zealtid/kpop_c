@@ -1,26 +1,44 @@
-<view class="page">
+<view class="page {{catalogMode ? 'has-action-bar' : ''}}">
   <view wx:if="{{missing}}" class="empty">{{catalogMode ? '卡片不存在' : '尚未拥有该卡'}}</view>
 
   <block wx:else>
-    <view class="hero">
-      <view class="ph hero-ph" style="background: {{card.memberColor || '#EBEDF3'}}">
-        <image wx:if="{{card.mainImageUrl}}" src="{{showingBack && card.imageBack ? card.imageBack : card.mainImageUrl}}" mode="aspectFill"/>
+    <view class="faces-row">
+      <view class="face-col">
+        <view class="card-face" style="background: {{card.memberColor || '#EBEDF3'}}">
+          <image wx:if="{{card.mainImageUrl}}" src="{{card.mainImageUrl}}" mode="aspectFill"/>
+        </view>
       </view>
-      <view class="meta">
-        <view class="h1">{{card.memberNameEn || card.name || '卡片'}}</view>
-        <view class="sub">{{card.memberNameZh}}</view>
-        <view class="sub">{{card.releaseTitle}} · {{card.version}}</view>
-        <view wx:if="{{card.isBenefit}}" class="tag">特典</view>
-        <view wx:if="{{card.imageBack}}" class="btn ghost slim" bindtap="flip">{{showingBack?'看卡面':'翻转看卡背'}}</view>
+      <view class="face-col">
+        <view class="card-face" style="background: {{card.memberColor || '#EBEDF3'}}">
+          <image wx:if="{{card.imageBack}}" src="{{card.imageBack}}" mode="aspectFill"/>
+          <view wx:else class="card-face-hint">暂无卡背</view>
+        </view>
       </view>
     </view>
 
-    <block wx:if="{{catalogMode}}">
-      <view class="row catalog-actions">
-        <view class="btn slim" bindtap="ownOne">拥有</view>
-        <view class="btn ghost slim" bindtap="wantOne">想要</view>
+    <view class="detail-meta">
+      <view class="h1">{{card.memberNameEn || card.name || '卡片'}}</view>
+      <view wx:if="{{card.memberNameZh}}" class="sub">{{card.memberNameZh}}</view>
+      <view wx:if="{{card.versionChip}}" class="tag {{card.isBenefit ? 'benefit' : ''}}">{{card.versionChip}}</view>
+      <view class="sub">
+        <text wx:if="{{card.groupNameZh}}">{{card.groupNameZh}}</text>
+        <text wx:if="{{card.groupNameZh && card.releaseTitle}}"> · </text>
+        <text wx:if="{{card.releaseTitle}}">{{card.releaseTitle}}</text>
+        <text wx:if="{{(card.groupNameZh || card.releaseTitle) && card.version}}"> · </text>
+        <text wx:if="{{card.version}}">{{card.version}}</text>
       </view>
-      <view class="btn ghost" bindtap="report">举报此卡</view>
+      <!-- 后续：拥有人数 / 想要人数等统计 -->
+      <view class="stats-slot"></view>
+    </view>
+
+    <block wx:if="{{catalogMode}}">
+      <view class="action-bar">
+        <view class="row catalog-actions">
+          <view class="btn slim" bindtap="ownOne">拥有</view>
+          <view class="btn ghost slim" bindtap="wantOne">想要</view>
+        </view>
+        <view class="btn ghost report" bindtap="report">举报此卡</view>
+      </view>
     </block>
     <block wx:else>
       <view class="card">

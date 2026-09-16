@@ -1,3 +1,4 @@
+/* custom-card 仍引用本文件，保留原 hero 布局以免影响自定义卡页 */
 .hero {
   display: flex;
   gap: 24rpx;
@@ -16,6 +17,58 @@
 .meta {
   flex: 1;
   padding-top: 8rpx;
+}
+
+.faces-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+}
+
+.face-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-meta {
+  margin-top: 28rpx;
+}
+
+.detail-meta .h1 {
+  margin-bottom: 4rpx;
+}
+
+.detail-meta .tag {
+  margin-top: 16rpx;
+}
+
+.tag.benefit {
+  background: var(--color-warning);
+  color: var(--color-text-inverse);
+}
+
+.stats-slot {
+  min-height: 48rpx;
+  margin-top: 24rpx;
+}
+
+.page.has-action-bar {
+  padding-bottom: calc(220rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(220rpx + env(safe-area-inset-bottom));
+}
+
+.action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  background: var(--color-bg-page);
+  border-top: 1rpx solid var(--color-border-subtle);
+  padding: 16rpx 32rpx;
+  padding-bottom: calc(16rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
 }
 
 .label {
@@ -86,5 +139,9 @@
 }
 
 .catalog-actions .btn + .btn {
+  margin-top: 0;
+}
+
+.action-bar .report {
   margin-top: 0;
 }

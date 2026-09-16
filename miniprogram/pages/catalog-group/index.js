@@ -30,15 +30,20 @@ Page({
               }),
             ),
           ),
-        ).then((full) => this.setData({ releases: full, selected: [] }));
+        ).then((full) =>
+          this.setData({
+            releases: catalogSelect.withAlbumExpanded(full, this.data.releases),
+            selected: [],
+          }),
+        );
       })
       .catch(api.handleWriteError)
       .then(done, done);
   },
-  openRelease(e) {
+  toggleRelease(e) {
     const id = e.currentTarget.dataset.id;
     if (!id) return;
-    wx.navigateTo({ url: `/pages/catalog-release/index?id=${id}` });
+    this.setData({ releases: catalogSelect.toggleAlbumExpanded(this.data.releases, id) });
   },
   onSearch(e) {
     const q = e.detail.value || "";
