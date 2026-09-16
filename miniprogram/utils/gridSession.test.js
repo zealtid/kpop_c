@@ -24,12 +24,13 @@ test("begin / activeCards / degradeToUgc1", () => {
   assert.equal(gridSession.get().suggestedVersionLabel, "POB");
   assert.equal(gridSession.get().truncated, true);
   assert.equal(gridSession.get().boxes[0].suggestedMemberName, "Carmen");
-  assert.equal(gridSession.MAX_SUBMIT, 16);
-  assert.equal(gridSession.MAX_DETECT, 16);
+  assert.equal(gridSession.MAX_SUBMIT, 64);
+  assert.equal(gridSession.MAX_DETECT, 64);
   assert.equal(gridSession.MAX_SUBMIT_MANUAL, 9);
-  assert.equal(gridSession.maxSubmit("vlm"), 16);
+  assert.equal(gridSession.maxSubmit("vlm"), 64);
   assert.equal(gridSession.maxSubmit("jsfeat"), 9);
-  assert.match(gridSession.TRUNCATE_TOAST, /最多 16 张/);
+  assert.equal(gridSession.TRUNCATE_TOAST, `一次最多处理 ${gridSession.MAX_DETECT} 张，请删减`);
+  assert.doesNotMatch(gridSession.TRUNCATE_TOAST, /最多 16 张/);
   const id = gridSession.matchMemberId("carmen", [{ id: "m1", nameEn: "Carmen", nameZh: "卡门" }]);
   assert.equal(id, "m1");
   const store = {};

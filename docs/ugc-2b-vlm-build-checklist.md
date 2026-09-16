@@ -9,7 +9,7 @@
 2. API：`/catalog/grid/split`（或新 `/catalog/grid/detect`）主路径调豆包；返回归一化 boxes + 可选建议字段
 3. 确认页：调框/删卡/旋转；预填建议须可改；确认后 A 批量 pending + B 匹配入柜（复用 2b）
 4. 失败/超时（~60s）：降级单卡 UGC-1；可选保留 jsfeat 规则宫格为高级入口
-5. 日限约 20 页/用户；检测最多 16、提交最多 16（UGC-2b-Match16 起；原 12/9 作废）
+5. 日限约 20 页/用户；AI 检测/提交默认技术安全上限 64（非产品宣传上限；`GRID_VLM_MAX_*` 可覆盖）。手动 4/9 不变。
 6. Railway：配置 `ARK_API_KEY`（及模型 endpoint/id 环境变量）；密钥不出小程序
 
 ## Out
@@ -24,7 +24,7 @@ VLM-01…09 见 freeze §5
 - `ARK_BASE_URL` — 可选，默认 `https://ark.cn-beijing.volces.com/api/v3`
 - `GRID_VLM_PROVIDER=doubao` — 可插拔；CI/本地无密钥时走 mock / `vlm_unconfigured` 降级
 - `GRID_VLM_TIMEOUT_MS=60000`、`GRID_VLM_DAILY_LIMIT=20`
-- `GRID_VLM_MAX_DETECT=16`、`GRID_VLM_MAX_SUBMIT=16`
+- `GRID_VLM_MAX_DETECT=64`、`GRID_VLM_MAX_SUBMIT=64`（技术安全上限，可用环境变量覆盖）
 
 ## 微信开发者工具验证步骤
 

@@ -104,10 +104,10 @@ function matchMemberId(name, members) {
   return found ? String(found.id) : "";
 }
 
-const MAX_DETECT = 16;
-const MAX_SUBMIT = 16;
+const MAX_DETECT = 64;
+const MAX_SUBMIT = 64;
 const MAX_SUBMIT_MANUAL = 9;
-const TRUNCATE_TOAST = "最多 16 张，请删减";
+const TRUNCATE_TOAST = `一次最多处理 ${MAX_DETECT} 张，请删减`;
 
 module.exports = {
   begin,

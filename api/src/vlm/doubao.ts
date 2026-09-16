@@ -3,7 +3,7 @@ import { gridVlmConfig } from "../config.js";
 import { cardsFromModelText, completionText } from "./parse.js";
 import type { GridVlmProvider, VlmDetectInput, VlmDetectResult } from "./types.js";
 
-const DETECT_PROMPT = `请找出图中每一张偶像小卡（photocard）的矩形位置。可能是规则宫格，也可能不规则散落。最多 16 张。忽略手机、手、专辑封面、便签、桌面杂物。
+const DETECT_PROMPT = `请找出图中每一张偶像小卡（photocard）的矩形位置。可能是规则宫格，也可能不规则散落。请检出所有小卡；服务端可能只保留配置的上限张数。忽略手机、手、专辑封面、便签、桌面杂物。
 
 对每张小卡输出 Grounding 框，坐标为相对整图的 0–1000（左 上 右 下），必须检出所有小卡，每卡一行：
 <bbox>x_min y_min x_max y_max</bbox>
