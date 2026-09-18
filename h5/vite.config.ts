@@ -23,7 +23,9 @@ export default defineConfig({
       "/share": { target: api, changeOrigin: true },
       "/auth": { target: api, changeOrigin: true },
       "/me": { target: api, changeOrigin: true },
-      "/h5": { target: api, changeOrigin: true },
+      // Only API routes — not the whole `/h5` prefix (production SPA lives there).
+      "/h5/bootstrap": { target: api, changeOrigin: true },
+      "/h5/jssdk-config": { target: api, changeOrigin: true },
       "/media": { target: api, changeOrigin: true },
       "/health": { target: api, changeOrigin: true },
     },
