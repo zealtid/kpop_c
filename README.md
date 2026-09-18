@@ -315,15 +315,15 @@ npm run dev:h5       # http://localhost:5174
 # 非微信浏览器只看落地页。本地调试图鉴：localStorage.xingka_force_wechat=1 或 URL ?wx=1
 ```
 
-### 生产部署（Railway 静态服务 `h5`）
+### 生产部署（`https://zealhe.top/h5/`）
 
-与 Admin 一样独立服务托管 `h5/` 的 Vite `dist/`，不要挂在 API 路径下。
+与 Admin 一样独立服务托管 `h5/` 的 Vite `dist/`。生产入口挂在站点子路径 `/h5/`（hash 路由，刷新不依赖 history fallback）。Docker/nginx 仍把 dist 放在 html 根目录，并把 `/h5/` rewrite 到该根，Railway 旧的根域名部署也可打开。
 
 1. Railway 项目新增服务 **`h5`**，Root Directory：`/h5`，Builder：Dockerfile（`h5/Dockerfile`）。仓库内 `h5/railway.toml` 固定 Dockerfile builder，避免 Railpack 从 monorepo 根目录启动 API。
-2. 构建变量：`VITE_API_BASE=https://<api-host>`
-3. Generate Domain，得到 `https://<h5-service>.up.railway.app`
-4. API 变量：`H5_PUBLIC_URL=https://<h5-host>`（自动加入 CORS）；`PUBLIC_BASE_URL` 仍指向 API（二维码域名）
-5. 微信公众平台：网页授权回调域名填 API host；`WX_WEB_APPID` / `WX_WEB_SECRET` / `WX_WEB_REDIRECT_URI=https://<api-host>/auth/wx-web/callback`
+2. 构建变量：`VITE_API_BASE=https://zealhe.top/api`（无尾斜杠）
+3. 对外入口：`https://zealhe.top/h5/`（资源 `/h5/assets/...`）。网关把 `/h5/` 转到该静态服务。
+4. API 变量：`H5_PUBLIC_URL=https://zealhe.top/h5`（**不要尾斜杠**；代码会去掉 `/` 再拼 `/#/...`，并自动把 origin `https://zealhe.top` 加入 CORS）；`PUBLIC_BASE_URL` 仍指向 API（二维码域名，如 `https://zealhe.top/api`）
+5. 微信公众平台：网页授权回调域名填 API host；`WX_WEB_APPID` / `WX_WEB_SECRET` / `WX_WEB_REDIRECT_URI=https://zealhe.top/api/auth/wx-web/callback`
 6. 将小程序与公众号绑定同一开放平台，否则 unionid 对不齐，H5 会建成独立 `web:` 用户
 7. 自定义 H5 域名再写入 API `CORS_ORIGINS`
 

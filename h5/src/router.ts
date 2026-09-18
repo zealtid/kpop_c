@@ -1,7 +1,9 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 
 export const router = createRouter({
-  history: createWebHashHistory(),
+  // Production: https://zealhe.top/h5/#/... . Local `npm run dev` keeps `/`
+  // (vite base is `/`) so the `/h5` API proxy still works.
+  history: createWebHashHistory(import.meta.env.PROD ? "/h5/" : "/"),
   routes: [
     { path: "/", name: "landing", component: () => import("./views/ShareLanding.vue") },
     { path: "/catalog", name: "catalog", component: () => import("./views/CatalogHome.vue") },
