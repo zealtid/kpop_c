@@ -75,7 +75,7 @@ export const CATALOG_TABS: { id: CatalogTab; label: string; later?: boolean }[] 
   { id: "templates", label: "小卡模板/维护" },
   { id: "import", label: "图鉴导入" },
   { id: "completeness", label: "完整度" },
-  { id: "benefits", label: "特典对照" },
+  { id: "benefits", label: "特典词典" },
 ];
 
 export const CRUD_TABS: CatalogCrudTab[] = ["groups", "members", "releases", "templates"];

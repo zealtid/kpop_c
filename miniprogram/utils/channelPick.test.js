@@ -26,7 +26,7 @@ test("searchable list always offers 其他/手填", () => {
   assert.ok(hits.every((h) => h.key));
   const wv = pick.filterOptions(channels, "wv");
   assert.ok(wv.some((h) => h.value === "weverse"));
-  const none = pick.filterOptions(channels, "没有这个通路xyz");
+  const none = pick.filterOptions(channels, "没有这个特典xyz");
   assert.ok(none.some((h) => h.value === pick.OTHER_VALUE));
   const capped = pick.filterOptions(channels, "", 1);
   assert.equal(capped.filter((h) => h.kind === "other").length, 1);

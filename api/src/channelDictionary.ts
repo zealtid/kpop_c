@@ -198,7 +198,7 @@ export async function createChannelEntry(body: Record<string, unknown>) {
       [code, nameZh, aliases, sortOrder],
     );
   } catch (err) {
-    if (isPgUniqueViolation(err)) throw new AppError(409, "DUPLICATE_CHANNEL", "通路 code 已存在");
+    if (isPgUniqueViolation(err)) throw new AppError(409, "DUPLICATE_CHANNEL", "特典 code 已存在");
     throw err;
   }
   return getChannelEntry(code);
@@ -210,7 +210,7 @@ export async function getChannelEntry(codeRaw: string) {
     `SELECT code, name_zh, aliases, enabled, sort_order FROM channel_dictionary WHERE code = $1`,
     [code],
   );
-  if (!r.rows[0]) throw notFound("通路不存在");
+  if (!r.rows[0]) throw notFound("特典不存在");
   return mapDbChannel(r.rows[0]);
 }
 

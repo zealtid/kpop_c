@@ -1,4 +1,6 @@
 {
+  "productName": "特典词典",
+  "note": "技术字段仍为 channel_* / channel_dictionary；产品名不是特典对照表",
   "channels": [
     { "code": "weverse", "name_zh": "Weverse Shop", "aliases": ["Weverse", "WV", "薇谱"] },
     { "code": "ktown4u", "name_zh": "Ktown4u", "aliases": ["K4", "Ktown"] },

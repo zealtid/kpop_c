@@ -96,28 +96,18 @@ Page({
       ),
     };
   },
-  loadChannelLibrary(groupId) {
-    const gid = groupId != null ? groupId : this.data.groupId;
-    const channelsReq = api
+  loadChannelLibrary() {
+    api
       .request({ url: "/catalog/channels", auth: false })
-      .then((d) => channelPick.mapChannels(d.channels))
-      .catch(() => []);
-    const benefitsReq = api
-      .request({ url: channelPick.benefitsQuery(gid), auth: false })
-      .then((d) => channelPick.mapBenefitRows(d.rows))
+      .then((d) => {
+        const channels = channelPick.mapChannels(d.channels);
+        this._dictChannels = channels;
+        this.setData({ channelOptions: channels });
+      })
       .catch(() => {
-        if (!this.data.releaseId) return [];
-        return api
-          .request({ url: `/catalog/releases/${this.data.releaseId}/benefit-matrix`, auth: false })
-          .then((m) => channelPick.mapBenefitRows(m.rows))
-          .catch(() => []);
+        this._dictChannels = [];
+        this.setData({ channelOptions: [] });
       });
-    Promise.all([channelsReq, benefitsReq]).then((results) => {
-      const channels = results[0];
-      const benefits = results[1];
-      this._dictChannels = channels;
-      this.setData({ channelOptions: channelPick.mergeOptions(benefits, channels) });
-    });
   },
   loadGroupExtras(groupId) {
     api.request({ url: `/catalog/groups/${groupId}/releases`, auth: false }).then((d) => {

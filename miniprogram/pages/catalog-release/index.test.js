@@ -1,5 +1,5 @@
 /**
- * 刀 B 发行/专辑详情：版本切换 + confirmed 特典；待补禁假图。
+ * 发行页：对照矩阵已软下线，只展示发行信息与已发布小卡。
  * run: node --test miniprogram/pages/catalog-release/index.test.js
  */
 const { test, beforeEach, after } = require("node:test");
@@ -64,49 +64,45 @@ beforeEach(() => {
   };
 });
 
-test("wxml: empty copy, version chips, 待补无假图, footnote", () => {
+test("wxml has no benefit-matrix / 特典对照 / 通路", () => {
   const wxml = fs.readFileSync(path.join(__dirname, "index.wxml"), "utf8");
-  assert.match(wxml, /暂无特典对照，请稍后再看/);
-  assert.match(wxml, /bindtap="selectVersion"/);
-  assert.match(wxml, /bindtap="openSlot"/);
-  assert.match(wxml, /wx:if="\{\{slot\.imageUrl\}\}"/);
-  assert.match(wxml, /图鉴待补/);
-  assert.match(wxml, /\{\{footnote\}\}/);
-  assert.doesNotMatch(wxml, /src="\/assets\/placeholder/);
-  assert.doesNotMatch(wxml, /fake-card|dummy\.png|placeholder\.png/);
-  assert.doesNotMatch(wxml, /已凑齐全部特典/);
+  const json = JSON.parse(fs.readFileSync(path.join(__dirname, "index.json"), "utf8"));
+  assert.doesNotMatch(wxml, /特典对照/);
+  assert.doesNotMatch(wxml, /benefit-matrix/);
+  assert.doesNotMatch(wxml, /通路/);
+  assert.doesNotMatch(wxml, /selectVersion/);
+  assert.doesNotMatch(wxml, /openSlot/);
+  assert.match(wxml, /暂无已发布小卡/);
+  assert.match(wxml, /bindtap="openCard"/);
+  assert.equal(json.navigationBarTitleText, "专辑");
 });
 
-test("published slot with templateId opens catalog detail; else search; pending toasts 图鉴待补", () => {
+test("published template tile opens catalog detail", () => {
   const page = pageWithData({});
-  page.openSlot({
-    currentTarget: { dataset: { navigable: true, templateId: "tmpl-1", q: "预购特典 Weverse" } },
-  });
+  page.openCard({ currentTarget: { dataset: { id: "tmpl-1" } } });
   assert.equal(navigations.length, 1);
   assert.equal(navigations[0].url, "/pages/card-detail/index?id=tmpl-1&from=catalog");
-
-  page.openSlot({
-    currentTarget: { dataset: { navigable: true, q: "预购特典 Weverse" } },
-  });
-  assert.equal(navigations.length, 2);
-  assert.match(navigations[1].url, /\/pages\/catalog-search\/index\?q=/);
-  assert.equal(toasts.length, 0);
-
-  page.openSlot({ currentTarget: { dataset: { navigable: false, q: "无卡" } } });
-  assert.equal(toasts.length, 1);
-  assert.equal(toasts[0].title, "图鉴待补");
-  assert.equal(navigations.length, 2);
 });
 
-test("load empty matrix shows empty state and incomplete footnote", async () => {
+test("load uses release + templates APIs, not benefit-matrix", async () => {
   api.request = (opts) => {
     requests.push(opts);
+    if (String(opts.url).endsWith("/templates")) {
+      return Promise.resolve({
+        templates: [
+          {
+            id: "t1",
+            name: "Carmen",
+            memberNameEn: "Carmen",
+            version: "Standard",
+            isBenefit: false,
+            mainImageUrl: "/media/cards/real.png",
+          },
+        ],
+      });
+    }
     return Promise.resolve({
       release: { id: "r1", title: "The Chase", releasedOn: "2025-02-24", kind: "single" },
-      versions: ["Photobook A"],
-      empty: true,
-      rows: [],
-      completeness: { ready: false, ratio: 0, copy: "特典信息来自运营对照表，可能不完整" },
     });
   };
   const page = pageWithData({ id: "r1" });
@@ -114,68 +110,29 @@ test("load empty matrix shows empty state and incomplete footnote", async () => 
   for (let i = 0; i < 10 && !page.data.loaded; i++) {
     await new Promise((r) => setImmediate(r));
   }
-  assert.equal(requests[0].url, "/catalog/releases/r1/benefit-matrix");
-  assert.equal(requests[0].auth, false);
-  assert.equal(page.data.empty, true);
-  assert.equal(page.data.emptyCopy, "暂无特典对照，请稍后再看");
-  assert.equal(page.data.footnote, "特典信息来自运营对照表，可能不完整");
-  assert.doesNotMatch(page.data.footnote, /已凑齐全部特典/);
+  assert.ok(requests.some((r) => r.url === "/catalog/releases/r1"));
+  assert.ok(requests.some((r) => r.url === "/catalog/releases/r1/templates"));
+  assert.ok(!requests.some((r) => String(r.url).includes("benefit-matrix")));
+  assert.equal(page.data.empty, false);
+  assert.equal(page.data.templates.length, 1);
   assert.equal(page.data.release.releasedOnLabel, "2025-02-24");
 });
 
-test("load published + draft rows: only published keeps image; version switch filters", async () => {
-  api.request = () =>
-    Promise.resolve({
+test("empty templates show empty state without matrix copy", async () => {
+  api.request = (opts) => {
+    requests.push(opts);
+    if (String(opts.url).endsWith("/templates")) return Promise.resolve({ templates: [] });
+    return Promise.resolve({
       release: { id: "r2", title: "ARIRANG", releasedOn: "2026-03-20", kind: "album" },
-      versions: ["Standard", "特典-JP"],
-      empty: false,
-      rows: [
-        {
-          id: "a",
-          versionLabel: "standard",
-          benefitNameZh: "已发布",
-          channelNameZh: "Weverse Shop",
-          slots: [
-            {
-              label: "预购特典 Weverse",
-              templateStatus: "published",
-              navigable: true,
-              imageUrl: "/media/cards/real.png",
-              templateName: "预购特典 Weverse",
-            },
-          ],
-        },
-        {
-          id: "b",
-          versionLabel: "standard",
-          benefitNameZh: "待补",
-          channelNameZh: "Yes24",
-          slots: [{ label: "无卡", templateStatus: "missing", navigable: false, imageUrl: "/media/cards/fake.png" }],
-        },
-        {
-          id: "c",
-          versionLabel: "特典-JP",
-          benefitNameZh: "日版",
-          channelNameZh: "未知",
-          slots: [],
-        },
-      ],
-      completeness: { ready: false, ratio: 0.5, copy: "特典信息来自运营对照表，可能不完整" },
     });
+  };
   const page = pageWithData({ id: "r2" });
   page.load();
   for (let i = 0; i < 10 && !page.data.loaded; i++) {
     await new Promise((r) => setImmediate(r));
   }
-  assert.equal(page.data.empty, false);
-  assert.equal(page.data.visibleRows.length, 2);
-  assert.equal(page.data.visibleRows[0].slots[0].imageUrl.endsWith("/media/cards/real.png"), true);
-  assert.equal(page.data.visibleRows[1].slots[0].imageUrl, "");
-  assert.equal(page.data.visibleRows[1].slots[0].pending, true);
-  page.selectVersion({ currentTarget: { dataset: { version: "特典-JP" } } });
-  assert.equal(page.data.selectedVersion, "特典-JP");
-  assert.equal(page.data.visibleRows.length, 1);
-  assert.equal(page.data.visibleRows[0].benefitNameZh, "日版");
+  assert.equal(page.data.empty, true);
+  assert.equal(page.data.templates.length, 0);
 });
 
 test("app.json registers catalog-release and keeps cardbook first", () => {

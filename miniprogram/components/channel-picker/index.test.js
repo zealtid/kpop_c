@@ -1,5 +1,5 @@
 /**
- * 特典/通路底部选择器（投稿 + 宫格确认共用）
+ * 特典底部选择器（投稿 + 宫格确认共用）
  * run: node --test miniprogram/components/channel-picker/index.test.js
  */
 const { test } = require("node:test");
@@ -13,6 +13,8 @@ test("sheet lists library options with search and 其他/手填", () => {
   const wxss = fs.readFileSync(path.join(__dirname, "index.wxss"), "utf8");
   assert.match(wxml, /选择特典/);
   assert.doesNotMatch(wxml, /选择通路 \/ 特典/);
+  assert.doesNotMatch(wxml, /通路/);
+  assert.doesNotMatch(wxml, /旧称通路/);
   assert.match(wxml, /仅显示图鉴库里已有的特典/);
   assert.match(wxml, /bindinput="onQuery"/);
   assert.match(wxml, /wx:for="\{\{hits\}\}"/);

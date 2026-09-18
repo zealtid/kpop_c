@@ -1,8 +1,7 @@
 import { query } from "./db.js";
 import { getRelease } from "./catalog.js";
-import { loadRuntimeChannelDictionary } from "./channelDictionary.js";
 import {
-  buildBenefitMatrix,
+  BENEFIT_MATRIX_INCOMPLETE_COPY,
   type BenefitMatrix,
   type MatrixMapRow,
   type MatrixTemplate,
@@ -90,68 +89,53 @@ function optionalUuid(raw: unknown): string | null {
   return UUID_RE.test(s) ? s : null;
 }
 
-/**
- * Guest-readable confirmed 特典 rows for the MP picker (词典对照表之外的发行矩阵)。
- * Optional groupId / releaseId narrow the list; invalid ids are ignored.
- */
-export async function listLibraryBenefits(opts?: {
-  groupId?: string;
-  releaseId?: string;
-}): Promise<LibraryBenefitRow[]> {
-  const dict = await loadRuntimeChannelDictionary();
-  const nameByCode = new Map(dict.channels.map((c) => [c.code, c.name_zh]));
-  const params: string[] = [];
-  const conds = ["m.status = 'confirmed'", "r.status = 'published'", "g.status = 'published'"];
-  const releaseId = optionalUuid(opts?.releaseId);
-  const groupId = optionalUuid(opts?.groupId);
-  if (releaseId) {
-    params.push(releaseId);
-    conds.push(`m.release_id = $${params.length}::uuid`);
-  } else if (groupId) {
-    params.push(groupId);
-    conds.push(`m.group_id = $${params.length}::uuid`);
-  }
-  const r = await query(
-    `SELECT DISTINCT m.channel_code, m.benefit_name_zh
-     FROM release_benefit_map m
-     JOIN releases r ON r.id = m.release_id
-     JOIN idol_groups g ON g.id = m.group_id
-     WHERE ${conds.join(" AND ")}
-     ORDER BY m.channel_code, m.benefit_name_zh
-     LIMIT 400`,
-    params,
-  );
-  const seen = new Set<string>();
-  const rows: LibraryBenefitRow[] = [];
-  for (const row of r.rows) {
-    const channelCode = String(row.channel_code || "").trim();
-    const benefitNameZh = String(row.benefit_name_zh || "").trim();
-    if (!channelCode || !benefitNameZh) continue;
-    const key = `${channelCode}|${benefitNameZh}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    rows.push({
-      channelCode,
-      channelNameZh: nameByCode.get(channelCode) || channelCode,
-      benefitNameZh,
-    });
-  }
-  return rows;
+export const BENEFIT_MAP_DEPRECATED_MESSAGE =
+  "特典对照表已下线。请维护特典词典与小卡模板。";
+
+export function deprecatedMapCollection() {
+  return {
+    deprecated: true as const,
+    maps: [] as [],
+    message: BENEFIT_MAP_DEPRECATED_MESSAGE,
+  };
+}
+
+export function deprecatedMapWrite() {
+  return {
+    ...deprecatedMapCollection(),
+    committed: false,
+    written: 0,
+    map: null as null,
+    deleted: false,
+    report: {
+      ok: false,
+      rowCount: 0,
+      errorCount: 1,
+      warningCount: 0,
+      issues: [{ level: "error" as const, code: "DEPRECATED", message: BENEFIT_MAP_DEPRECATED_MESSAGE }],
+    },
+  };
 }
 
 /**
- * Guest-readable version × confirmed-benefit matrix (刀 B).
- * Does not touch admin completeness / import / catalog publish.
- * Empty confirmed → empty=true, HTTP 200 (never 500).
+ * Soft-retired: map rows are no longer served. Keep the function so old MP pickers
+ * still get HTTP 200 + empty list instead of 410.
+ */
+export async function listLibraryBenefits(_opts?: {
+  groupId?: string;
+  releaseId?: string;
+}): Promise<LibraryBenefitRow[]> {
+  return [];
+}
+
+/**
+ * Soft-retired version × benefit matrix (刀 B).
+ * Unpublished / missing release still 404; published releases return empty + deprecated.
+ * Builder/loaders remain in-repo for a later hard-delete gate.
  */
 export async function getReleaseBenefitMatrix(releaseId: string): Promise<BenefitMatrix> {
   const release = await getRelease(releaseId, { requirePublished: true });
-  const [versions, maps, templates] = await Promise.all([
-    loadReleaseVersions(release.id),
-    loadConfirmedMaps(release.id),
-    loadReleaseTemplates(release.id, release.groupId),
-  ]);
-  return buildBenefitMatrix({
+  return {
     release: {
       id: release.id,
       groupId: release.groupId,
@@ -162,9 +146,10 @@ export async function getReleaseBenefitMatrix(releaseId: string): Promise<Benefi
       groupSlug: release.groupSlug,
       groupNameZh: release.groupNameZh,
     },
-    versions,
-    maps,
-    templates,
-    dict: await loadRuntimeChannelDictionary(),
-  });
+    versions: [],
+    empty: true,
+    rows: [],
+    completeness: { ready: false, ratio: 0, copy: BENEFIT_MATRIX_INCOMPLETE_COPY },
+    deprecated: true,
+  };
 }

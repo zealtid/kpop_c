@@ -66,7 +66,7 @@ const TABS: { id: CatalogTab; label: string }[] = [
   { id: "templates", label: "小卡模板" },
   { id: "completeness", label: "完整度" },
   { id: "import", label: "导入" },
-  { id: "benefits", label: "特典对照" },
+  { id: "benefits", label: "特典词典" },
 ];
 
 export function catalogSubnav(tab: CatalogTab) {

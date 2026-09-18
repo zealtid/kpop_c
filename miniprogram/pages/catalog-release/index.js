@@ -1,19 +1,14 @@
 const api = require("../../utils/api");
+const catalogSelect = require("../../utils/catalogSelect");
 const releaseDate = require("../../utils/releaseDate");
-const benefitMatrix = require("../../utils/benefitMatrix");
 
 Page({
   data: {
     id: "",
     release: {},
-    versions: [],
-    selectedVersion: "",
-    rows: [],
-    visibleRows: [],
+    templates: [],
     pageLoading: true,
     empty: false,
-    emptyCopy: benefitMatrix.EMPTY_COPY,
-    footnote: "",
     loaded: false,
   },
   onLoad(q) {
@@ -24,61 +19,31 @@ Page({
     if (!this.data.id) return;
     this.setData({ pageLoading: true });
     if (typeof wx.showLoading === "function") wx.showLoading({ title: "加载中", mask: true });
-    api
-      .request({ url: `/catalog/releases/${this.data.id}/benefit-matrix`, auth: false })
-      .then((d) => {
-        const rows = benefitMatrix.decorateRows(d.rows, (url) => api.mediaUrl(url));
-        const versions = d.versions && d.versions.length ? d.versions : [benefitMatrix.DEFAULT_VERSION];
-        const selectedVersion = benefitMatrix.initialVersion(versions, rows);
+    const done = () => {
+      this.setData({ pageLoading: false, loaded: true });
+      if (typeof wx.hideLoading === "function") wx.hideLoading();
+    };
+    Promise.all([
+      api.request({ url: `/catalog/releases/${this.data.id}`, auth: false }),
+      api.request({ url: `/catalog/releases/${this.data.id}/templates`, auth: false }),
+    ])
+      .then(([rel, tpls]) => {
+        const templates = catalogSelect.mapTemplatesForGrid(tpls.templates || [], (url) => api.mediaUrl(url));
         this.setData({
-          release: releaseDate.decorateRelease(d.release || {}),
-          versions,
-          selectedVersion,
-          rows,
-          visibleRows: benefitMatrix.rowsForVersion(rows, selectedVersion),
-          empty: !!d.empty,
-          footnote: benefitMatrix.footnote(d.completeness),
-          loaded: true,
-          pageLoading: false,
+          release: releaseDate.decorateRelease(rel.release || {}),
+          templates,
+          empty: templates.length === 0,
         });
-        if (typeof wx.hideLoading === "function") wx.hideLoading();
       })
       .catch((err) => {
-        this.setData({
-          empty: true,
-          loaded: true,
-          pageLoading: false,
-          versions: [benefitMatrix.DEFAULT_VERSION],
-          selectedVersion: benefitMatrix.DEFAULT_VERSION,
-          rows: [],
-          visibleRows: [],
-          footnote: benefitMatrix.INCOMPLETE_COPY,
-        });
-        if (typeof wx.hideLoading === "function") wx.hideLoading();
+        this.setData({ empty: true, templates: [] });
         if (err && err.status !== 404) api.handleWriteError(err);
-      });
+      })
+      .then(done, done);
   },
-  selectVersion(e) {
-    const selectedVersion = e.currentTarget.dataset.version;
-    this.setData({
-      selectedVersion,
-      visibleRows: benefitMatrix.rowsForVersion(this.data.rows, selectedVersion),
-    });
-  },
-  openSlot(e) {
-    const navigable = benefitMatrix.isNavigableFlag(e.currentTarget.dataset.navigable);
-    if (!navigable) {
-      wx.showToast({ title: benefitMatrix.PENDING_LABEL, icon: "none" });
-      return;
-    }
-    const templateId = e.currentTarget.dataset.templateId;
-    if (templateId) {
-      wx.navigateTo({ url: `/pages/card-detail/index?id=${templateId}&from=catalog` });
-      return;
-    }
-    const q = e.currentTarget.dataset.q || "";
-    wx.navigateTo({
-      url: `/pages/catalog-search/index?q=${encodeURIComponent(q)}`,
-    });
+  openCard(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/card-detail/index?id=${id}&from=catalog` });
   },
 });

@@ -4,6 +4,7 @@ import { createApp } from "../src/app.js";
 import { pool, query } from "../src/db.js";
 import { seed } from "../src/seed.js";
 import { sid } from "../src/ids.js";
+import { BENEFIT_MAP_DEPRECATED_MESSAGE } from "../src/benefitMatrix.js";
 import type { Server } from "node:http";
 
 let server: Server;
@@ -23,7 +24,7 @@ async function api(path: string, init: RequestInit = {}) {
   } catch {
     /* raw */
   }
-  return { status: res.status, body };
+  return { status: res.status, body, headers: res.headers };
 }
 
 async function opsToken() {
@@ -39,15 +40,13 @@ function auth(token: string): HeadersInit {
   return { Authorization: `Bearer ${token}` };
 }
 
-type ReportBody = {
-  committed: boolean;
+type DeprecatedBody = {
+  deprecated?: boolean;
+  committed?: boolean;
   written?: number;
-  report: {
-    ok: boolean;
-    errorCount: number;
-    issues: { code: string; row?: number }[];
-  };
-  maps?: { id: string; releaseId: string; channelCode: string; status: string }[];
+  maps?: unknown[];
+  message?: string;
+  report?: { ok: boolean; errorCount: number; issues: { code: string }[] };
 };
 
 const PASS_CSV = `group_id,release_id,version_label,channel_code,benefit_name_zh,maps_to_slot_labels,map_mode,evidence_url,status,benefit_batch,benefit_type,tags_hint
@@ -57,12 +56,6 @@ before(async () => {
   await query("DROP SCHEMA public CASCADE");
   await query("CREATE SCHEMA public");
   await seed();
-  await query(
-    `INSERT INTO templates (id, release_id, member_id, code, name, version, is_benefit, is_deprecated, status, main_image_url, dedupe_key)
-     VALUES ($1,$2,NULL,'VB-SLOT-WEVERSE','预购特典 Weverse','Standard',true,false,'draft',NULL,'vb:arirang:weverse-slot')
-     ON CONFLICT (dedupe_key) DO NOTHING`,
-    [sid("tpl:vb:weverse-slot"), ARIRANG],
-  );
   const app = createApp();
   server = app.listen(0);
   const addr = server.address();
@@ -87,47 +80,9 @@ test("version-benefit APIs require ops allowlist", async () => {
   );
 });
 
-test("validate sample-like CSV reports E_SLOT_MISS without matching template name", async () => {
-  const token = await opsToken();
-  const csv = `group_id,release_id,version_label,channel_code,benefit_name_zh,maps_to_slot_labels,map_mode,evidence_url,status
-bts,bts-arirang,standard,weverse,其他特典,不存在的卡槽,slots,https://example.invalid/x,confirmed`;
-  const res = await api("/admin/version-benefit/validate", {
-    method: "POST",
-    headers: auth(token),
-    body: JSON.stringify({ text: csv }),
-  });
-  assert.equal(res.status, 200, JSON.stringify(res.body));
-  const body = res.body as ReportBody;
-  assert.equal(body.committed, false);
-  assert.ok(body.report.issues.some((i) => i.code === "E_SLOT_MISS"));
-});
-
-test("import with any row error returns 4xx and writes nothing", async () => {
+test("map read/import/validate are empty + deprecated and write nothing", async () => {
   const token = await opsToken();
   const before = await query("SELECT count(*)::int AS n FROM release_benefit_map");
-  const mixed = `${PASS_CSV}
-bts,bts-arirang,standard,weverse,坏行,不存在的卡槽,slots,https://example.invalid/x,confirmed`;
-  const res = await api("/admin/version-benefit/import", {
-    method: "POST",
-    headers: auth(token),
-    body: JSON.stringify({ text: mixed }),
-  });
-  assert.equal(res.status, 400, JSON.stringify(res.body));
-  const err = res.body as { error: { code: string; details?: { ok: boolean; errorCount: number } } };
-  assert.equal(err.error.code, "IMPORT_INVALID");
-  assert.ok((err.error.details?.errorCount || 0) > 0);
-  assert.equal(err.error.details?.ok, false);
-  const after = await query("SELECT count(*)::int AS n FROM release_benefit_map");
-  assert.equal(after.rows[0].n, before.rows[0].n);
-});
-
-test("validate + persist confirmed row; list by release; no imageless publish", async () => {
-  const token = await opsToken();
-  const beforeTpl = await query("SELECT status, main_image_url FROM templates WHERE dedupe_key = $1", [
-    "vb:arirang:weverse-slot",
-  ]);
-  assert.equal(beforeTpl.rows[0].status, "draft");
-  assert.equal(beforeTpl.rows[0].main_image_url, null);
 
   const validated = await api("/admin/version-benefit/validate", {
     method: "POST",
@@ -135,9 +90,14 @@ test("validate + persist confirmed row; list by release; no imageless publish", 
     body: JSON.stringify({ text: PASS_CSV }),
   });
   assert.equal(validated.status, 200, JSON.stringify(validated.body));
-  const vbody = validated.body as ReportBody;
-  assert.equal(vbody.report.ok, true, JSON.stringify(vbody.report.issues));
+  assert.equal(validated.headers.get("deprecation"), "true");
+  const vbody = validated.body as DeprecatedBody;
+  assert.equal(vbody.deprecated, true);
   assert.equal(vbody.committed, false);
+  assert.equal(vbody.written, 0);
+  assert.equal(vbody.maps?.length, 0);
+  assert.ok(vbody.report?.issues.some((i) => i.code === "DEPRECATED"));
+  assert.match(vbody.message || "", /特典词典/);
 
   const imported = await api("/admin/version-benefit/import", {
     method: "POST",
@@ -145,50 +105,36 @@ test("validate + persist confirmed row; list by release; no imageless publish", 
     body: JSON.stringify({ text: PASS_CSV }),
   });
   assert.equal(imported.status, 200, JSON.stringify(imported.body));
-  const ibody = imported.body as ReportBody;
-  assert.equal(ibody.written, 1);
-  assert.equal(ibody.maps?.[0].channelCode, "weverse");
-  assert.equal(ibody.maps?.[0].status, "confirmed");
-  assert.equal(ibody.maps?.[0].releaseId, ARIRANG);
+  assert.equal((imported.body as DeprecatedBody).written, 0);
+  assert.equal((imported.body as DeprecatedBody).deprecated, true);
+
+  const created = await api("/admin/version-benefit/maps", {
+    method: "POST",
+    headers: auth(token),
+    body: JSON.stringify({ releaseId: ARIRANG, channelCode: "weverse" }),
+  });
+  assert.equal(created.status, 200);
+  assert.equal((created.body as DeprecatedBody).deprecated, true);
 
   const listed = await api(`/admin/version-benefit/maps?releaseId=${ARIRANG}`, { headers: auth(token) });
   assert.equal(listed.status, 200);
-  const maps = (listed.body as { maps: { releaseId: string; groupSlug: string }[] }).maps;
-  assert.equal(maps.length, 1);
-  assert.equal(maps[0].groupSlug, "bts");
+  assert.equal(listed.headers.get("deprecation"), "true");
+  assert.equal((listed.body as DeprecatedBody).maps?.length, 0);
+  assert.equal((listed.body as DeprecatedBody).deprecated, true);
 
-  const other = await api(`/admin/version-benefit/maps?releaseId=${sid("release:h2h:the-chase")}`, {
-    headers: auth(token),
-  });
-  assert.equal((other.body as { maps: unknown[] }).maps.length, 0);
+  const after = await query("SELECT count(*)::int AS n FROM release_benefit_map");
+  assert.equal(after.rows[0].n, before.rows[0].n);
+  assert.equal(BENEFIT_MAP_DEPRECATED_MESSAGE.includes("特典词典"), true);
+});
 
-  const afterTpl = await query("SELECT status, main_image_url FROM templates WHERE dedupe_key = $1", [
-    "vb:arirang:weverse-slot",
-  ]);
-  assert.equal(afterTpl.rows[0].status, "draft");
-  assert.equal(afterTpl.rows[0].main_image_url, null);
-
+test("channel dictionary CRUD remains available", async () => {
+  const token = await opsToken();
   const channels = await api("/admin/version-benefit/channels", { headers: auth(token) });
   assert.equal(channels.status, 200);
   assert.ok(((channels.body as { channels: { code: string }[] }).channels || []).some((c) => c.code === "unknown"));
+  assert.ok(((channels.body as { channels: { code: string }[] }).channels || []).some((c) => c.code === "tmall-flagship"));
 
-  // completeness path still answers (we did not change it)
   const board = await api("/admin/completeness", { headers: auth(token) });
   assert.equal(board.status, 200);
   assert.ok(Array.isArray((board.body as { groups: unknown[] }).groups));
-
-});
-
-test("benefit_only confirmed persists without slot template", async () => {
-  const token = await opsToken();
-  const csv = `group_id,release_id,version_label,channel_code,benefit_name_zh,maps_to_slot_labels,map_mode,evidence_url,status
-bts,bts-arirang,standard,yes24,未拆卡 Yes24,,benefit_only,https://example.invalid/yes24,confirmed`;
-  const res = await api("/admin/version-benefit/import", {
-    method: "POST",
-    headers: auth(token),
-    body: JSON.stringify({ text: csv }),
-  });
-  assert.equal(res.status, 200, JSON.stringify(res.body));
-  assert.equal((res.body as ReportBody).written, 1);
-  assert.equal((res.body as ReportBody).maps?.[0].channelCode, "yes24");
 });

@@ -1,0 +1,8 @@
+DEPRECATED — 特典对照表 CSV 进库路径已下线。
+
+不要把本目录 `version_benefit_map.sample.csv`（及 api/fixtures 同名样例）导入数据库。
+请改维：
+- Admin 图鉴 → 特典词典（channel_dictionary）
+- Admin 图鉴 → 小卡模板/维护
+
+详见 docs/ops/ops-catalog-runbook.md

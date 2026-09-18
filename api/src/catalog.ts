@@ -165,7 +165,7 @@ export async function searchTemplates(opts: SearchOpts) {
   if (opts.q) {
     const tokens = opts.q.split(/\s+/).filter(Boolean);
     const dict = await loadRuntimeChannelDictionary();
-    // C02: en/zh + name_ko + lightweight aliases；P2A：通路词典别名 / 特典对照也可搜
+    // C02: en/zh + name_ko + lightweight aliases；特典词典别名也可搜（对照表已软下线，不再扫 map）
     const searchFields = [
       "t.name",
       "t.code",
@@ -191,18 +191,6 @@ export async function searchTemplates(opts: SearchOpts) {
         params.push(`%${variant}%`);
         const n = params.length;
         parts.push(searchFields.map((f) => `${f} ILIKE $${n}`).join(" OR "));
-        parts.push(
-          `EXISTS (
-             SELECT 1 FROM release_benefit_map bm
-             WHERE bm.release_id = t.release_id
-               AND bm.status = 'confirmed'
-               AND (
-                 bm.benefit_name_zh ILIKE $${n}
-                 OR bm.channel_code ILIKE $${n}
-                 OR COALESCE(bm.maps_to_slot_labels, '') ILIKE $${n}
-               )
-           )`,
-        );
       }
       conds.push(`(${parts.join(" OR ")})`);
     }
