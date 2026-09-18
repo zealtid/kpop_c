@@ -4,7 +4,7 @@ import { createApp } from "../src/app.js";
 import { pool, query } from "../src/db.js";
 import { seed } from "../src/seed.js";
 import { sid, GROUP_BTS } from "../src/ids.js";
-import { BENEFIT_MATRIX_INCOMPLETE_COPY, BENEFIT_MATRIX_READY_COPY } from "../src/benefitMatrix.js";
+import { BENEFIT_MAP_DEPRECATED_MESSAGE } from "../src/benefitMatrix.js";
 import type { Server } from "node:http";
 
 let server: Server;
@@ -14,23 +14,9 @@ const THE_CHASE = sid("release:h2h:the-chase");
 
 type MatrixBody = {
   empty: boolean;
+  deprecated?: boolean;
   versions: string[];
-  rows: {
-    id: string;
-    benefitNameZh: string;
-    channelNameZh: string;
-    benefitBatch: string | null;
-    mapMode: string;
-    versionLabel: string;
-    slots: {
-      label: string;
-      version: string;
-      templateId: string | null;
-      templateStatus: string;
-      navigable: boolean;
-      imageUrl: string | null;
-    }[];
-  }[];
+  rows: unknown[];
   completeness: { ready: boolean; ratio: number; copy: string };
   release: { id: string; title: string };
 };
@@ -48,7 +34,7 @@ async function api(path: string, init: RequestInit = {}) {
   } catch {
     /* raw */
   }
-  return { status: res.status, body };
+  return { status: res.status, body, headers: res.headers };
 }
 
 async function insertMap(opts: {
@@ -57,28 +43,14 @@ async function insertMap(opts: {
   versionLabel: string;
   channelCode: string;
   benefitNameZh: string;
-  mapsToSlotLabels?: string | null;
-  mapMode?: string;
-  status?: string;
-  versionLabelForTemplate?: string | null;
 }) {
   await query(
     `INSERT INTO release_benefit_map (
        group_id, release_id, version_label, channel_code, benefit_name_zh,
        maps_to_slot_labels, map_mode, evidence_url, status, benefit_batch,
        version_label_for_template
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,'https://example.invalid/vb-b',$8,'1.0',$9)`,
-    [
-      opts.groupId,
-      opts.releaseId,
-      opts.versionLabel,
-      opts.channelCode,
-      opts.benefitNameZh,
-      opts.mapsToSlotLabels ?? null,
-      opts.mapMode || "slots",
-      opts.status || "confirmed",
-      opts.versionLabelForTemplate ?? null,
-    ],
+     ) VALUES ($1,$2,$3,$4,$5,'', 'benefit_only','https://example.invalid/vb-b','confirmed','1.0',NULL)`,
+    [opts.groupId, opts.releaseId, opts.versionLabel, opts.channelCode, opts.benefitNameZh],
   );
 }
 
@@ -97,26 +69,32 @@ after(async () => {
   await pool.end();
 });
 
-test("guest can read benefit-matrix; W1 empty confirmed is 200 + empty", async () => {
+test("guest benefit-matrix is 200 empty + deprecated (not 410)", async () => {
   const res = await api(`/catalog/releases/${THE_CHASE}/benefit-matrix`);
   assert.equal(res.status, 200, JSON.stringify(res.body));
+  assert.equal(res.headers.get("deprecation"), "true");
   const body = res.body as MatrixBody;
   assert.equal(body.empty, true);
+  assert.equal(body.deprecated, true);
   assert.equal(body.rows.length, 0);
-  assert.ok(Array.isArray(body.versions) && body.versions.length > 0);
-  assert.equal(body.completeness.ready, false);
-  assert.equal(body.completeness.copy, BENEFIT_MATRIX_INCOMPLETE_COPY);
-  assert.doesNotMatch(body.completeness.copy, /已凑齐全部特典/);
+  assert.equal(body.release.id, THE_CHASE);
 });
 
-test("ARIRANG with no confirmed maps is stable empty (prod-like)", async () => {
+test("ARIRANG matrix stays empty even if map rows exist", async () => {
+  await insertMap({
+    releaseId: ARIRANG,
+    groupId: GROUP_BTS,
+    versionLabel: "standard",
+    channelCode: "weverse",
+    benefitNameZh: "不应再下发",
+  });
   const res = await api(`/catalog/releases/${ARIRANG}/benefit-matrix`);
   assert.equal(res.status, 200);
   const body = res.body as MatrixBody;
   assert.equal(body.empty, true);
+  assert.equal(body.deprecated, true);
+  assert.equal(body.rows.length, 0);
   assert.equal(body.release.title, "ARIRANG");
-  assert.ok(body.versions.some((v) => /standard/i.test(v)));
-  assert.equal(body.completeness.copy, BENEFIT_MATRIX_INCOMPLETE_COPY);
 });
 
 test("unknown or unpublished release is 404, not 500", async () => {
@@ -133,97 +111,6 @@ test("unknown or unpublished release is 404, not 500", async () => {
   assert.equal(hidden.status, 404);
 });
 
-test("published mapping is navigable; draft/missing 待补 and leak no fake image", async () => {
-  const pub = await query(
-    `SELECT id, name, version, main_image_url FROM templates
-     WHERE release_id = $1 AND status = 'published' AND is_deprecated = false
-     ORDER BY name LIMIT 1`,
-    [ARIRANG],
-  );
-  const pubTpl = pub.rows[0];
-  assert.ok(pubTpl, "seed should have a published ARIRANG template");
-
-  const draftTplId = sid("tpl:vb-b:draft-slot");
-  await query(
-    `INSERT INTO templates (id, release_id, member_id, code, name, version, is_benefit, is_deprecated, status, main_image_url, dedupe_key)
-     VALUES ($1,$2,NULL,'VB-B-DRAFT','刀B草稿槽','Standard',true,false,'draft','/media/cards/fake-draft.png','vb-b:draft-slot')`,
-    [draftTplId, ARIRANG],
-  );
-
-  await insertMap({
-    releaseId: ARIRANG,
-    groupId: GROUP_BTS,
-    versionLabel: "standard",
-    channelCode: "weverse",
-    benefitNameZh: "已发布映射",
-    mapsToSlotLabels: String(pubTpl.name),
-    versionLabelForTemplate: String(pubTpl.version),
-  });
-  await insertMap({
-    releaseId: ARIRANG,
-    groupId: GROUP_BTS,
-    versionLabel: "standard",
-    channelCode: "ktown4u",
-    benefitNameZh: "草稿映射",
-    mapsToSlotLabels: "刀B草稿槽",
-    versionLabelForTemplate: "Standard",
-  });
-  await insertMap({
-    releaseId: ARIRANG,
-    groupId: GROUP_BTS,
-    versionLabel: "standard",
-    channelCode: "yes24",
-    benefitNameZh: "缺失映射",
-    mapsToSlotLabels: "不存在的卡槽-刀B",
-    versionLabelForTemplate: "Standard",
-  });
-  await insertMap({
-    releaseId: ARIRANG,
-    groupId: GROUP_BTS,
-    versionLabel: "standard",
-    channelCode: "makestar",
-    benefitNameZh: "起草不进矩阵",
-    mapsToSlotLabels: String(pubTpl.name),
-    status: "drafting",
-    versionLabelForTemplate: String(pubTpl.version),
-  });
-
-  const res = await api(`/catalog/releases/${ARIRANG}/benefit-matrix`);
-  assert.equal(res.status, 200, JSON.stringify(res.body));
-  const body = res.body as MatrixBody;
-  assert.equal(body.empty, false);
-  assert.equal(body.rows.length, 3);
-  assert.ok(!body.rows.some((r) => r.benefitNameZh === "起草不进矩阵"));
-
-  const published = body.rows.find((r) => r.benefitNameZh === "已发布映射");
-  const draft = body.rows.find((r) => r.benefitNameZh === "草稿映射");
-  const missing = body.rows.find((r) => r.benefitNameZh === "缺失映射");
-  assert.ok(published && draft && missing);
-  assert.equal(published.channelNameZh, "Weverse Shop");
-  assert.equal(published.mapMode, "slots");
-  assert.equal(published.slots[0].templateStatus, "published");
-  assert.equal(published.slots[0].navigable, true);
-  assert.equal(published.slots[0].templateId, String(pubTpl.id));
-  assert.equal(published.slots[0].imageUrl, pubTpl.main_image_url);
-
-  assert.equal(draft.slots[0].templateStatus, "draft");
-  assert.equal(draft.slots[0].navigable, false);
-  assert.equal(draft.slots[0].imageUrl, null);
-
-  assert.equal(missing.slots[0].templateStatus, "missing");
-  assert.equal(missing.slots[0].navigable, false);
-  assert.equal(missing.slots[0].templateId, null);
-  assert.equal(missing.slots[0].imageUrl, null);
-
-  assert.equal(body.completeness.ready, false);
-  assert.equal(body.completeness.copy, BENEFIT_MATRIX_INCOMPLETE_COPY);
-  assert.notEqual(body.completeness.copy, BENEFIT_MATRIX_READY_COPY);
-
-  const dumped = JSON.stringify(body);
-  assert.doesNotMatch(dumped, /fake-draft\.png/);
-  assert.doesNotMatch(dumped, /placeholder|dummy-card|fake-image/i);
-});
-
 test("completeness dashboard path is untouched", async () => {
   const login = await api("/admin/auth/login", {
     method: "POST",
@@ -236,25 +123,19 @@ test("completeness dashboard path is untouched", async () => {
   assert.ok(Array.isArray((board.body as { groups: unknown[] }).groups));
 });
 
-test("H2H guest matrix does not 500 when table has only other-release maps", async () => {
-  await insertMap({
-    releaseId: ARIRANG,
-    groupId: GROUP_BTS,
-    versionLabel: "standard",
-    channelCode: "aladin",
-    benefitNameZh: "只属于 ARIRANG",
-    mapsToSlotLabels: "",
-    mapMode: "benefit_only",
-  });
-  const res = await api(`/catalog/releases/${THE_CHASE}/benefit-matrix`);
-  assert.equal(res.status, 200);
-  assert.equal((res.body as MatrixBody).empty, true);
-  assert.equal((res.body as MatrixBody).release.id, THE_CHASE);
-});
-
-test("guest can list library benefits for MP picker", async () => {
+test("guest library benefits is empty + deprecated", async () => {
   const res = await api("/catalog/benefits");
   assert.equal(res.status, 200);
-  const body = res.body as { rows: { channelCode: string; benefitNameZh: string; channelNameZh: string }[] };
-  assert.ok(Array.isArray(body.rows));
+  assert.equal(res.headers.get("deprecation"), "true");
+  const body = res.body as { rows: unknown[]; deprecated?: boolean };
+  assert.deepEqual(body.rows, []);
+  assert.equal(body.deprecated, true);
+});
+
+test("release payload itself is not a matrix", async () => {
+  const res = await api(`/catalog/releases/${ARIRANG}`);
+  assert.equal(res.status, 200);
+  const dumped = JSON.stringify(res.body);
+  assert.doesNotMatch(dumped, /benefitMatrix|benefit_maps/);
+  assert.ok((res.body as { release: { title: string } }).release.title);
 });

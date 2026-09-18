@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * 版本×特典对照 CSV 校验 CLI。
+ * 版本×特典对照 CSV 校验 CLI（对照表进库已废弃；本 CLI 仅本地校验，不要当导入入口）。
  * 有错误时打印逐行列表并以非 0 退出。
  *
  *   npx tsx scripts/validate-version-benefit.ts fixtures/version_benefit_map.sample.csv
@@ -24,6 +24,9 @@ async function loadCatalog(tagsStrict: boolean): Promise<CatalogSnapshot> {
 
 async function main() {
   const args = process.argv.slice(2);
+  console.error(
+    "DEPRECATED: 特典对照表进库路径已下线。请维护 Admin「特典词典」与「小卡模板/维护」，不要再把对照 CSV 写入 release_benefit_map。",
+  );
   if (args.includes("-h") || args.includes("--help") || !args.length) {
     printHelp();
     process.exit(args.length ? 0 : 2);

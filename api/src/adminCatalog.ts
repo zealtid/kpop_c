@@ -210,7 +210,7 @@ export async function deleteGroup(id: string) {
     ["分享图", c.shares],
     ["Feed 关联", c.feeds],
     ["日程", c.schedules],
-    ["特典对照", c.maps],
+    ["已下线对照表", c.maps],
   ]);
   if (blockers.length) {
     throw catalogInUse(`该组合仍被引用：${blockers.join("、")}。请先处理子数据或改用废弃。`, { blockers });
@@ -422,7 +422,7 @@ export async function setReleaseStatus(id: string, statusRaw: unknown) {
   return getAdminRelease(id);
 }
 
-/** 硬删发行：仅草稿/废弃且无模板/特典对照。不级联删小卡。 */
+/** 硬删发行：仅草稿/废弃且无模板/对照表残留。不级联删小卡。 */
 export async function deleteRelease(id: string) {
   const row = await loadReleaseRow(id);
   if (String(row.status) === "published") throw catalogPublished("发行");
@@ -436,7 +436,7 @@ export async function deleteRelease(id: string) {
   const c = counts.rows[0];
   const blockers = formatBlockers([
     ["小卡模板", c.templates],
-    ["特典对照", c.maps],
+    ["已下线对照表", c.maps],
     ["待审投稿", c.pending],
   ]);
   if (blockers.length) {

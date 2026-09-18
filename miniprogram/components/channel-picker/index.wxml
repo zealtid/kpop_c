@@ -24,7 +24,7 @@
       >
         <view class="opt-main">{{item.label}}</view>
         <view wx:if="{{item.kind==='benefit'}}" class="opt-kind">图鉴特典</view>
-        <view wx:elif="{{item.kind==='channel'}}" class="opt-kind">通路</view>
+        <view wx:elif="{{item.kind==='channel'}}" class="opt-kind">特典</view>
       </view>
     </scroll-view>
     <input
@@ -32,7 +32,7 @@
       class="search custom"
       value="{{customText}}"
       bindinput="onCustom"
-      placeholder="没有匹配时手填通路或特典名称"
+      placeholder="没有匹配时手填特典名称"
       maxlength="40"
     />
   </view>

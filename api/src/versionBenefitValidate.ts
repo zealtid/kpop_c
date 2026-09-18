@@ -260,10 +260,10 @@ export function validateBenefitRow(row: BenefitMapRow, opts: ValidateBenefitOpti
 
   const channelCode = row.channel_code.trim() ? normalizeChannelCode(row.channel_code, opts.dict) : null;
   if (row.channel_code.trim() && !channelCode) {
-    issues.push(issue("error", "E_CHANNEL", `channel_code 不在通路词典：${row.channel_code}`, row.row, "channel_code"));
+    issues.push(issue("error", "E_CHANNEL", `channel_code 不在特典词典：${row.channel_code}`, row.row, "channel_code"));
   }
   if (channelCode && isUnknownChannel(channelCode) && status === "confirmed") {
-    issues.push(issue("error", "E_CHANNEL", "unknown 通路禁止 confirmed", row.row, "channel_code"));
+    issues.push(issue("error", "E_CHANNEL", "unknown 特典禁止 confirmed", row.row, "channel_code"));
   }
 
   const tags = row.tags_hint.trim();

@@ -51,6 +51,8 @@ export type BenefitMatrix = {
   empty: boolean;
   rows: BenefitMatrixRow[];
   completeness: BenefitMatrixCompleteness;
+  /** Soft-retired product surface; old clients should treat rows as empty. */
+  deprecated?: boolean;
 };
 
 export type MatrixMapRow = {

@@ -314,7 +314,7 @@ async function persistValidatedRow(
     throw new AppError(400, "IMPORT_INVALID", "版本×特典校验未通过，未写入", compileBenefitReport([], [result]));
   }
   if (!result.group || !result.release || !result.channelCode) {
-    throw badRequest("组合 / 发行 / 通路无法解析");
+    throw badRequest("组合 / 发行 / 特典无法解析");
   }
   const row = result.row;
   const status = row.status.trim() || "drafting";
@@ -370,7 +370,7 @@ async function persistValidatedRow(
     }
   } catch (err) {
     if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "23505") {
-      throw new AppError(409, "DUPLICATE_MAP", "同一发行×版本×通路×特典已存在");
+      throw new AppError(409, "DUPLICATE_MAP", "同一发行×版本×特典已存在");
     }
     throw err;
   }

@@ -36,13 +36,11 @@ import {
   updateChannelEntry,
 } from "./channelDictionary.js";
 import {
-  deleteBenefitMapRow,
-  listBenefitMaps,
-  previewOrCommitBenefitMap,
-  retireBenefitMapRow,
-  upsertBenefitMapRow,
-} from "./versionBenefit.js";
-import { getReleaseBenefitMatrix, listLibraryBenefits } from "./benefitMatrix.js";
+  deprecatedMapCollection,
+  deprecatedMapWrite,
+  getReleaseBenefitMatrix,
+  listLibraryBenefits,
+} from "./benefitMatrix.js";
 import { getCompletenessDashboard } from "./completeness.js";
 import * as tickets from "./tickets.js";
 import { ANALYTICS_EVENTS, track } from "./analytics.js";
@@ -219,11 +217,12 @@ export function createApp() {
 
   app.get("/catalog/benefits", async (req, res, next) => {
     try {
+      res.setHeader("Deprecation", "true");
       const rows = await listLibraryBenefits({
         groupId: typeof req.query.groupId === "string" ? req.query.groupId : "",
         releaseId: typeof req.query.releaseId === "string" ? req.query.releaseId : "",
       });
-      res.json({ rows });
+      res.json({ rows, deprecated: true });
     } catch (e) {
       next(e);
     }
@@ -294,9 +293,10 @@ export function createApp() {
     }
   });
 
-  // 刀 B：游客可读版本×confirmed 特典矩阵；无 confirmed 返回 empty，不改 completeness 主路径
+  // Soft-retired: empty matrix + deprecated (not 410) so old clients keep working
   app.get("/catalog/releases/:id/benefit-matrix", async (req, res, next) => {
     try {
+      res.setHeader("Deprecation", "true");
       res.json(await getReleaseBenefitMatrix(req.params.id));
     } catch (e) {
       next(e);
@@ -1068,121 +1068,64 @@ export function createApp() {
     }
   });
 
-  app.get("/admin/version-benefit/maps", requireAdmin, async (req, res, next) => {
+  app.get("/admin/version-benefit/maps", requireAdmin, async (_req, res, next) => {
     try {
-      const releaseId = req.query.releaseId ? String(req.query.releaseId) : "";
-      const groupId = req.query.groupId ? String(req.query.groupId) : "";
-      res.json({
-        maps: await listBenefitMaps({
-          releaseId: releaseId || undefined,
-          groupId: groupId || undefined,
-        }),
-      });
+      res.setHeader("Deprecation", "true");
+      res.json(deprecatedMapCollection());
     } catch (e) {
       next(e);
     }
   });
 
-  app.post("/admin/version-benefit/validate", requireAdmin, async (req, res, next) => {
+  app.post("/admin/version-benefit/validate", requireAdmin, async (_req, res, next) => {
     try {
-      const result = await previewOrCommitBenefitMap({
-        text: req.body?.text,
-        tagsStrict: !!req.body?.tagsStrict,
-        commit: false,
-      });
-      res.json(result);
+      res.setHeader("Deprecation", "true");
+      res.json(deprecatedMapWrite());
     } catch (e) {
       next(e);
     }
   });
 
-  app.post("/admin/version-benefit/import", requireAdmin, async (req, res, next) => {
+  app.post("/admin/version-benefit/import", requireAdmin, async (_req, res, next) => {
     try {
-      const result = await previewOrCommitBenefitMap({
-        text: req.body?.text,
-        tagsStrict: !!req.body?.tagsStrict,
-        commit: true,
-        importedBy: req.ops?.username || null,
-      });
-      if (result.written > 0) {
-        await writeAuditLog({
-          actor: req.ops,
-          action: "version_benefit.import",
-          entityType: "release_benefit_map",
-          entityId: result.maps?.[0]?.releaseId,
-          payload: {
-            written: result.written,
-            errorCount: result.report.errorCount,
-            rowCount: result.report.rowCount,
-          },
-        });
-      }
-      res.json(result);
+      res.setHeader("Deprecation", "true");
+      res.json(deprecatedMapWrite());
     } catch (e) {
       next(e);
     }
   });
 
-  app.post("/admin/version-benefit/maps", requireAdmin, async (req, res, next) => {
+  app.post("/admin/version-benefit/maps", requireAdmin, async (_req, res, next) => {
     try {
-      const result = await upsertBenefitMapRow(req.body || {}, req.ops?.username || null);
-      await writeAuditLog({
-        actor: req.ops,
-        action: "version_benefit.map.create",
-        entityType: "release_benefit_map",
-        entityId: result.map.id,
-        payload: { status: result.map.status, channelCode: result.map.channelCode },
-      });
-      res.json(result);
+      res.setHeader("Deprecation", "true");
+      res.json(deprecatedMapWrite());
     } catch (e) {
       next(e);
     }
   });
 
-  app.patch("/admin/version-benefit/maps/:id", requireAdmin, async (req, res, next) => {
+  app.patch("/admin/version-benefit/maps/:id", requireAdmin, async (_req, res, next) => {
     try {
-      const result = await upsertBenefitMapRow(req.body || {}, req.ops?.username || null, {
-        id: req.params.id,
-      });
-      await writeAuditLog({
-        actor: req.ops,
-        action: "version_benefit.map.update",
-        entityType: "release_benefit_map",
-        entityId: result.map.id,
-        payload: { status: result.map.status },
-      });
-      res.json(result);
+      res.setHeader("Deprecation", "true");
+      res.json(deprecatedMapWrite());
     } catch (e) {
       next(e);
     }
   });
 
-  app.post("/admin/version-benefit/maps/:id/retire", requireAdmin, async (req, res, next) => {
+  app.post("/admin/version-benefit/maps/:id/retire", requireAdmin, async (_req, res, next) => {
     try {
-      const result = await retireBenefitMapRow(req.params.id, req.ops?.username || null);
-      await writeAuditLog({
-        actor: req.ops,
-        action: "version_benefit.map.retire",
-        entityType: "release_benefit_map",
-        entityId: result.map.id,
-        payload: { status: result.map.status },
-      });
-      res.json(result);
+      res.setHeader("Deprecation", "true");
+      res.json(deprecatedMapWrite());
     } catch (e) {
       next(e);
     }
   });
 
-  app.delete("/admin/version-benefit/maps/:id", requireAdmin, async (req, res, next) => {
+  app.delete("/admin/version-benefit/maps/:id", requireAdmin, async (_req, res, next) => {
     try {
-      const result = await deleteBenefitMapRow(req.params.id);
-      await writeAuditLog({
-        actor: req.ops,
-        action: "version_benefit.map.delete",
-        entityType: "release_benefit_map",
-        entityId: result.id,
-      });
-      res.json(result);
+      res.setHeader("Deprecation", "true");
+      res.json(deprecatedMapWrite());
     } catch (e) {
       next(e);
     }

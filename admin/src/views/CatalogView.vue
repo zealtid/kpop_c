@@ -97,7 +97,7 @@ const headings: Record<CatalogTab, { title: string; hint: string }> = {
   },
   completeness: { title: "图鉴 · 完整度", hint: "按组合查看发行闸门与缺图/缺成员。缺图可跳到模板维护。" },
   import: { title: "图鉴 · 导入校验", hint: "校验 CSV / Markdown / JSON，通过后再写入。" },
-  benefits: { title: "图鉴 · 特典对照", hint: "通路词典可增改/停用（喂给 C 端特典搜索）。B2 CSV 导入不变；对照单行修补为次要。" },
+  benefits: { title: "图鉴 · 特典词典", hint: "特典词典可增改/停用（喂给 C 端特典搜索与投稿选择器）。对照表已下线；卡面请到小卡模板/维护。" },
 };
 
 const pageNotice = ref("");
@@ -772,7 +772,7 @@ onMounted(() => {
       </template>
 
       <template v-else-if="isBenefits">
-        <CatalogBenefitsView :releases="bundle.releases" :groups="bundle.groups" />
+        <CatalogBenefitsView />
       </template>
 
       <template v-else-if="isCompleteness">

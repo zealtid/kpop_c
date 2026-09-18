@@ -167,7 +167,7 @@ async function onUnpublish() {
         <n-form-item label="版本">
           <n-input v-model:value="versionLabel" />
         </n-form-item>
-        <n-form-item label="通路/特典">
+        <n-form-item label="特典">
           <n-input v-model:value="channelCode" placeholder="词典 code 或手填" />
         </n-form-item>
         <n-form-item label="成员">
