@@ -1,4 +1,4 @@
-/** DevTools can disable domain check; 真机请将此域名加入微信 request 合法域名。 */
-const API_BASE = "https://api-production-0818.up.railway.app";
+/** 真机须在微信公众平台配置 request / uploadFile / downloadFile 合法域名为 zealhe.top */
+const API_BASE = "https://zealhe.top/api";
 
 module.exports = { API_BASE };
