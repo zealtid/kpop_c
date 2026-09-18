@@ -353,6 +353,7 @@ export function wxWebAuthorizeUrl(returnTo?: string) {
 
 export function h5AuthReturnUrl(token: string, returnTo?: string) {
   const next = isSafeH5ReturnTo(returnTo);
+  // No trailing slash on H5_PUBLIC_URL; prod https://zealhe.top/h5 → .../h5/#/auth?...
   const base = (config.h5PublicUrl || config.publicBaseUrl).replace(/\/$/, "");
   const hash = `#/auth?token=${encodeURIComponent(token)}&next=${encodeURIComponent(next)}`;
   return `${base}/${hash}`;

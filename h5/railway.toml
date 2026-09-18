@@ -1,4 +1,5 @@
-# Railway `h5` service: root directory must be /h5.
+# Railway `h5` service: root directory must be /h5 (this package, not the public URL).
+# Public production URL is https://zealhe.top/h5/ (Vite base `/h5/`).
 # Force Dockerfile so Railpack does not build the monorepo root and start the API.
 [build]
 builder = "DOCKERFILE"

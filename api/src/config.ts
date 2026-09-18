@@ -28,7 +28,11 @@ export const config = {
   corsOrigins: parseCorsOrigins(
     [process.env.CORS_ORIGINS, originFromPublicUrl(process.env.H5_PUBLIC_URL)].filter(Boolean).join(","),
   ),
-  /** Public H5 origin (Railway `h5` service). Used to redirect QR `/share/landing` and OAuth return. */
+  /**
+   * Public H5 URL for QR `/share/landing` 302 and OAuth return.
+   * No trailing slash (stripped here, then share/auth append `/#/...`).
+   * Production: `https://zealhe.top/h5` → `https://zealhe.top/h5/#/`.
+   */
   h5PublicUrl: (process.env.H5_PUBLIC_URL || "").replace(/\/$/, ""),
   /** Official Account / website-app credentials for WeChat web OAuth (H5). Distinct from WX_APPID. */
   wxWebAppId: process.env.WX_WEB_APPID || "",

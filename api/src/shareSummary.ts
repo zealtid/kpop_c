@@ -215,6 +215,8 @@ export async function getShareSummary(input: { g?: string; r?: string; t?: strin
 }
 
 export function h5LandingUrl(input: { g?: string; r?: string; t?: string }): string | null {
+  // H5_PUBLIC_URL is stored without trailing slash (see config.h5PublicUrl).
+  // Prod example: https://zealhe.top/h5 → https://zealhe.top/h5/#/?g=...
   const base = (config.h5PublicUrl || "").replace(/\/$/, "");
   if (!base) return null;
   const params = new URLSearchParams();
