@@ -1,4 +1,6 @@
 # Admin SPA (Vite) → nginx static host with SPA fallback.
+# Production URL is https://www.zealhe.top/admin/ (vite `base: /admin/`). nginx.conf
+# rewrites `/admin/` onto html-root dist so Railway root-domain deploys stay compatible.
 # VITE_API_BASE is baked in at build time (Railway service variable or ARG default).
 FROM node:22-bookworm-slim AS build
 WORKDIR /app

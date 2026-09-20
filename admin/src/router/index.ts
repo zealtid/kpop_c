@@ -2,7 +2,9 @@ import { createRouter, createWebHashHistory } from "vue-router";
 import { ensureHydrated, isAuthed } from "../auth";
 
 export const router = createRouter({
-  history: createWebHashHistory(),
+  // Production: https://www.zealhe.top/admin/#/... . Local `npm run dev` keeps `/`
+  // (vite base is `/`) so the `/admin` API proxy still works.
+  history: createWebHashHistory(import.meta.env.PROD ? "/admin/" : "/"),
   routes: [
     {
       path: "/login",

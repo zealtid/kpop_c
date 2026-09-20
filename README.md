@@ -278,21 +278,23 @@ npm exec -w api -- tsx scripts/hash-ops-password.ts 'your-password'
 
 图鉴投稿 **首次审核通过** 时记入贡献积分，默认每张 **1** 分（OQ-P3-1，`CONTRIBUTION_POINTS_PER_APPROVED_CARD`）。合并已有模板同样记分（OQ-P3-3）。驳回为 0。**不回填**历史上已经通过的投稿（OQ-P3-2）。Admin **用户**（`#/users`）与小程序「我的」只读展示。不含现金 / 会员 / 广告 / 商城 / 提现 / 封禁。
 
-### 生产部署（Railway 静态服务 `admin`）
+### 生产部署（`https://www.zealhe.top/admin/`）
 
-独立服务托管 `admin/` 的 Vite `dist/`（Approach A），不要挂在 API 的 `/admin/` 路径下。nginx 对客户端路由做 SPA fallback（`try_files` → `index.html`）。
+独立服务托管 `admin/` 的 Vite `dist/`（Approach A），不要把 SPA 挂到 API 进程的 `/admin/*` 接口路径下。生产入口挂在站点子路径 `/admin/`（hash 路由，刷新不依赖 history fallback）。Docker/nginx 仍把 dist 放在 html 根目录，并把 `/admin/` rewrite 到该根，Railway 旧的根域名部署也可打开。
+
+Vite 生产 `base` 为 `/admin/`（`index.html` 引用 `/admin/assets/...`）；本地 `npm run dev` 仍是 `/`，避免把 `/admin` API 代理吃掉。
 
 1. Railway 项目 `xingka` 新增服务，建议名称 **`admin`**，Root Directory：`/admin`，Builder：Dockerfile（`admin/Dockerfile`）。
 2. 服务变量（构建期注入，无密钥）：
    ```
    VITE_API_BASE=https://api-production-0818.up.railway.app
    ```
-3. Generate Domain，得到 `https://<admin-service>.up.railway.app`。登录页即该 URL（hash：`#/login`）。
+3. 对外入口：`https://www.zealhe.top/admin/`（资源 `/admin/assets/...`）。网关把 `/admin/` 转到该静态服务。登录页 hash：`#/login`。Railway 独立域名 `https://<admin-service>.up.railway.app` 经 nginx rewrite 也可打开。
 4. API CORS：默认允许 `http://localhost:*` / `127.0.0.1` 以及 `https://*.up.railway.app`。自定义域名再在 API 上设 `CORS_ORIGINS=https://your-admin-host`。
 5. 生产 ops 登录仍只用 `OPS_ADMIN_PASSWORD_HASH`（可加 `OPS_ADMIN_USER` / `OPS_ALLOWLIST`）。不要提交明文密码。
 
 ```bash
-npm run build:admin   # 本地确认 dist/；需设置 VITE_API_BASE
+npm run build:admin   # 本地确认 dist/index.html 含 /admin/assets/；需设置 VITE_API_BASE
 ```
 
 ## UGC-2a / H5-1 只读 H5
