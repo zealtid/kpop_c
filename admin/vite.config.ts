@@ -11,7 +11,24 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/admin": { target: api, changeOrigin: true },
+      // Local `npm run dev` (base `/`) proxies all `/admin` API routes.
+      // `vite preview` uses production base `/admin/` — skip the SPA entry and assets
+      // so they are not sent to the API (same class of bug as H5 `/h5` preview).
+      "/admin": {
+        target: api,
+        changeOrigin: true,
+        bypass(req) {
+          const url = req.url ?? "";
+          if (
+            url === "/admin" ||
+            url === "/admin/" ||
+            url.startsWith("/admin/index.html") ||
+            url.startsWith("/admin/assets/")
+          ) {
+            return req.url;
+          }
+        },
+      },
       "/catalog": { target: api, changeOrigin: true },
       "/media": { target: api, changeOrigin: true },
       "/health": { target: api, changeOrigin: true },
