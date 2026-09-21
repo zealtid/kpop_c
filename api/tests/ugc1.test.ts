@@ -61,14 +61,42 @@ async function jpeg(seedN: number) {
     .toBuffer();
 }
 
-async function uploadFront(n: number, side: "front" | "back" = "front") {
-  const buf = await jpeg(n);
+/** High-contrast unique blocks so new cards are not near-dups of earlier fixtures. */
+async function jpegDistinct(seedN: number) {
+  const tiles = [];
+  for (let i = 0; i < 6; i++) {
+    const tile = await sharp({
+      create: {
+        width: 80,
+        height: 120,
+        channels: 3,
+        background: {
+          r: (seedN * 37 + i * 80) % 256,
+          g: (seedN * 19 + i * 50) % 256,
+          b: (seedN * 53 + i * 30) % 256,
+        },
+      },
+    })
+      .png()
+      .toBuffer();
+    tiles.push({ input: tile, top: Math.floor(i / 3) * 180, left: (i % 3) * 80 });
+  }
+  return sharp({
+    create: { width: 240, height: 360, channels: 3, background: { r: 10, g: 10, b: 10 } },
+  })
+    .composite(tiles)
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
+async function uploadFront(n: number, side: "front" | "back" = "front", distinct = false) {
+  const buf = distinct ? await jpegDistinct(n) : await jpeg(n);
   const res = await api("/media/ugc-pending", {
     method: "POST",
     body: JSON.stringify({ imageBase64: buf.toString("base64"), mimeType: "image/jpeg", side }),
   });
   assert.equal(res.status, 200, JSON.stringify(res.body));
-  return res.body as { path: string; thumbPath: string; warnings: unknown[] };
+  return res.body as { path: string; thumbPath: string; warnings: unknown[]; nearDuplicates?: unknown[] };
 }
 
 before(async () => {
@@ -342,8 +370,8 @@ test("U1-07 merge keeps official image unless adopt_submission_image", async () 
 
 test("approve two pending cards same member+version different slots creates two templates", async () => {
   const version = "UGC-Distinct-Slots";
-  const frontA = await uploadFront(201);
-  const frontB = await uploadFront(202);
+  const frontA = await uploadFront(81, "front", true);
+  const frontB = await uploadFront(82, "front", true);
   const a = await api("/catalog/submissions", {
     method: "POST",
     body: JSON.stringify({
@@ -370,6 +398,8 @@ test("approve two pending cards same member+version different slots creates two 
   });
   assert.equal(a.status, 200, JSON.stringify(a.body));
   assert.equal(b.status, 200, JSON.stringify(b.body));
+  assert.equal((a.body as { duplicateOfTemplateId?: string | null }).duplicateOfTemplateId, null);
+  assert.equal((b.body as { duplicateOfTemplateId?: string | null }).duplicateOfTemplateId, null);
   const idA = (a.body as { id: string }).id;
   const idB = (b.body as { id: string }).id;
 
@@ -417,7 +447,7 @@ test("approve does not silent-merge into published short import dedupe_key", asy
      VALUES ($1,$2,$3,'UGC-SHORT','Official Short',$4,false,false,'published','/media/cards/short-key.png',$5)`,
     [existingId, CHASE, CARMEN, version, templateDedupeKey("h2h", "The Chase", "Carmen", version)],
   );
-  const front = await uploadFront(205);
+  const front = await uploadFront(83, "front", true);
   const created = await api("/catalog/submissions", {
     method: "POST",
     body: JSON.stringify({
@@ -431,7 +461,10 @@ test("approve does not silent-merge into published short import dedupe_key", asy
     }),
   });
   assert.equal(created.status, 200, JSON.stringify(created.body));
-  const approved = await api(`/admin/catalog-submissions/${(created.body as { id: string }).id}/approve`, {
+  const createdId = (created.body as { id: string }).id;
+  // 隔开近图 duplicate_of，只验证审批不再按短 import 键静默合并。
+  await query("UPDATE catalog_submissions SET duplicate_of_template_id = NULL WHERE id = $1", [createdId]);
+  const approved = await api(`/admin/catalog-submissions/${createdId}/approve`, {
     method: "POST",
     headers: adminHeaders,
     body: JSON.stringify({}),
@@ -450,7 +483,7 @@ test("approve does not silent-merge into published short import dedupe_key", asy
 
 test("approve different slots with explicit mergeTemplateId stays one template", async () => {
   const version = "UGC-Explicit-Merge-Slots";
-  const frontA = await uploadFront(203);
+  const frontA = await uploadFront(84, "front", true);
   const a = await api("/catalog/submissions", {
     method: "POST",
     body: JSON.stringify({
@@ -474,7 +507,7 @@ test("approve different slots with explicit mergeTemplateId stays one template",
   const before = await query("SELECT main_image_url FROM templates WHERE id = $1", [templateId]);
   const official = before.rows[0].main_image_url;
 
-  const frontB = await uploadFront(204);
+  const frontB = await uploadFront(85, "front", true);
   const b = await api("/catalog/submissions", {
     method: "POST",
     body: JSON.stringify({
