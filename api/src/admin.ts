@@ -29,6 +29,7 @@ export type ImportBody = {
 
 export type TemplateStatus = "draft" | "published" | "deprecated";
 
+/** Admin CSV/import upsert key: group + release + member + version (no slot/name). */
 export function templateDedupeKey(
   groupSlug: string,
   releaseTitle: string,
