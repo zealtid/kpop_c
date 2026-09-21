@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { query, withTransaction } from "./db.js";
 import { AppError, badRequest, forbidden, notFound } from "./errors.js";
-import { templateDedupeKey } from "./admin.js";
+import { isPgUniqueViolation, templateDedupeKey } from "./admin.js";
 import { track } from "./analytics.js";
 import { submitMediaCheckAsync } from "./moderation.js";
 import {
@@ -177,14 +177,30 @@ export async function findNearDuplicateTemplates(phash: string, groupId: string)
   return hits.slice(0, 8);
 }
 
+/** Normalize slot/name for approve-path keys only; CSV/import still uses templateDedupeKey. */
+export function normalizeDedupeSlot(name: string) {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Approve-created templates include slot/name so same member+version photocards stay distinct.
+ * Do not use this for admin CSV/import upsert (those rely on the 4-part templateDedupeKey).
+ */
+export function submissionTemplateDedupeKey(
+  groupSlug: string,
+  releaseTitle: string,
+  memberEn: string | null | undefined,
+  version: string,
+  slotName: string,
+) {
+  return `${templateDedupeKey(groupSlug, releaseTitle, memberEn, version)}:${normalizeDedupeSlot(slotName)}`;
+}
+
 async function resolveDedupeTarget(opts: {
-  groupSlug: string;
-  releaseTitle: string;
-  memberEn: string;
-  version: string;
   mergeTemplateId?: string | null;
   duplicateOf?: string | null;
 }) {
+  // 仅显式 mergeTemplateId 或投稿上已记录的 duplicate_of 才合并；不再按短 dedupe_key 静默合并。
   if (opts.mergeTemplateId) {
     const t = await query("SELECT id, status, is_deprecated FROM templates WHERE id = $1", [
       opts.mergeTemplateId,
@@ -192,12 +208,6 @@ async function resolveDedupeTarget(opts: {
     if (!t.rowCount) throw badRequest("合并目标模板不存在");
     return String(t.rows[0].id);
   }
-  const key = templateDedupeKey(opts.groupSlug, opts.releaseTitle, opts.memberEn, opts.version);
-  const existing = await query(
-    `SELECT id FROM templates WHERE dedupe_key = $1 AND status = 'published' AND is_deprecated = false`,
-    [key],
-  );
-  if (existing.rowCount) return String(existing.rows[0].id);
   if (opts.duplicateOf) {
     const t = await query(
       `SELECT id FROM templates WHERE id = $1 AND status = 'published' AND is_deprecated = false`,
@@ -540,10 +550,6 @@ export async function approveSubmission(
   const memberEn = member?.name_en || "group";
 
   const mergeId = await resolveDedupeTarget({
-    groupSlug: group.slug,
-    releaseTitle: release.title,
-    memberEn,
-    version,
     mergeTemplateId: body.mergeTemplateId,
     duplicateOf: row.duplicate_of_template_id ? String(row.duplicate_of_template_id) : null,
   });
@@ -578,27 +584,39 @@ export async function approveSubmission(
       await client.query(`UPDATE templates SET ${sets.join(", ")} WHERE id = $1`, params);
     } else {
       resultId = randomUUID();
-      const dedupeKey = templateDedupeKey(group.slug, release.title, memberEn, version);
+      let dedupeKey = submissionTemplateDedupeKey(group.slug, release.title, memberEn, version, name);
+      const clash = await client.query("SELECT id FROM templates WHERE dedupe_key = $1", [dedupeKey]);
+      if (clash.rowCount) {
+        // 同名 slot 仍须新建独立模板；调用方可用 mergeTemplateId 显式合并。
+        dedupeKey = `${dedupeKey}:${resultId}`;
+      }
       const code = `UGC-${String(resultId).slice(0, 8).toUpperCase()}`;
-      await client.query(
-        `INSERT INTO templates (
-           id, release_id, member_id, code, name, version, is_benefit, is_deprecated, status,
-           main_image_url, image_back, phash_front, dedupe_key, source
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,false,'published',$8,$9,$10,$11,'user_submission')`,
-        [
-          resultId,
-          releaseId,
-          memberId,
-          code,
-          name,
-          version,
-          !!String(version).includes("特典"),
-          publicFront,
-          publicBack,
-          phash,
-          dedupeKey,
-        ],
-      );
+      try {
+        await client.query(
+          `INSERT INTO templates (
+             id, release_id, member_id, code, name, version, is_benefit, is_deprecated, status,
+             main_image_url, image_back, phash_front, dedupe_key, source
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,false,'published',$8,$9,$10,$11,'user_submission')`,
+          [
+            resultId,
+            releaseId,
+            memberId,
+            code,
+            name,
+            version,
+            !!String(version).includes("特典"),
+            publicFront,
+            publicBack,
+            phash,
+            dedupeKey,
+          ],
+        );
+      } catch (err) {
+        if (isPgUniqueViolation(err)) {
+          throw new AppError(409, "DUPLICATE_DEDUPE_KEY", "去重键已存在，请指定 mergeTemplateId 合并或更换名称");
+        }
+        throw err;
+      }
     }
     // OQ-P3-3：新建模板与 merge 进已有模板都记分；OQ-P3-1 首次通过 +1；按 submission_id 幂等。
     const pointsAwarded = await awardApprovedSubmissionPoints(client, {

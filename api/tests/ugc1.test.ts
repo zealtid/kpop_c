@@ -9,10 +9,12 @@ import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import { createApp } from "../src/app.js";
+import { submissionTemplateDedupeKey } from "../src/catalogSubmissions.js";
 import { pool, query } from "../src/db.js";
 import { seed } from "../src/seed.js";
 import { config } from "../src/config.js";
 import { GROUP_H2H, sid } from "../src/ids.js";
+import { templateDedupeKey } from "../src/admin.js";
 import type { Server } from "node:http";
 
 let server: Server;
@@ -259,6 +261,14 @@ test("U1-06 reject deletes pending image and shows reason", async () => {
   assert.equal((mine.body as { rejectReason: string }).rejectReason, "图不对");
 });
 
+test("approve-path dedupe key includes slot; import key does not", () => {
+  const importKey = templateDedupeKey("h2h", "The Chase", "Carmen", "Ver-A");
+  const approveKey = submissionTemplateDedupeKey("h2h", "The Chase", "Carmen", "Ver-A", "Slot  1");
+  assert.equal(importKey, "h2h:The Chase:Carmen:Ver-A");
+  assert.equal(approveKey, "h2h:The Chase:Carmen:Ver-A:slot 1");
+  assert.notEqual(importKey, approveKey);
+});
+
 test("U1-07 merge keeps official image unless adopt_submission_image", async () => {
   const frontA = await uploadFront(41);
   const a = await api("/catalog/submissions", {
@@ -328,6 +338,169 @@ test("U1-07 merge keeps official image unless adopt_submission_image", async () 
   });
   const swapped = await query("SELECT main_image_url FROM templates WHERE id = $1", [templateId]);
   assert.notEqual(swapped.rows[0].main_image_url, official);
+});
+
+test("approve two pending cards same member+version different slots creates two templates", async () => {
+  const version = "UGC-Distinct-Slots";
+  const frontA = await uploadFront(201);
+  const frontB = await uploadFront(202);
+  const a = await api("/catalog/submissions", {
+    method: "POST",
+    body: JSON.stringify({
+      groupId: GROUP_H2H,
+      releaseId: CHASE,
+      memberId: CARMEN,
+      versionLabel: version,
+      slotLabel: "Carmen Slot A",
+      imageFront: frontA.path,
+      agreementAccepted: true,
+    }),
+  });
+  const b = await api("/catalog/submissions", {
+    method: "POST",
+    body: JSON.stringify({
+      groupId: GROUP_H2H,
+      releaseId: CHASE,
+      memberId: CARMEN,
+      versionLabel: version,
+      slotLabel: "Carmen Slot B",
+      imageFront: frontB.path,
+      agreementAccepted: true,
+    }),
+  });
+  assert.equal(a.status, 200, JSON.stringify(a.body));
+  assert.equal(b.status, 200, JSON.stringify(b.body));
+  const idA = (a.body as { id: string }).id;
+  const idB = (b.body as { id: string }).id;
+
+  const approvedA = await api(`/admin/catalog-submissions/${idA}/approve`, {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({}),
+  });
+  const approvedB = await api(`/admin/catalog-submissions/${idB}/approve`, {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({}),
+  });
+  assert.equal(approvedA.status, 200, JSON.stringify(approvedA.body));
+  assert.equal(approvedB.status, 200, JSON.stringify(approvedB.body));
+  const tplA = (approvedA.body as { resultTemplateId: string }).resultTemplateId;
+  const tplB = (approvedB.body as { resultTemplateId: string }).resultTemplateId;
+  assert.ok(tplA);
+  assert.ok(tplB);
+  assert.notEqual(tplA, tplB);
+
+  const rows = await query(
+    "SELECT id, name, version, status, dedupe_key, main_image_url FROM templates WHERE id = ANY($1::uuid[])",
+    [[tplA, tplB]],
+  );
+  assert.equal(rows.rowCount, 2);
+  const byId = new Map(rows.rows.map((r) => [String(r.id), r]));
+  assert.equal(byId.get(tplA)?.status, "published");
+  assert.equal(byId.get(tplB)?.status, "published");
+  assert.equal(byId.get(tplA)?.name, "Carmen Slot A");
+  assert.equal(byId.get(tplB)?.name, "Carmen Slot B");
+  assert.equal(byId.get(tplA)?.version, version);
+  assert.equal(byId.get(tplB)?.version, version);
+  assert.equal(byId.get(tplA)?.dedupe_key, submissionTemplateDedupeKey("h2h", "The Chase", "Carmen", version, "Carmen Slot A"));
+  assert.equal(byId.get(tplB)?.dedupe_key, submissionTemplateDedupeKey("h2h", "The Chase", "Carmen", version, "Carmen Slot B"));
+  assert.ok(String(byId.get(tplA)?.main_image_url || "").startsWith("/media/cards/"));
+  assert.ok(String(byId.get(tplB)?.main_image_url || "").startsWith("/media/cards/"));
+});
+
+test("approve does not silent-merge into published short import dedupe_key", async () => {
+  const version = "UGC-Short-Key-No-Merge";
+  const existingId = randomUUID();
+  await query(
+    `INSERT INTO templates (id, release_id, member_id, code, name, version, is_benefit, is_deprecated, status, main_image_url, dedupe_key)
+     VALUES ($1,$2,$3,'UGC-SHORT','Official Short',$4,false,false,'published','/media/cards/short-key.png',$5)`,
+    [existingId, CHASE, CARMEN, version, templateDedupeKey("h2h", "The Chase", "Carmen", version)],
+  );
+  const front = await uploadFront(205);
+  const created = await api("/catalog/submissions", {
+    method: "POST",
+    body: JSON.stringify({
+      groupId: GROUP_H2H,
+      releaseId: CHASE,
+      memberId: CARMEN,
+      versionLabel: version,
+      slotLabel: "UGC Long Slot",
+      imageFront: front.path,
+      agreementAccepted: true,
+    }),
+  });
+  assert.equal(created.status, 200, JSON.stringify(created.body));
+  const approved = await api(`/admin/catalog-submissions/${(created.body as { id: string }).id}/approve`, {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({}),
+  });
+  assert.equal(approved.status, 200, JSON.stringify(approved.body));
+  const resultId = (approved.body as { resultTemplateId: string }).resultTemplateId;
+  assert.notEqual(resultId, existingId);
+  const createdRow = await query("SELECT name, dedupe_key, status FROM templates WHERE id = $1", [resultId]);
+  assert.equal(createdRow.rows[0].status, "published");
+  assert.equal(createdRow.rows[0].name, "UGC Long Slot");
+  assert.equal(
+    createdRow.rows[0].dedupe_key,
+    submissionTemplateDedupeKey("h2h", "The Chase", "Carmen", version, "UGC Long Slot"),
+  );
+});
+
+test("approve different slots with explicit mergeTemplateId stays one template", async () => {
+  const version = "UGC-Explicit-Merge-Slots";
+  const frontA = await uploadFront(203);
+  const a = await api("/catalog/submissions", {
+    method: "POST",
+    body: JSON.stringify({
+      groupId: GROUP_H2H,
+      releaseId: CHASE,
+      memberId: CARMEN,
+      versionLabel: version,
+      slotLabel: "Merge Slot A",
+      imageFront: frontA.path,
+      agreementAccepted: true,
+    }),
+  });
+  assert.equal(a.status, 200, JSON.stringify(a.body));
+  const first = await api(`/admin/catalog-submissions/${(a.body as { id: string }).id}/approve`, {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({}),
+  });
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  const templateId = (first.body as { resultTemplateId: string }).resultTemplateId;
+  const before = await query("SELECT main_image_url FROM templates WHERE id = $1", [templateId]);
+  const official = before.rows[0].main_image_url;
+
+  const frontB = await uploadFront(204);
+  const b = await api("/catalog/submissions", {
+    method: "POST",
+    body: JSON.stringify({
+      groupId: GROUP_H2H,
+      releaseId: CHASE,
+      memberId: CARMEN,
+      versionLabel: version,
+      slotLabel: "Merge Slot B",
+      imageFront: frontB.path,
+      agreementAccepted: true,
+    }),
+  });
+  assert.equal(b.status, 200, JSON.stringify(b.body));
+  const merged = await api(`/admin/catalog-submissions/${(b.body as { id: string }).id}/approve`, {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({ mergeTemplateId: templateId, adoptSubmissionImage: false }),
+  });
+  assert.equal(merged.status, 200, JSON.stringify(merged.body));
+  assert.equal((merged.body as { resultTemplateId: string }).resultTemplateId, templateId);
+  const kept = await query("SELECT id, main_image_url FROM templates WHERE version = $1 AND status = 'published'", [
+    version,
+  ]);
+  assert.equal(kept.rowCount, 1);
+  assert.equal(kept.rows[0].id, templateId);
+  assert.equal(kept.rows[0].main_image_url, official);
 });
 
 test("merge fills empty official main image without adopt flag", async () => {
