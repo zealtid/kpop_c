@@ -14,12 +14,31 @@ export const GRID_VLM_DETECT_PROMPT = `请找出图中每一张偶像小卡（ph
 
 没有小卡时不要输出 <bbox>，或返回 {"cards":[]}。`;
 
-const VLM_MAX_EDGE = 1280;
+/** 发给方舟前的长边上限（fit inside）；960 与 zeal-home OCR 同档，兼顾 bbox 精度与体积。 */
+export const VLM_MAX_EDGE = 960;
+/** JPEG 质量；60 与 zeal-home OCR 同档。 */
+export const VLM_JPEG_QUALITY = 60;
+/** Grounding 可能返回多行 `<bbox>`；512 易截断，1024 为上限。 */
+export const VLM_MAX_TOKENS = 1024;
 
 function vlmErr(name: string, message: string, rawText?: string) {
   const err = new Error(message);
   err.name = name;
   return attachVlmDetectLog(err, { promptText: GRID_VLM_DETECT_PROMPT, rawText });
+}
+
+function logDetectTiming(parts: {
+  model: string;
+  encodeMs: number;
+  arkMs: number;
+  parseMs: number;
+  totalMs: number;
+  jpegBytes?: number;
+}) {
+  const jpeg = parts.jpegBytes != null ? ` jpegBytes=${parts.jpegBytes}` : "";
+  console.log(
+    `[grid-vlm] detect model=${parts.model} encodeMs=${parts.encodeMs} arkMs=${parts.arkMs} parseMs=${parts.parseMs} totalMs=${parts.totalMs}${jpeg}`,
+  );
 }
 
 export class DoubaoVisionProvider implements GridVlmProvider {
@@ -33,50 +52,79 @@ export class DoubaoVisionProvider implements GridVlmProvider {
     if (!cfg.model) {
       throw vlmErr("VlmUnconfiguredError", "vlm_unconfigured");
     }
-    const jpeg = await sharp(input.buffer)
-      .rotate()
-      .resize(VLM_MAX_EDGE, VLM_MAX_EDGE, { fit: "inside" })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-    const dataUrl = `data:image/jpeg;base64,${jpeg.toString("base64")}`;
-    const url = `${cfg.baseUrl}/chat/completions`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${cfg.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: cfg.model,
-        temperature: 0.1,
-        max_tokens: 2048,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: GRID_VLM_DETECT_PROMPT },
-              { type: "image_url", image_url: { url: dataUrl } },
-            ],
-          },
-        ],
-      }),
-      signal: input.signal,
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      throw vlmErr("VlmHttpError", `vlm_http_${res.status}`, text);
-    }
-    let payload: unknown;
+
+    const t0 = Date.now();
+    let encodeMs = 0;
+    let arkMs = 0;
+    let parseMs = 0;
+    let jpegBytes = 0;
+
     try {
-      payload = JSON.parse(text);
-    } catch {
-      throw vlmErr("VlmHttpError", "vlm_http_json", text);
+      const tEncode = Date.now();
+      const jpeg = await sharp(input.buffer)
+        .rotate()
+        .resize(VLM_MAX_EDGE, VLM_MAX_EDGE, { fit: "inside" })
+        .jpeg({ quality: VLM_JPEG_QUALITY })
+        .toBuffer();
+      encodeMs = Date.now() - tEncode;
+      jpegBytes = jpeg.length;
+      const dataUrl = `data:image/jpeg;base64,${jpeg.toString("base64")}`;
+      const url = `${cfg.baseUrl}/chat/completions`;
+      const tArk = Date.now();
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${cfg.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: cfg.model,
+          temperature: 0.1,
+          max_tokens: VLM_MAX_TOKENS,
+          reasoning_effort: "minimal",
+          thinking: { type: "disabled" },
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: GRID_VLM_DETECT_PROMPT },
+                { type: "image_url", image_url: { url: dataUrl } },
+              ],
+            },
+          ],
+        }),
+        signal: input.signal,
+      });
+      const text = await res.text();
+      arkMs = Date.now() - tArk;
+      if (!res.ok) {
+        throw vlmErr("VlmHttpError", `vlm_http_${res.status}`, text);
+      }
+      const tParse = Date.now();
+      let payload: unknown;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        parseMs = Date.now() - tParse;
+        throw vlmErr("VlmHttpError", "vlm_http_json", text);
+      }
+      const content = completionText(payload);
+      const cards = cardsFromModelText(content);
+      parseMs = Date.now() - tParse;
+      return {
+        cards,
+        promptText: GRID_VLM_DETECT_PROMPT,
+        rawText: content,
+      };
+    } finally {
+      logDetectTiming({
+        model: cfg.model,
+        encodeMs,
+        arkMs,
+        parseMs,
+        totalMs: Date.now() - t0,
+        jpegBytes,
+      });
     }
-    const content = completionText(payload);
-    return {
-      cards: cardsFromModelText(content),
-      promptText: GRID_VLM_DETECT_PROMPT,
-      rawText: content,
-    };
   }
 }

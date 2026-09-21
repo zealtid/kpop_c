@@ -57,8 +57,8 @@ export const config = {
   bucketSecretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
 };
 
-/** 2026-09-16 拍板：豆包视觉定位 / Grounding。生产也可改填方舟接入点 `ep-…`，勿校验必须是 seed 名。 */
-export const DEFAULT_ARK_VISION_MODEL = "doubao-seed-2-0-lite-260215";
+/** 豆包视觉定位 / Grounding 默认型号；可用 `ARK_VISION_MODEL` 覆盖（含方舟接入点 `ep-…`）。 */
+export const DEFAULT_ARK_VISION_MODEL = "doubao-seed-2-0-mini-260428";
 
 /**
  * UGC-2b-VLM: Volcengine Ark / Doubao vision. Read live so tests can toggle env.

@@ -3,12 +3,19 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import sharp from "sharp";
 import { DEFAULT_ARK_VISION_MODEL, gridVlmConfig } from "../src/config.js";
 import { cardsFromModelText, completionText, extractJsonValue, parseGroundingBboxes } from "../src/vlm/parse.js";
 import { GRID_VLM_MAX_DETECT, GRID_VLM_MAX_SUBMIT, normalizeVlmCards, normalizeVlmResult, xyxyToBox } from "../src/vlm/normalize.js";
 import { resolveGridEngine } from "../src/gridSplit.js";
 import { GRID_VLM_LOG_TEXT_MAX_BYTES, sanitizeGridVlmLogText } from "../src/vlm/calls.js";
-import { GRID_VLM_DETECT_PROMPT } from "../src/vlm/doubao.js";
+import {
+  DoubaoVisionProvider,
+  GRID_VLM_DETECT_PROMPT,
+  VLM_JPEG_QUALITY,
+  VLM_MAX_EDGE,
+  VLM_MAX_TOKENS,
+} from "../src/vlm/doubao.js";
 
 test("default ARK_VISION_MODEL is grounding seed; ep ids pass through", () => {
   const prev = process.env.ARK_VISION_MODEL;
@@ -18,8 +25,8 @@ test("default ARK_VISION_MODEL is grounding seed; ep ids pass through", () => {
   delete process.env.GRID_VLM_MAX_DETECT;
   delete process.env.GRID_VLM_MAX_SUBMIT;
   try {
-    assert.equal(DEFAULT_ARK_VISION_MODEL, "doubao-seed-2-0-lite-260215");
-    assert.equal(gridVlmConfig().model, "doubao-seed-2-0-lite-260215");
+    assert.equal(DEFAULT_ARK_VISION_MODEL, "doubao-seed-2-0-mini-260428");
+    assert.equal(gridVlmConfig().model, "doubao-seed-2-0-mini-260428");
     assert.equal(gridVlmConfig().maxDetect, 64);
     assert.equal(gridVlmConfig().maxSubmit, 64);
     process.env.GRID_VLM_MAX_DETECT = "32";
@@ -178,6 +185,83 @@ test("Doubao prompt detects all photocards; no 16 product cap; no client keys in
   assert.doesNotMatch(promptSrc, /最多 16 张/);
   assert.match(promptSrc, /检出所有小卡/);
   assert.match(promptSrc, /服务端可能只保留配置的上限张数/);
+  assert.match(promptSrc, /reasoning_effort: "minimal"/);
+  assert.match(promptSrc, /thinking: \{ type: "disabled" \}/);
+  assert.equal(VLM_MAX_EDGE, 960);
+  assert.equal(VLM_JPEG_QUALITY, 60);
+  assert.equal(VLM_MAX_TOKENS, 1024);
   const indexJs = await readFile(new URL("../../miniprogram/pages/catalog-grid/index.js", import.meta.url), "utf8");
   assert.doesNotMatch(indexJs, /ARK_API_KEY/);
+});
+
+test("Doubao detect request body and jpeg prep use speed knobs", async () => {
+  const prevKey = process.env.ARK_API_KEY;
+  const prevModel = process.env.ARK_VISION_MODEL;
+  const prevFetch = globalThis.fetch;
+  const prevLog = console.log;
+  process.env.ARK_API_KEY = "test-ark-key";
+  process.env.ARK_VISION_MODEL = "doubao-seed-2-0-mini-260428";
+  const logs: string[] = [];
+  console.log = (...args: unknown[]) => {
+    logs.push(args.map(String).join(" "));
+  };
+  let captured: { url: string; body: Record<string, unknown>; auth: string } | null = null;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    captured = {
+      url,
+      body: JSON.parse(String(init?.body || "{}")) as Record<string, unknown>,
+      auth: String((init?.headers as Record<string, string>)?.Authorization || ""),
+    };
+    return new Response(
+      JSON.stringify({
+        choices: [{ message: { content: "<bbox>100 200 400 700</bbox>" } }],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  }) as typeof fetch;
+  try {
+    const buf = await sharp({
+      create: { width: 1600, height: 1200, channels: 3, background: { r: 10, g: 20, b: 30 } },
+    })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+    const result = await new DoubaoVisionProvider().detect({ mimeType: "image/jpeg", buffer: buf });
+    assert.equal(result.cards.length, 1);
+    assert.deepEqual(result.cards[0].bbox, [100, 200, 400, 700]);
+    assert.equal(result.promptText, GRID_VLM_DETECT_PROMPT);
+    if (!captured) throw new Error("expected Doubao chat/completions request");
+    const req = captured;
+    assert.match(req.url, /\/chat\/completions$/);
+    assert.equal(req.auth, "Bearer test-ark-key");
+    assert.equal(req.body.model, "doubao-seed-2-0-mini-260428");
+    assert.equal(req.body.max_tokens, 1024);
+    assert.equal(req.body.reasoning_effort, "minimal");
+    assert.deepEqual(req.body.thinking, { type: "disabled" });
+    const messages = req.body.messages as Array<{
+      content: Array<{ type: string; text?: string; image_url?: { url: string } }>;
+    }>;
+    const imagePart = messages[0].content.find((p) => p.type === "image_url");
+    const dataUrl = imagePart?.image_url?.url || "";
+    assert.match(dataUrl, /^data:image\/jpeg;base64,/);
+    const jpegBuf = Buffer.from(dataUrl.replace(/^data:image\/jpeg;base64,/, ""), "base64");
+    const meta = await sharp(jpegBuf).metadata();
+    assert.ok(meta.width && meta.height);
+    assert.equal(Math.max(meta.width, meta.height), VLM_MAX_EDGE);
+    assert.equal(meta.width, 960);
+    assert.equal(meta.height, 720);
+    const timing = logs.find((line) => line.includes("[grid-vlm]"));
+    assert.ok(timing, "expected [grid-vlm] timing log");
+    assert.match(timing!, /encodeMs=\d+/);
+    assert.match(timing!, /arkMs=\d+/);
+    assert.match(timing!, /parseMs=\d+/);
+    assert.match(timing!, /totalMs=\d+/);
+  } finally {
+    globalThis.fetch = prevFetch;
+    console.log = prevLog;
+    if (prevKey != null) process.env.ARK_API_KEY = prevKey;
+    else delete process.env.ARK_API_KEY;
+    if (prevModel != null) process.env.ARK_VISION_MODEL = prevModel;
+    else delete process.env.ARK_VISION_MODEL;
+  }
 });
